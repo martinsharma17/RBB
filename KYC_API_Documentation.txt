@@ -15,12 +15,6 @@ If the user is logged in, use the `KycController` (see Section 4). For guests:
 - **Body:** `{ "email": "user@example.com", "mobileNo": "98XXXXXXXX" }`
 - **Response:** Returns `sessionId`, `sessionToken`, and `currentStep`.
 
-### OTP Verification
-1. **Send OTP:** `POST /KycSession/send-otp`  
-   - Body: `{ "sessionId": 123, "otpType": 1 }` (1=Email, 2=Mobile)
-2. **Verify OTP:** `POST /KycSession/verify-otp`  
-   - Body: `{ "sessionId": 123, "otpType": 1, "otpCode": "123456" }`
-
 ### Track Progress
 Call this to see which steps are completed.
 - **Endpoint:** `GET /KycSession/progress/{sessionId}`
@@ -28,18 +22,22 @@ Call this to see which steps are completed.
 
 ---
 
-## 3. Saving Step Data (KycDataController)
+## 3. Saving & Fetching Data (KycDataController)
 
+### Fetch All Saved Data (Pre-fill Form)
+Use this when a user returns to a session to pre-fill all 14 steps at once.
+- **Endpoint:** `GET /KycData/all-details/{sessionId}`
+- **Response:** Returns a single object containing `personalInfo`, `currentAddress`, `bank`, etc. If a step is not yet started, its object will be `null`.
+
+### Saving Data (Per Step)
 **Common Request Format:**
-All save endpoints expect:
 ```json
 {
   "sessionId": 123,
   "data": { ...step specific fields... }
 }
 ```
-
-### Step Endpoints:
+**Endpoints:**
 1.  **Personal Info:** `POST /KycData/save-personal-info`
 2.  **Current Address:** `POST /KycData/save-current-address`
 3.  **Permanent Address:** `POST /KycData/save-permanent-address`
@@ -51,29 +49,19 @@ All save endpoints expect:
 9.  **Guardian:** `POST /KycData/save-guardian`
 10. **AML Compliance:** `POST /KycData/save-aml-compliance`
 11. **Document Upload:** `POST /KycData/upload-document` (Use **Multipart/Form-Data**)
-    - Params: `sessionId`, `documentType` (byte), `file` (File object)
+    - Form Fields: `sessionId` (int), `documentType` (byte), `file` (File)
 12. **Location Map:** `POST /KycData/save-location-map`
 13. **Declarations:** `POST /KycData/save-declarations`
 14. **Agreement:** `POST /KycData/save-agreement`
 
 ---
 
-## 4. Submission & Reviews (KycController - Requires Auth)
+## 4. Final Submission (KycController)
 
-### Get Logged-in Session
+### Get Active Session (For Logged-in Users)
 - **Endpoint:** `GET /Kyc/my-session`
-- **Action:** Call this first if the user is logged in. It returns the active `sessionId`.
+- **Action:** If the user is logged in via JWT, call this to get their `sessionId`.
 
-### Final Submit
+### Submit for Review
 - **Endpoint:** `POST /Kyc/submit/{sessionId}`
-- **Action:** Call this after step 14 to send the KYC for staff review.
-
----
-
-## 5. Key Data Fields (Reference)
-
-- **PersonalInfo:** `fullName`, `dateOfBirthBs`, `dateOfBirthAd`, `gender`, `isNepali`, `citizenshipNo`.
-- **Address:** `country`, `province`, `district`, `municipalityType`, `municipalityName`, `wardNo`, `tole`, `mobileNo`, `emailId`.
-- **Bank:** `accountType`, `bankAccountNo`, `bankName`, `bankAddress`.
-- **Occupation:** `occupationType`, `organizationName`, `designation`, `employeeIdNo`.
-- **AML:** `isPoliticallyExposedPerson`, `isRelatedToPep`, `hasCriminalRecord`.
+- **Action:** Call this after step 14 is saved to lock the form for review.

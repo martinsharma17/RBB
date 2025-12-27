@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace AUTHApi.DTOs
 {
@@ -119,5 +120,35 @@ namespace AUTHApi.DTOs
         public DateTime AgreementDate { get; set; } = DateTime.Now;
         public string? TradingLimit { get; set; }
         public bool MarginTradingFacility { get; set; }
+    }
+
+    public class KycAttachmentDto
+    {
+        public int Id { get; set; }
+        public byte DocumentType { get; set; }
+        public string DocumentName { get; set; } = string.Empty;
+        public string FilePath { get; set; } = string.Empty;
+        public long FileSize { get; set; }
+        public string? MimeType { get; set; }
+    }
+
+    public class KycFullDetailsDto
+    {
+        public int SessionId { get; set; }
+        public string? Email { get; set; }
+        public PersonalInfoDto? PersonalInfo { get; set; }
+        public AddressDto? CurrentAddress { get; set; }
+        public AddressDto? PermanentAddress { get; set; }
+        public FamilyDto? Family { get; set; }
+        public BankDto? Bank { get; set; }
+        public OccupationDto? Occupation { get; set; }
+        public FinancialDetailsDto? FinancialDetails { get; set; }
+        public TransactionInfoDto? TransactionInfo { get; set; }
+        public GuardianDto? Guardian { get; set; }
+        public AmlComplianceDto? AmlCompliance { get; set; }
+        public List<KycAttachmentDto> Attachments { get; set; } = new();
+        public LocationMapDto? LocationMap { get; set; }
+        public DeclarationsDto? Declarations { get; set; }
+        public AgreementDto? Agreement { get; set; }
     }
 }

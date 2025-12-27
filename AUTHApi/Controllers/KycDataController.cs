@@ -4,6 +4,7 @@ using AUTHApi.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -20,6 +21,188 @@ namespace AUTHApi.Controllers
         {
             _context = context;
         }
+
+        #region Fetch Endpoints
+
+        [HttpGet("all-details/{sessionId}")]
+        public async Task<IActionResult> GetAllDetails(int sessionId)
+        {
+            var session = await _context.KycFormSessions.FindAsync(sessionId);
+            if (session == null) return NotFound("Session not found");
+
+            var personalInfo = await _context.KycPersonalInfos.FirstOrDefaultAsync(p => p.SessionId == sessionId);
+            var currentAddress = await _context.KycCurrentAddresses.FirstOrDefaultAsync(a => a.SessionId == sessionId);
+            var permanentAddress =
+                await _context.KycPermanentAddresses.FirstOrDefaultAsync(a => a.SessionId == sessionId);
+            var family = await _context.KycFamilies.FirstOrDefaultAsync(f => f.SessionId == sessionId);
+            var bank = await _context.KycBanks.FirstOrDefaultAsync(b => b.SessionId == sessionId);
+            var occupation = await _context.KycOccupations.FirstOrDefaultAsync(o => o.SessionId == sessionId);
+            var financial = await _context.KycFinancialDetails.FirstOrDefaultAsync(f => f.SessionId == sessionId);
+            var transaction = await _context.KycTransactionInfos.FirstOrDefaultAsync(t => t.SessionId == sessionId);
+            var guardian = await _context.KycGuardians.FirstOrDefaultAsync(g => g.SessionId == sessionId);
+            var aml = await _context.KycAmlCompliances.FirstOrDefaultAsync(a => a.SessionId == sessionId);
+            var attachments = await _context.KycAttachments.Where(a => a.SessionId == sessionId).ToListAsync();
+            var location = await _context.KycLocationMaps.FirstOrDefaultAsync(l => l.SessionId == sessionId);
+            var declarations = await _context.KycDeclarations.FirstOrDefaultAsync(d => d.SessionId == sessionId);
+            var agreement = await _context.KycAgreements.FirstOrDefaultAsync(a => a.SessionId == sessionId);
+
+            var response = new KycFullDetailsDto
+            {
+                SessionId = sessionId,
+                Email = session.Email,
+                PersonalInfo = personalInfo == null
+                    ? null
+                    : new PersonalInfoDto
+                    {
+                        FullName = personalInfo.FullName,
+                        DateOfBirthBs = personalInfo.DateOfBirthBs,
+                        DateOfBirthAd = personalInfo.DateOfBirthAd,
+                        Gender = personalInfo.Gender,
+                        IsNepali = personalInfo.IsNepali,
+                        OtherNationality = personalInfo.OtherNationality,
+                        CitizenshipNo = personalInfo.CitizenshipNo,
+                        CitizenshipIssueDistrict = personalInfo.CitizenshipIssueDistrict,
+                        CitizenshipIssueDate = personalInfo.CitizenshipIssueDate,
+                        ClientAccountNo = personalInfo.ClientAccountNo,
+                        ReferenceNo = personalInfo.ReferenceNo
+                    },
+                CurrentAddress = MapAddress(currentAddress),
+                PermanentAddress = MapAddress(permanentAddress),
+                Family = family == null
+                    ? null
+                    : new FamilyDto
+                    {
+                        GrandFatherName = family.GrandFatherName,
+                        FatherName = family.FatherName,
+                        MotherName = family.MotherName,
+                        SpouseName = family.SpouseName,
+                        SonName = family.SonName,
+                        DaughterName = family.DaughterName
+                    },
+                Bank = bank == null
+                    ? null
+                    : new BankDto
+                    {
+                        AccountType = bank.AccountType,
+                        BankAccountNo = bank.BankAccountNo,
+                        BankName = bank.BankName,
+                        BankAddress = bank.BankAddress
+                    },
+                Occupation = occupation == null
+                    ? null
+                    : new OccupationDto
+                    {
+                        OccupationType = occupation.OccupationType,
+                        OtherOccupation = occupation.OtherOccupation,
+                        ServiceSector = occupation.ServiceSector,
+                        BusinessType = occupation.BusinessType,
+                        OrganizationName = occupation.OrganizationName,
+                        OrganizationAddress = occupation.OrganizationAddress,
+                        Designation = occupation.Designation,
+                        EmployeeIdNo = occupation.EmployeeIdNo
+                    },
+                FinancialDetails = financial == null
+                    ? null
+                    : new FinancialDetailsDto
+                    {
+                        AnnualIncomeRange = financial.AnnualIncomeRange,
+                        EstimatedAnnualIncome = financial.EstimatedAnnualIncome
+                    },
+                TransactionInfo = transaction == null
+                    ? null
+                    : new TransactionInfoDto
+                    {
+                        SourceOfNetWorth = transaction.SourceOfNetWorth,
+                        MajorSourceOfIncome = transaction.MajorSourceOfIncome,
+                        HasOtherBrokerAccount = transaction.HasOtherBrokerAccount,
+                        OtherBrokerNames = transaction.OtherBrokerNames,
+                        IsCibBlacklisted = transaction.IsCibBlacklisted,
+                        CibBlacklistDetails = transaction.CibBlacklistDetails
+                    },
+                Guardian = guardian == null
+                    ? null
+                    : new GuardianDto
+                    {
+                        FullName = guardian.GuardianFullName,
+                        Relationship = guardian.RelationshipWithApplicant,
+                        Address = guardian.CorrespondenceAddress,
+                        ContactNo = guardian.MobileNo,
+                        EmailId = guardian.EmailId,
+                        PermanentAccountNo = guardian.PermanentAccountNo
+                    },
+                AmlCompliance = aml == null
+                    ? null
+                    : new AmlComplianceDto
+                    {
+                        IsPoliticallyExposedPerson = aml.IsPoliticallyExposedPerson,
+                        IsRelatedToPep = aml.IsRelatedToPep,
+                        PepRelationName = aml.PepRelationName,
+                        PepRelationship = aml.PepRelationship,
+                        HasBeneficialOwner = aml.HasBeneficialOwner,
+                        HasCriminalRecord = aml.HasCriminalRecord,
+                        CriminalRecordDetails = aml.CriminalRecordDetails
+                    },
+                Attachments = attachments.Select(a => new KycAttachmentDto
+                {
+                    Id = a.Id,
+                    DocumentType = a.DocumentType,
+                    DocumentName = a.DocumentName,
+                    FilePath = a.FilePath ?? "",
+                    FileSize = a.FileSize ?? 0,
+                    MimeType = a.MimeType
+                }).ToList(),
+                LocationMap = location == null
+                    ? null
+                    : new LocationMapDto
+                    {
+                        Landmark = location.Landmark,
+                        DistanceFromMainRoad = location.DistanceFromMainRoad,
+                        Latitude = location.Latitude,
+                        Longitude = location.Longitude,
+                        CanvasDataJson = location.CanvasDataJson
+                    },
+                Declarations = declarations == null
+                    ? null
+                    : new DeclarationsDto
+                    {
+                        AgreeToTerms = declarations.AgreeToTerms,
+                        NoOtherFinancialLiability = declarations.NoOtherFinancialLiability,
+                        AllInformationTrue = declarations.AllInformationTrue
+                    },
+                Agreement = agreement == null
+                    ? null
+                    : new AgreementDto
+                    {
+                        AgreementDate = agreement.AgreementDate,
+                        TradingLimit = agreement.TradingLimit,
+                        MarginTradingFacility = agreement.MarginTradingFacility
+                    }
+            };
+
+            return Ok(response);
+        }
+
+        private AddressDto? MapAddress(dynamic? address)
+        {
+            if (address == null) return null;
+            return new AddressDto
+            {
+                Country = address.Country,
+                Province = address.Province,
+                District = address.District,
+                MunicipalityType = address.MunicipalityType,
+                MunicipalityName = address.MunicipalityName,
+                WardNo = address.WardNo,
+                Tole = address.Tole,
+                TelephoneNo = address.TelephoneNo,
+                MobileNo = address.MobileNo,
+                EmailId = address.EmailId
+            };
+        }
+
+        #endregion
+
+        #region Save Endpoints
 
         [HttpPost("save-personal-info")]
         public async Task<IActionResult> SavePersonalInfo([FromBody] SaveStepDto<PersonalInfoDto> model)
@@ -395,6 +578,10 @@ namespace AUTHApi.Controllers
             return Ok(new { success = true, recordId = entity.Id });
         }
 
+        #endregion
+
+        #region Helpers
+
         private async Task UpdateStepProgress(int sessionId, int stepNumber, int recordId)
         {
             var progress = await _context.KycStepCompletions
@@ -416,5 +603,7 @@ namespace AUTHApi.Controllers
 
             await _context.SaveChangesAsync();
         }
+
+        #endregion
     }
 }
