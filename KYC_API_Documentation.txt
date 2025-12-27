@@ -1,0 +1,79 @@
+# KYC System API Documentation for Frontend Developers
+
+## 1. Overview
+The KYC system is session-based and supports a 14-step workflow. Users can be authenticated or guests (using email/OTP). All data is progressively saved per step.
+
+**Base URL:** `https://your-api-domain.com/api`
+
+---
+
+## 2. Session Management (KycSessionController)
+
+### Initialize/Resume Session
+If the user is logged in, use the `KycController` (see Section 4). For guests:
+- **Endpoint:** `POST /KycSession/initialize`
+- **Body:** `{ "email": "user@example.com", "mobileNo": "98XXXXXXXX" }`
+- **Response:** Returns `sessionId`, `sessionToken`, and `currentStep`.
+
+### OTP Verification
+1. **Send OTP:** `POST /KycSession/send-otp`  
+   - Body: `{ "sessionId": 123, "otpType": 1 }` (1=Email, 2=Mobile)
+2. **Verify OTP:** `POST /KycSession/verify-otp`  
+   - Body: `{ "sessionId": 123, "otpType": 1, "otpCode": "123456" }`
+
+### Track Progress
+Call this to see which steps are completed.
+- **Endpoint:** `GET /KycSession/progress/{sessionId}`
+- **Response:** Returns a list of all 14 steps with `isCompleted`, `isSaved`, and `recordId`.
+
+---
+
+## 3. Saving Step Data (KycDataController)
+
+**Common Request Format:**
+All save endpoints expect:
+```json
+{
+  "sessionId": 123,
+  "data": { ...step specific fields... }
+}
+```
+
+### Step Endpoints:
+1.  **Personal Info:** `POST /KycData/save-personal-info`
+2.  **Current Address:** `POST /KycData/save-current-address`
+3.  **Permanent Address:** `POST /KycData/save-permanent-address`
+4.  **Family Members:** `POST /KycData/save-family`
+5.  **Bank Account:** `POST /KycData/save-bank-account`
+6.  **Occupation:** `POST /KycData/save-occupation`
+7.  **Financial Details:** `POST /KycData/save-financial-details`
+8.  **Transaction Info:** `POST /KycData/save-transaction-info`
+9.  **Guardian:** `POST /KycData/save-guardian`
+10. **AML Compliance:** `POST /KycData/save-aml-compliance`
+11. **Document Upload:** `POST /KycData/upload-document` (Use **Multipart/Form-Data**)
+    - Params: `sessionId`, `documentType` (byte), `file` (File object)
+12. **Location Map:** `POST /KycData/save-location-map`
+13. **Declarations:** `POST /KycData/save-declarations`
+14. **Agreement:** `POST /KycData/save-agreement`
+
+---
+
+## 4. Submission & Reviews (KycController - Requires Auth)
+
+### Get Logged-in Session
+- **Endpoint:** `GET /Kyc/my-session`
+- **Action:** Call this first if the user is logged in. It returns the active `sessionId`.
+
+### Final Submit
+- **Endpoint:** `POST /Kyc/submit/{sessionId}`
+- **Action:** Call this after step 14 to send the KYC for staff review.
+
+---
+
+## 5. Key Data Fields (Reference)
+
+- **PersonalInfo:** `fullName`, `dateOfBirthBs`, `dateOfBirthAd`, `gender`, `isNepali`, `citizenshipNo`.
+- **Address:** `country`, `province`, `district`, `municipalityType`, `municipalityName`, `wardNo`, `tole`, `mobileNo`, `emailId`.
+- **Bank:** `accountType`, `bankAccountNo`, `bankName`, `bankAddress`.
+- **Occupation:** `occupationType`, `organizationName`, `designation`, `employeeIdNo`.
+- **AML:** `isPoliticallyExposedPerson`, `isRelatedToPep`, `hasCriminalRecord`.

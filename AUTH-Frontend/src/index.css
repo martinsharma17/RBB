@@ -1,0 +1,4 @@
+/* src/index.css */
+/* Global styles: Reset, typography, responsive design. Uses CSS variables for themes. */
+
+@import "tailwindcss";

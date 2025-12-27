@@ -1,0 +1,6 @@
+@AUTHApi_HostAddress = http://localhost:5119
+
+GET {{AUTHApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
