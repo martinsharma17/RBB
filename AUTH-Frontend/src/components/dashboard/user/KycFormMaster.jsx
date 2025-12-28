@@ -9,6 +9,7 @@ import KycGuardian from './sections/KycGuardian';
 import KycLegal from './sections/KycLegal';
 import KycInvestment from './sections/KycInvestment';
 import KycAttachment from './sections/KycAttachment';
+import KycVerification from './sections/KycVerification';
 
 /**
  * KycFormMaster - The central container for the multi-step KYC process.
@@ -23,6 +24,8 @@ const KycFormMaster = () => {
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isEmailVerified, setIsEmailVerified] = useState(false);
+    const [sessionId, setSessionId] = useState(null);
 
     // Fetch existing KYC data on load
     useEffect(() => {
@@ -34,6 +37,8 @@ const KycFormMaster = () => {
                 if (response.ok) {
                     const data = await response.json();
                     setKycData(data);
+                    setSessionId(data.sessionId);
+                    setIsEmailVerified(data.isEmailVerified);
                     // Start at the furthest completed step, but allow navigation
                     setCurrentStep(data.currentStep || 1);
                 } else {
@@ -111,35 +116,46 @@ const KycFormMaster = () => {
 
             {/* Section Content */}
             <div className="bg-gray-50 p-6 rounded-lg min-h-[400px]">
-                {currentStep === 1 && <KycPersonalInfo initialData={kycData?.personalInfo} onNext={handleNext} />}
-                {currentStep === 2 && <KycAddress initialData={kycData?.address} onNext={handleNext} onBack={handlePrev} />}
-                {currentStep === 3 && <KycFamily initialData={kycData?.family} onNext={handleNext} onBack={handlePrev} />}
-                {currentStep === 4 && <KycBank initialData={kycData?.bank} onNext={handleNext} onBack={handlePrev} />}
-                {currentStep === 5 && <KycOccupation initialData={kycData?.occupation} onNext={handleNext} onBack={handlePrev} />}
-                {currentStep === 6 && <KycGuardian initialData={kycData?.guardian} onNext={handleNext} onBack={handlePrev} />}
-                {currentStep === 7 && <KycLegal initialData={kycData?.legal} onNext={handleNext} onBack={handlePrev} />}
-                {currentStep === 8 && <KycInvestment initialData={kycData?.investment} onNext={handleNext} onBack={handlePrev} />}
-                {currentStep === 9 && <KycAttachment onBack={handlePrev} onComplete={() => setCurrentStep(10)} />}
+                {!isEmailVerified ? (
+                    <KycVerification
+                        initialEmail={user?.email}
+                        sessionId={sessionId}
+                        apiBase={apiBase}
+                        onVerified={() => setIsEmailVerified(true)}
+                    />
+                ) : (
+                    <>
+                        {currentStep === 1 && <KycPersonalInfo initialData={kycData?.personalInfo} onNext={handleNext} />}
+                        {currentStep === 2 && <KycAddress initialData={kycData?.address} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 3 && <KycFamily initialData={kycData?.family} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 4 && <KycBank initialData={kycData?.bank} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 5 && <KycOccupation initialData={kycData?.occupation} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 6 && <KycGuardian initialData={kycData?.guardian} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 7 && <KycLegal initialData={kycData?.legal} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 8 && <KycInvestment initialData={kycData?.investment} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 9 && <KycAttachment onBack={handlePrev} onComplete={() => setCurrentStep(10)} />}
 
-                {currentStep === 10 && (
-                    <div className="text-center py-16">
-                        <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <h2 className="text-3xl font-extrabold text-gray-900 mb-4">Application Submitted!</h2>
-                        <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
-                            Thank you for completing your KYC. Our team is currently reviewing your documents.
-                            You will be notified once your account is verified.
-                        </p>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition-all"
-                        >
-                            Back to Dashboard
-                        </button>
-                    </div>
+                        {currentStep === 10 && (
+                            <div className="text-center py-16">
+                                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-3xl font-extrabold text-gray-900 mb-4">Application Submitted!</h2>
+                                <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
+                                    Thank you for completing your KYC. Our team is currently reviewing your documents.
+                                    You will be notified once your account is verified.
+                                </p>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition-all"
+                                >
+                                    Back to Dashboard
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 

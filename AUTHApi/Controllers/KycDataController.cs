@@ -207,8 +207,10 @@ namespace AUTHApi.Controllers
         [HttpPost("save-personal-info")]
         public async Task<IActionResult> SavePersonalInfo([FromBody] SaveStepDto<PersonalInfoDto> model)
         {
-            var session = await _context.KycFormSessions.FindAsync(model.SessionId);
-            if (session == null) return NotFound("Session not found");
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
+            var session = validation.session!;
 
             var entity = await _context.KycPersonalInfos.FirstOrDefaultAsync(p => p.SessionId == model.SessionId);
             if (entity == null)
@@ -245,11 +247,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-current-address")]
         public async Task<IActionResult> SaveCurrentAddress([FromBody] SaveStepDto<AddressDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycCurrentAddresses.FirstOrDefaultAsync(a => a.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycCurrentAddress { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycCurrentAddresses.AddAsync(entity);
             }
@@ -274,11 +279,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-permanent-address")]
         public async Task<IActionResult> SavePermanentAddress([FromBody] SaveStepDto<AddressDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycPermanentAddresses.FirstOrDefaultAsync(a => a.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycPermanentAddress { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycPermanentAddresses.AddAsync(entity);
             }
@@ -303,11 +311,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-family")]
         public async Task<IActionResult> SaveFamily([FromBody] SaveStepDto<FamilyDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycFamilies.FirstOrDefaultAsync(f => f.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycFamily { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycFamilies.AddAsync(entity);
             }
@@ -328,11 +339,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-bank-account")]
         public async Task<IActionResult> SaveBank([FromBody] SaveStepDto<BankDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycBanks.FirstOrDefaultAsync(b => b.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycBank { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycBanks.AddAsync(entity);
             }
@@ -351,11 +365,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-occupation")]
         public async Task<IActionResult> SaveOccupation([FromBody] SaveStepDto<OccupationDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycOccupations.FirstOrDefaultAsync(o => o.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycOccupation { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycOccupations.AddAsync(entity);
             }
@@ -378,11 +395,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-financial-details")]
         public async Task<IActionResult> SaveFinancial([FromBody] SaveStepDto<FinancialDetailsDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycFinancialDetails.FirstOrDefaultAsync(f => f.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycFinancialDetails { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycFinancialDetails.AddAsync(entity);
             }
@@ -399,11 +419,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-transaction-info")]
         public async Task<IActionResult> SaveTransaction([FromBody] SaveStepDto<TransactionInfoDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycTransactionInfos.FirstOrDefaultAsync(t => t.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycTransactionInfo { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycTransactionInfos.AddAsync(entity);
             }
@@ -424,11 +447,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-guardian")]
         public async Task<IActionResult> SaveGuardian([FromBody] SaveStepDto<GuardianDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycGuardians.FirstOrDefaultAsync(g => g.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycGuardian { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycGuardians.AddAsync(entity);
             }
@@ -449,11 +475,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-aml-compliance")]
         public async Task<IActionResult> SaveAml([FromBody] SaveStepDto<AmlComplianceDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycAmlCompliances.FirstOrDefaultAsync(a => a.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycAmlCompliance { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycAmlCompliances.AddAsync(entity);
             }
@@ -476,10 +505,12 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> UploadDocument([FromForm] int sessionId, [FromForm] byte documentType,
             [FromForm] Microsoft.AspNetCore.Http.IFormFile file)
         {
+            var validation = await ValidateSessionAsync(sessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             if (file == null || file.Length == 0) return BadRequest("No file uploaded");
 
-            var session = await _context.KycFormSessions.FindAsync(sessionId);
-            if (session == null) return NotFound("Session not found");
+            var session = validation.session!;
 
             var uploads = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "kyc",
                 sessionId.ToString());
@@ -513,11 +544,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-location-map")]
         public async Task<IActionResult> SaveLocation([FromBody] SaveStepDto<LocationMapDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycLocationMaps.FirstOrDefaultAsync(l => l.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycLocationMap { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycLocationMaps.AddAsync(entity);
             }
@@ -537,11 +571,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-declarations")]
         public async Task<IActionResult> SaveDeclarations([FromBody] SaveStepDto<DeclarationsDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycDeclarations.FirstOrDefaultAsync(d => d.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycDeclarations { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycDeclarations.AddAsync(entity);
             }
@@ -559,11 +596,14 @@ namespace AUTHApi.Controllers
         [HttpPost("save-agreement")]
         public async Task<IActionResult> SaveAgreement([FromBody] SaveStepDto<AgreementDto> model)
         {
+            var validation = await ValidateSessionAsync(model.SessionId);
+            if (!validation.isValid) return BadRequest(validation.message);
+
             var entity = await _context.KycAgreements.FirstOrDefaultAsync(a => a.SessionId == model.SessionId);
             if (entity == null)
             {
                 entity = new KycAgreement { SessionId = model.SessionId };
-                var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+                var session = validation.session!;
                 entity.KycPersonalInfoId = session?.KycPersonalInfoId;
                 await _context.KycAgreements.AddAsync(entity);
             }
@@ -581,6 +621,26 @@ namespace AUTHApi.Controllers
         #endregion
 
         #region Helpers
+
+        /// <summary>
+        /// Validates if the KYC session exists, is not expired, and has completed email verification.
+        /// This acts as a gatekeeper to prevent data entry before authentication.
+        /// </summary>
+        private async Task<(bool isValid, string message, KycFormSession? session)> ValidateSessionAsync(int sessionId)
+        {
+            var session = await _context.KycFormSessions.FindAsync(sessionId);
+
+            if (session == null)
+                return (false, "KYC session not found.", null);
+
+            if (session.IsExpired || (session.SessionExpiryDate.HasValue && session.SessionExpiryDate < DateTime.Now))
+                return (false, "Your session has expired. Please restart the process.", null);
+
+            if (!session.EmailVerified)
+                return (false, "Email verification is mandatory before you can start filling the KYC form.", null);
+
+            return (true, string.Empty, session);
+        }
 
         private async Task UpdateStepProgress(int sessionId, int stepNumber, int recordId)
         {

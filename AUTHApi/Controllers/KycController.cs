@@ -54,7 +54,9 @@ namespace AUTHApi.Controllers
                     UserId = userId,
                     Email = email,
                     SessionExpiryDate = DateTime.Now.AddDays(30),
-                    CurrentStep = 1
+                    CurrentStep = 1,
+                    // Users must verify email via OTP even if logged in
+                    EmailVerified = false
                 };
                 await _context.KycFormSessions.AddAsync(session);
                 await _context.SaveChangesAsync();
@@ -78,6 +80,7 @@ namespace AUTHApi.Controllers
                 session.UserId = userId;
                 await _context.SaveChangesAsync();
             }
+            // Note: We no longer auto-verify EmailVerified here to ensure the OTP flow is followed
 
             return Ok(new
             {
