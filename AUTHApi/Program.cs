@@ -48,7 +48,7 @@ internal class Program
                 builder =>
                 {
                     // Allow requests from React Frontend running on localhost:5173
-                    builder.WithOrigins("http://localhost:5173")
+                    builder.WithOrigins("http://localhost:5173","http://localhost:3000")
                         .AllowAnyHeader() // Allow any HTTP headers (e.g., Authorization, Content-Type)
                         .AllowAnyMethod(); // Allow any HTTP methods (GET, POST, PUT, DELETE, etc.)
                 });
@@ -129,26 +129,26 @@ internal class Program
                     RoleClaimType = ClaimTypes.Role,
                     NameClaimType = ClaimTypes.Name
                 };
-            })
-            // --- External Auth (Google) Configuration ---
-            .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme) // Cookies needed for Google sign-in flow
-            .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
-            {
-                // Get Google credentials from configuration (appsettings.json or User Secrets)
-                options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
-                options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
-                options.CallbackPath = "/signin-google"; // Endpoint where Google redirects back
-                options.SaveTokens = true;
-
-                // Request additional scopes for profile picture
-                options.Scope.Add("profile");
-                options.Scope.Add("email");
-
-                // Map Google claims to our internal user claims
-                options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
-                options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
-                options.ClaimActions.MapJsonKey("picture", "picture");
             });
+            // --- External Auth (Google) Configuration ---
+            // .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme) // Cookies needed for Google sign-in flow
+            // .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
+            // {
+            //     // Get Google credentials from configuration (appsettings.json or User Secrets)
+            //     options.ClientId = builder.Configuration["Authentication:Google:ClientId"];
+            //     options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
+            //     options.CallbackPath = "/signin-google"; // Endpoint where Google redirects back
+            //     options.SaveTokens = true;
+
+            //     // Request additional scopes for profile picture
+            //     options.Scope.Add("profile");
+            //     options.Scope.Add("email");
+
+            //     // Map Google claims to our internal user claims
+            //     options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
+            //     options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
+            //     options.ClaimActions.MapJsonKey("picture", "picture");
+            // });
 
         // --- Authorization Policies ---
         // Define policies based on Roles. These are used in [Authorize(Policy="...")] attributes.
