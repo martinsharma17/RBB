@@ -1,5 +1,4 @@
 // src/components/dashboard/AccessManagementView.jsx
-import React from 'react';
 
 const AccessManagementView = ({ admins, onAddUser, onRevokeAdmin }) => {
     return (

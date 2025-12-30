@@ -1,5 +1,4 @@
 // src/components/dashboard/admin/AdminChartsView.jsx
-import React from 'react';
 
 const AdminChartsView = ({ totalUsers }) => {
     return (

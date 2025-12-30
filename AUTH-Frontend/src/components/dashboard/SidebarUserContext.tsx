@@ -1,4 +1,3 @@
-import React from 'react';
 
 const SidebarUserContext = ({ user, permissions, sidebarOpen }) => {
     if (!sidebarOpen) return null;

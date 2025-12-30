@@ -1,4 +1,3 @@
-import React from 'react';
 
 // Icons for sidebar items
 export const DashboardIcon = ({ className = "w-5 h-5" }) => (

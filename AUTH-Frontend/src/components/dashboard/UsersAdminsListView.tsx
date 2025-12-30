@@ -1,5 +1,4 @@
 // src/components/dashboard/UsersAdminsListView.jsx
-import React from 'react';
 
 const UsersAdminsListView = ({
     users,

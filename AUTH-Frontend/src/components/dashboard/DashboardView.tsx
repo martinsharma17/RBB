@@ -1,5 +1,4 @@
 // src/components/dashboard/DashboardView.jsx
-import React from 'react';
 
 const DashboardView = ({ 
     regularUsers, 

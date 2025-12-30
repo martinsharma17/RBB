@@ -1,5 +1,4 @@
 // src/components/dashboard/Sidebar.jsx
-import React from 'react';
 
 import SidebarUserContext from './SidebarUserContext'; // [NEW]
 

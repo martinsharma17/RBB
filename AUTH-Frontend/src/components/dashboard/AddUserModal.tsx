@@ -1,5 +1,4 @@
 // src/components/dashboard/AddUserModal.jsx
-import React from 'react';
 
 const AddUserModal = ({
     show,

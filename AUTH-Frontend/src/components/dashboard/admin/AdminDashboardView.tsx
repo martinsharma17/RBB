@@ -1,5 +1,4 @@
 // src/components/dashboard/admin/AdminDashboardView.jsx
-import React from 'react';
 
 const AdminDashboardView = ({ totalUsers, onViewUsers, onViewCharts, onAddUser }) => {
     return (

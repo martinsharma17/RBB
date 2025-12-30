@@ -1,5 +1,4 @@
 // src/components/dashboard/RegisterFormView.jsx
-import React from 'react';
 
 const RegisterFormView = () => {
     return (

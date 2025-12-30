@@ -1,5 +1,4 @@
 // src/components/dashboard/ChartsView.jsx
-import React from 'react';
 
 const ChartsView = ({ regularUsers, totalAdmins, totalAccounts }) => {
     const userPercentage = totalAccounts > 0 ? (regularUsers / totalAccounts) * 100 : 0;

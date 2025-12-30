@@ -1,4 +1,3 @@
-import React from 'react';
 import AdminDashboardView from './admin/AdminDashboardView';
 import AdminUsersListView from './admin/AdminUsersListView';
 import AdminChartsView from './admin/AdminChartsView';
