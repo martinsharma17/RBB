@@ -69,10 +69,10 @@ internal class Program
             .AddDefaultTokenProviders(); // Generates tokens for email confirmation, password reset, etc.
 
         // --- DATABASE CONTEXT ---
-        // Connects to SQL Server using the connection string from appsettings.json.
+        // Connects to PostgreSQL using the connection string from appsettings.json.
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
         {
-            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+            options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
         });
 
         // ==========================================
@@ -111,8 +111,9 @@ internal class Program
                 };
 
                 options.IncludeErrorDetails = true;
-                var jwtKey = "vS2B9#kL8@pQ5$zN1*rT4&mJ9!wX3^hG7_bV0)fD2";
-                Console.WriteLine($"[JWT DEBUG] SERVER STARTING - USING HARDCODED KEY. Length: {jwtKey.Length}");
+                // Use configuration or fallback to hardcoded (for safety/compatibility during transition)
+                var jwtKey = builder.Configuration["Jwt:Key"] ?? "vS2B9#kL8@pQ5$zN1*rT4&mJ9!wX3^hG7_bV0)fD2";
+                // Console.WriteLine($"[JWT DEBUG] Configuration Key Present: {!string.IsNullOrEmpty(builder.Configuration["Jwt:Key"])}");
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -186,6 +187,10 @@ internal class Program
 
             try
             {
+                // Ensure the database is created and all migrations are applied
+                var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                await dbContext.Database.MigrateAsync();
+
                 // Seed Roles (Admin, User, Manager) and the SuperAdmin user if they don't exist.
                 await RoleSeeder.SeedRolesAsync(services);
                 await RoleSeeder.SeedSuperAdminAsync(services);
@@ -218,33 +223,19 @@ internal class Program
             app.UseSwaggerUI(options => { options.SwaggerEndpoint("/swagger/v1/swagger.json", "AUTHApi"); });
         }
 
+        // Global Exception Handling Headers
+        app.UseMiddleware<AUTHApi.Middlewares.ExceptionMiddleware>();
+
         app.UseHttpsRedirection(); // Redirect HTTP to HTTPS
         app.UseCors("AllowSpecificOrigin"); // Enable CORS (Must be before Auth)
 
-        // DEBUG MIDDLEWARE: Log Authorization headers for 401 troubleshooting
-        app.Use(async (context, next) =>
-        {
-            var authHeader = context.Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader))
-            {
-                // Console.WriteLine($"[AUTH DEBUG] No Authorization header for {context.Request.Path}");
-            }
-            else
-            {
-                Console.WriteLine(
-                    $"[AUTH DEBUG] Authorization header found for {context.Request.Path}: {authHeader.Substring(0, Math.Min(authHeader.Length, 30))}...");
-            }
-
-            await next();
-            if (context.Response.StatusCode == 401)
-            {
-                Console.WriteLine(
-                    $"[AUTH DEBUG] 401 Response for {context.Request.Path}. User authenticated: {context.User.Identity?.IsAuthenticated}");
-            }
-        });
 
         // Enable Authentication (Who are you?)
         app.UseAuthentication();
+
+        // Custom JWT Middleware (Attaches User to Context)
+        // Placed after UseAuthentication so we can use the already-validated ClaimsPrincipal
+        app.UseMiddleware<AUTHApi.Middlewares.JwtMiddleware>();
         // Enable Authorization (Are you allowed here?)
         app.UseAuthorization();
 

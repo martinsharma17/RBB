@@ -12,7 +12,7 @@ namespace AUTHApi.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize] // Require login to see menu
-    public class MenuController : ControllerBase
+    public class MenuController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
 
@@ -35,7 +35,7 @@ namespace AUTHApi.Controllers
                 .ToListAsync();
 
             var rootItems = allItems.Where(m => m.ParentId == null).OrderBy(m => m.Order).ToList();
-            
+
             // Helper to recursively sort children
             void SortChildren(MenuItem item)
             {
@@ -54,7 +54,7 @@ namespace AUTHApi.Controllers
                 SortChildren(item);
             }
 
-            return Ok(rootItems);
+            return Success(rootItems);
         }
     }
 }

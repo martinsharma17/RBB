@@ -12,7 +12,7 @@ namespace AUTHApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class KycSessionController : ControllerBase
+    public class KycSessionController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
 
@@ -57,7 +57,7 @@ namespace AUTHApi.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return Ok(new KycSessionResponseDto
+            return Success(new KycSessionResponseDto
             {
                 SessionId = session.Id,
                 SessionToken = session.SessionToken,
@@ -73,7 +73,7 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> SendOtp([FromBody] VerifyOtpDto model)
         {
             var session = await _context.KycFormSessions.FindAsync(model.SessionId);
-            if (session == null) return NotFound("Session not found");
+            if (session == null) return Failure("Session not found", 404);
 
             var oldOtps = await _context.KycOtpVerifications
                 .Where(o => o.SessionId == model.SessionId && o.OtpType == model.OTPType && !o.IsExpired)
@@ -96,7 +96,7 @@ namespace AUTHApi.Controllers
             await _context.KycOtpVerifications.AddAsync(otp);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "OTP sent successfully", otpCode = otpCode, expiry = otp.ExpiryDate });
+            return Success(new { otpCode = otpCode, expiry = otp.ExpiryDate }, "OTP sent successfully");
         }
 
         [HttpPost("verify-otp")]
@@ -122,7 +122,7 @@ namespace AUTHApi.Controllers
                     await _context.SaveChangesAsync();
                 }
 
-                return BadRequest("Invalid or expired OTP");
+                return Failure("Invalid or expired OTP");
             }
 
             otp.IsVerified = true;
@@ -145,7 +145,7 @@ namespace AUTHApi.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return Ok(new { message = "Verification successful", sessionId = model.SessionId });
+            return Success(new { sessionId = model.SessionId }, "Verification successful");
         }
 
         [HttpGet("progress/{sessionId}")]
@@ -155,7 +155,7 @@ namespace AUTHApi.Controllers
                 .Include(s => s.StepCompletions)
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
-            if (session == null) return NotFound("Session not found");
+            if (session == null) return Failure("Session not found", 404);
 
             var stepsMaster = await _context.KycFormSteps.OrderBy(s => s.DisplayOrder).ToListAsync();
 
@@ -188,7 +188,7 @@ namespace AUTHApi.Controllers
                 }).ToList()
             };
 
-            return Ok(response);
+            return Success(response);
         }
 
         [HttpPost("complete-step")]
@@ -197,7 +197,7 @@ namespace AUTHApi.Controllers
             var completion = await _context.KycStepCompletions
                 .FirstOrDefaultAsync(sc => sc.SessionId == model.SessionId && sc.StepNumber == model.StepNumber);
 
-            if (completion == null) return NotFound("Step tracking not found");
+            if (completion == null) return Failure("Step tracking not found", 404);
 
             completion.IsCompleted = true;
             completion.CompletedDate = DateTime.Now;
@@ -226,7 +226,7 @@ namespace AUTHApi.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return Ok(new { nextStep = model.StepNumber + 1 });
+            return Success(new { nextStep = model.StepNumber + 1 });
         }
     }
 

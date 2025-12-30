@@ -7,7 +7,7 @@ namespace AUTHApi.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize] // Only authenticated users (or maybe just Admins?)
-    public class PermissionsController : ControllerBase
+    public class PermissionsController : BaseApiController
     {
         // GET: api/permissions
         // Returns the list of all available permissions in the system
@@ -15,7 +15,7 @@ namespace AUTHApi.Controllers
         public IActionResult GetAllPermissions()
         {
             var permissions = Permissions.GetAllPermissions();
-            return Ok(permissions);
+            return Success(permissions);
         }
     }
 }

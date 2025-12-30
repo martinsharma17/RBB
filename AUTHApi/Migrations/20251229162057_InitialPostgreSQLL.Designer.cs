@@ -3,6 +3,7 @@ using System;
 using AUTHApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AUTHApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251229162057_InitialPostgreSQLL")]
+    partial class InitialPostgreSQLL
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -131,9 +134,6 @@ namespace AUTHApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("AgreementDate")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("AnnualIncome")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
@@ -150,10 +150,6 @@ namespace AUTHApi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("CibBlacklistDetails")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
                     b.Property<DateTime?>("CitizenshipIssuedDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -165,9 +161,8 @@ namespace AUTHApi.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<string>("CriminalRecordDetails")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CurrentDistrict")
                         .HasMaxLength(100)
@@ -217,37 +212,6 @@ namespace AUTHApi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("GuardianAddress")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<string>("GuardianContactNo")
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("GuardianName")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("GuardianRelationship")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<bool>("HasBeneficialOwner")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("HasCriminalRecord")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("HasOtherBrokerAccount")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsCibBlacklisted")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsPep")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("IsVerified")
                         .HasColumnType("boolean");
 
@@ -255,10 +219,6 @@ namespace AUTHApi.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
-
-                    b.Property<string>("MajorSourceOfIncome")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("MaritalStatus")
                         .IsRequired()
@@ -292,17 +252,9 @@ namespace AUTHApi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<string>("OtherBrokerNames")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.Property<string>("PanNumber")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
-
-                    b.Property<string>("PepRelation")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("PermanentDistrict")
                         .IsRequired()
@@ -332,18 +284,8 @@ namespace AUTHApi.Migrations
                     b.Property<string>("RejectionReason")
                         .HasColumnType("text");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea");
-
                     b.Property<int?>("SessionId")
                         .HasColumnType("integer");
-
-                    b.Property<string>("SourceOfFunds")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("SpouseName")
                         .HasMaxLength(100)
@@ -352,9 +294,6 @@ namespace AUTHApi.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<bool>("TermsAgreed")
-                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

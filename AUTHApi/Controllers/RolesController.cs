@@ -9,7 +9,6 @@ using System.Security.Claims; // Added this using directive
 
 namespace AUTHApi.Controllers
 {
-
     /// <summary>
     /// Controller for managing roles and permissions.
     /// Base URL: /api/Roles
@@ -21,8 +20,8 @@ namespace AUTHApi.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Policy = "AdminOnly")]  // CLASS-LEVEL SECURITY: Applies to ALL methods unless overridden
-    public class RolesController : ControllerBase
+    [Authorize(Policy = "AdminOnly")] // CLASS-LEVEL SECURITY: Applies to ALL methods unless overridden
+    public class RolesController : BaseApiController
     {
         private readonly RoleManager<IdentityRole> _roleManager; // API to create/delete roles
         private readonly UserManager<ApplicationUser> _userManager; // API to assign roles to users
@@ -44,7 +43,7 @@ namespace AUTHApi.Controllers
         {
             // Project to anonymous object to hide internal details if any
             var roles = _roleManager.Roles.Select(r => new { r.Id, r.Name }).ToList();
-            return Ok(new { success = true, roles = roles });
+            return Success(new { roles = roles });
         }
 
         /// <summary>
@@ -59,26 +58,27 @@ namespace AUTHApi.Controllers
             // 1. Validation
             if (string.IsNullOrWhiteSpace(model.RoleName))
             {
-                return BadRequest(new { success = false, message = "RoleName is required" });
+                return Failure("RoleName is required");
             }
 
             // 2. Check existence
             var roleExists = await _roleManager.RoleExistsAsync(model.RoleName);
             if (roleExists)
             {
-                return BadRequest(new { success = false, message = "Role already exists" });
+                return Failure("Role already exists");
             }
 
             // 3. Create Role
             var role = new IdentityRole(model.RoleName);
             var result = await _roleManager.CreateAsync(role);
-            
+
             if (result.Succeeded)
             {
-                return Ok(new { success = true, message = $"Role '{model.RoleName}' created successfully", role = new { role.Id, role.Name } });
+                return Success(new { role = new { role.Id, role.Name } },
+                    $"Role '{model.RoleName}' created successfully");
             }
 
-            return BadRequest(new { success = false, message = "Failed to create role", errors = result.Errors });
+            return Failure("Failed to create role", 400, result.Errors);
         }
 
         /// <summary>
@@ -95,23 +95,23 @@ namespace AUTHApi.Controllers
             var systemRoles = new[] { "SuperAdmin", "Admin", "User" };
             if (systemRoles.Contains(roleName))
             {
-                return BadRequest(new { success = false, message = "Cannot delete system roles" });
+                return Failure("Cannot delete system roles");
             }
 
             // 2. Find and Delete
             var role = await _roleManager.FindByNameAsync(roleName);
             if (role == null)
             {
-                return NotFound(new { success = false, message = "Role not found" });
+                return Failure("Role not found", 404);
             }
 
             var result = await _roleManager.DeleteAsync(role);
             if (result.Succeeded)
             {
-                return Ok(new { success = true, message = $"Role '{roleName}' deleted successfully" });
+                return Success($"Role '{roleName}' deleted successfully");
             }
 
-            return BadRequest(new { success = false, message = "Failed to delete role", errors = result.Errors });
+            return Failure("Failed to delete role", 400, result.Errors);
         }
 
         /// <summary>
@@ -135,7 +135,7 @@ namespace AUTHApi.Controllers
                 userList.Add(new { user.Id, user.Name, user.Email, isActive = user.IsActive, Roles = roles });
             }
 
-            return Ok(new { success = true, users = userList });
+            return Success(new { users = userList });
         }
 
         /// <summary>
@@ -157,7 +157,7 @@ namespace AUTHApi.Controllers
                 adminList.Add(new { admin.Id, admin.Name, admin.Email, isActive = admin.IsActive, Roles = roles });
             }
 
-            return Ok(new { success = true, admins = adminList });
+            return Success(new { admins = adminList });
         }
 
         /// <summary>
@@ -165,7 +165,7 @@ namespace AUTHApi.Controllers
         /// Endpoint: GET /api/Roles/Admin/users
         /// Access: Admin Only
         /// </summary>
-        [HttpGet("Admin/users")] 
+        [HttpGet("Admin/users")]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetUsersForAdmin()
         {
@@ -174,14 +174,14 @@ namespace AUTHApi.Controllers
 
             if (string.IsNullOrEmpty(adminId))
             {
-                return Unauthorized(new { success = false, message = "Admin ID not found in token." });
+                return Failure("Admin ID not found in token.", 401);
             }
 
             // 2. Fetch users where ManagerId matches this Admin
             // This assumes a hierarchical relationship (Admin -> Users)
             var users = await _userManager.Users
-                                        .Where(u => u.ManagerId == adminId)
-                                        .ToListAsync();
+                .Where(u => u.ManagerId == adminId)
+                .ToListAsync();
 
             var userList = new List<object>();
             foreach (var user in users)
@@ -190,7 +190,7 @@ namespace AUTHApi.Controllers
                 userList.Add(new { user.Id, user.Name, user.Email, isActive = user.IsActive, Roles = roles });
             }
 
-            return Ok(new { success = true, users = userList });
+            return Success(new { users = userList });
         }
 
 
@@ -205,15 +205,15 @@ namespace AUTHApi.Controllers
             // Input Validation
             if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.RoleName))
             {
-                return BadRequest(new { success = false, message = "Email and RoleName are required" });
+                return Failure("Email and RoleName are required");
             }
 
             // Lookups
             var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user == null) return NotFound(new { success = false, message = "User not found" });
+            if (user == null) return Failure("User not found", 404);
 
             var roleExists = await _roleManager.RoleExistsAsync(model.RoleName);
-            if (!roleExists) return NotFound(new { success = false, message = "Role not found" });
+            if (!roleExists) return Failure("Role not found", 404);
 
             // Execution: Replace Roles logic
             // 1. Get current roles
@@ -225,19 +225,19 @@ namespace AUTHApi.Controllers
                 var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
                 if (!removeResult.Succeeded)
                 {
-                    return BadRequest(new { success = false, message = "Failed to remove existing roles", errors = removeResult.Errors });
+                    return Failure("Failed to remove existing roles", 400, removeResult.Errors);
                 }
             }
 
             // 3. Add new role
             var result = await _userManager.AddToRoleAsync(user, model.RoleName);
-            
+
             if (result.Succeeded)
             {
-                return Ok(new { success = true, message = $"User role updated to '{model.RoleName}' successfully" });
+                return Success($"User role updated to '{model.RoleName}' successfully");
             }
 
-            return BadRequest(new { success = false, message = "Failed to assign role", errors = result.Errors });
+            return Failure("Failed to assign role", 400, result.Errors);
         }
 
         /// <summary>
@@ -249,25 +249,25 @@ namespace AUTHApi.Controllers
         {
             if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.RoleName))
             {
-                return BadRequest(new { success = false, message = "Email and RoleName are required" });
+                return Failure("Email and RoleName are required");
             }
 
             var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user == null) return NotFound(new { success = false, message = "User not found" });
+            if (user == null) return Failure("User not found", 404);
 
             var isInRole = await _userManager.IsInRoleAsync(user, model.RoleName);
             if (!isInRole)
             {
-                return BadRequest(new { success = false, message = "User does not have this role" });
+                return Failure("User does not have this role");
             }
 
             var result = await _userManager.RemoveFromRoleAsync(user, model.RoleName);
             if (result.Succeeded)
             {
-                return Ok(new { success = true, message = $"Role '{model.RoleName}' removed from user successfully" });
+                return Success($"Role '{model.RoleName}' removed from user successfully");
             }
 
-            return BadRequest(new { success = false, message = "Failed to remove role", errors = result.Errors });
+            return Failure("Failed to remove role", 400, result.Errors);
         }
 
         /// <summary>
@@ -280,11 +280,11 @@ namespace AUTHApi.Controllers
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
-                return NotFound(new { success = false, message = "User not found" });
+                return Failure("User not found", 404);
             }
 
             var roles = await _userManager.GetRolesAsync(user);
-            return Ok(new { success = true, email = email, roles = roles });
+            return Success(new { email = email, roles = roles });
         }
     }
 

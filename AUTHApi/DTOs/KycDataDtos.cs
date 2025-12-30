@@ -52,7 +52,7 @@ namespace AUTHApi.DTOs
 
     public class OccupationDto
     {
-        public byte? OccupationType { get; set; }
+        public string? OccupationType { get; set; }
         public string? OtherOccupation { get; set; }
         public byte? ServiceSector { get; set; }
         public byte? BusinessType { get; set; }
@@ -65,7 +65,7 @@ namespace AUTHApi.DTOs
     public class FinancialDetailsDto
     {
         public string? AnnualIncomeRange { get; set; }
-        public decimal? EstimatedAnnualIncome { get; set; }
+        public string? EstimatedAnnualIncome { get; set; }
     }
 
     public class TransactionInfoDto

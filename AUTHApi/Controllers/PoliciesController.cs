@@ -9,7 +9,7 @@ namespace AUTHApi.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Roles = "SuperAdmin")] // Only SuperAdmin can manage policies for now
-    public class PoliciesController : ControllerBase
+    public class PoliciesController : BaseApiController
     {
         private readonly RoleManager<IdentityRole> _roleManager;
 
@@ -24,7 +24,7 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> GetRolePermissions(string roleName)
         {
             var role = await _roleManager.FindByNameAsync(roleName);
-            if (role == null) return NotFound("Role not found");
+            if (role == null) return Failure("Role not found", 404);
 
             var claims = await _roleManager.GetClaimsAsync(role);
             var permissions = claims
@@ -32,7 +32,7 @@ namespace AUTHApi.Controllers
                 .Select(c => c.Value)
                 .ToList();
 
-            return Ok(new { Role = roleName, Permissions = permissions });
+            return Success(new { Role = roleName, Permissions = permissions });
         }
 
         // PUT: api/policies/{roleName}
@@ -41,7 +41,7 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> UpdateRolePermissions(string roleName, [FromBody] List<string> newPermissions)
         {
             var role = await _roleManager.FindByNameAsync(roleName);
-            if (role == null) return NotFound("Role not found");
+            if (role == null) return Failure("Role not found", 404);
 
             // Handle null input as empty list
             newPermissions = newPermissions ?? new List<string>();
@@ -51,12 +51,12 @@ namespace AUTHApi.Controllers
 
             // 1. Get existing claims
             var currentClaims = await _roleManager.GetClaimsAsync(role);
-            
+
             // 2. Identify Permission claims to remove
             var permissionsToRemove = currentClaims.Where(c => c.Type == "Permission").ToList();
-            
+
             Console.WriteLine($"   Removing {permissionsToRemove.Count} old permissions...");
-            
+
             // 3. Remove them ALL (even if newPermissions is empty)
             foreach (var claim in permissionsToRemove)
             {
@@ -80,7 +80,7 @@ namespace AUTHApi.Controllers
             }
 
             Console.WriteLine($"✅ Permission update complete for '{roleName}'");
-            return Ok(new { Message = $"Permissions updated for role {roleName}", Count = newPermissions.Count });
+            return Success(new { Message = $"Permissions updated for role {roleName}", Count = newPermissions.Count });
         }
     }
 }

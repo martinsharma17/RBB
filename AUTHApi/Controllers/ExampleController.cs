@@ -4,23 +4,19 @@ using System.Security.Claims;
 
 namespace AUTHApi.Controllers
 {
-
     /// Example controller demonstrating Role-Based and Policy-Based Authorization
     /// Base URL: /api/Example
-
     [Route("api/[controller]")]
     [ApiController]
-    public class ExampleController : ControllerBase
+    public class ExampleController : BaseApiController
     {
-
         /// EXAMPLE 1: No authorization required (public endpoint)
         /// GET /api/Example/Public
         /// Anyone can access this endpoint
-
         [HttpGet("Public")]
         public IActionResult PublicEndpoint()
         {
-            return Ok(new
+            return Success(new
             {
                 message = "This is a public endpoint - no authentication required",
                 endpoint = "GET /api/Example/Public"
@@ -30,12 +26,11 @@ namespace AUTHApi.Controllers
 
         /// EXAMPLE 2: Requires authentication only
         /// GET /api/Example/Authenticated
-
         [HttpGet("Authenticated")]
-        [Authorize]  // Requires authentication, but any role is OK
+        [Authorize] // Requires authentication, but any role is OK
         public IActionResult AuthenticatedEndpoint()
         {
-            return Ok(new
+            return Success(new
             {
                 message = "This endpoint requires authentication - any logged-in user can access",
                 user = User.Identity?.Name,
@@ -47,12 +42,11 @@ namespace AUTHApi.Controllers
         /// EXAMPLE 3: Role-Based Authorization - Admin only
         /// GET /api/Example/AdminOnly
         /// Only users with "Admin" role can access
-
         [HttpGet("AdminOnly")]
-        [Authorize(Roles = "Admin")]  // Only Admin role can access
+        [Authorize(Roles = "Admin")] // Only Admin role can access
         public IActionResult AdminOnlyEndpoint()
         {
-            return Ok(new
+            return Success(new
             {
                 message = "This endpoint requires Admin role",
                 user = User.Identity?.Name,
@@ -65,12 +59,11 @@ namespace AUTHApi.Controllers
         /// EXAMPLE 4: Role-Based Authorization - User only
         /// GET /api/Example/UserOnly
         /// Only users with "User" role can access
-
         [HttpGet("UserOnly")]
-        [Authorize(Roles = "User")]  // Only User role can access
+        [Authorize(Roles = "User")] // Only User role can access
         public IActionResult UserOnlyEndpoint()
         {
-            return Ok(new
+            return Success(new
             {
                 message = "This endpoint requires User role",
                 user = User.Identity?.Name,
@@ -85,10 +78,10 @@ namespace AUTHApi.Controllers
         /// Uses the "AdminOnly" policy defined in Program.cs
         /// </summary>
         [HttpGet("PolicyAdminOnly")]
-        [Authorize(Policy = "AdminOnly")]  // Uses policy from Program.cs
+        [Authorize(Policy = "AdminOnly")] // Uses policy from Program.cs
         public IActionResult PolicyAdminOnlyEndpoint()
         {
-            return Ok(new
+            return Success(new
             {
                 message = "This endpoint uses AdminOnly policy",
                 user = User.Identity?.Name,
@@ -103,10 +96,10 @@ namespace AUTHApi.Controllers
         /// Uses the "AdminOrUser" policy - allows both Admin and User roles
         /// </summary>
         [HttpGet("PolicyAdminOrUser")]
-        [Authorize(Policy = "AdminOrUser")]  // Uses policy from Program.cs
+        [Authorize(Policy = "AdminOrUser")] // Uses policy from Program.cs
         public IActionResult PolicyAdminOrUserEndpoint()
         {
-            return Ok(new
+            return Success(new
             {
                 message = "This endpoint uses AdminOrUser policy - Admin or User can access",
                 user = User.Identity?.Name,
@@ -121,10 +114,10 @@ namespace AUTHApi.Controllers
         /// This entire controller could have [Authorize] at the top
         /// </summary>
         [HttpGet("Protected")]
-        [Authorize]  // Requires authentication
+        [Authorize] // Requires authentication
         public IActionResult ProtectedEndpoint()
         {
-            return Ok(new
+            return Success(new
             {
                 message = "This endpoint is protected - requires authentication",
                 user = User.Identity?.Name,

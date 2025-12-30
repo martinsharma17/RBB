@@ -11,30 +11,30 @@ using AUTHApi.Services;
 
 namespace AUTHApi.Controllers
 {
-
     /// <summary>
     /// Controller for user authentication management (Register, Login, Logout).
     /// This controller exposes public endpoints that do not require valid tokens (except Logout).
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    public class UserAuthController : ControllerBase
+    public class UserAuthController : BaseApiController
     {
-
         // ==========================================
         // DEPENDENCY INJECTION
         // ==========================================
         // These services are provided by ASP.NET Core Identity and Configuration system.
 
-        private readonly UserManager<ApplicationUser> _userManager;  // API for managing users (create, delete, find, etc.)
-        private readonly SignInManager<ApplicationUser> _signinManager;  // API for handling sign-in/sign-out logic
-        private readonly RoleManager<IdentityRole> _roleManager;  // API for managing roles
+        private readonly UserManager<ApplicationUser>
+            _userManager; // API for managing users (create, delete, find, etc.)
+
+        private readonly SignInManager<ApplicationUser> _signinManager; // API for handling sign-in/sign-out logic
+        private readonly RoleManager<IdentityRole> _roleManager; // API for managing roles
 
         // JWT Configuration values read from appsettings.json
-        private readonly string? _jwtKey;  // Secret key for signing tokens
-        private readonly string? _JwtIssuer;  // Issuer of the token (this server)
-        private readonly string? _JwtAudience;  // Audience of the token (who can use it)
-        private readonly int _JwtExpiry;  // Expiration time in minutes
+        private readonly string? _jwtKey; // Secret key for signing tokens
+        private readonly string? _JwtIssuer; // Issuer of the token (this server)
+        private readonly string? _JwtAudience; // Audience of the token (who can use it)
+        private readonly int _JwtExpiry; // Expiration time in minutes
         private readonly IConfiguration _configuration; // Configuration interface
 
         public UserAuthController(
@@ -67,18 +67,18 @@ namespace AUTHApi.Controllers
         {
             // 1. Input Validation
             if (registerModel == null
-                 || string.IsNullOrEmpty(registerModel.Name)
-                 || string.IsNullOrEmpty(registerModel.Email)
-                 || string.IsNullOrEmpty(registerModel.Password))
+                || string.IsNullOrEmpty(registerModel.Name)
+                || string.IsNullOrEmpty(registerModel.Email)
+                || string.IsNullOrEmpty(registerModel.Password))
             {
-                return BadRequest(new { success = false, message = "Invalid client request. Missing required fields." });
+                return Failure("Invalid client request. Missing required fields.");
             }
 
             // 2. Check for existing user
             var existingUser = await _userManager.FindByEmailAsync(registerModel.Email);
             if (existingUser != null)
             {
-                return BadRequest(new { success = false, message = "User with this email already exists." });
+                return Failure("User with this email already exists.");
             }
 
             // 3. Create ApplicationUser instance
@@ -100,12 +100,12 @@ namespace AUTHApi.Controllers
                 // This grants them basic access permission (see policies in Program.cs).
                 await _userManager.AddToRoleAsync(user, "User");
 
-                return Ok(new { success = true, message = "User registered successfully" });
+                return Success("User registered successfully");
             }
             else
             {
                 // Return detailed errors (e.g., password too weak)
-                return BadRequest(new { success = false, message = "User registration failed", errors = result.Errors });
+                return Failure("User registration failed", 400, result.Errors);
             }
         }
 
@@ -122,7 +122,7 @@ namespace AUTHApi.Controllers
             var user = await _userManager.FindByEmailAsync(loginModel.Email);
             if (user == null)
             {
-                return Unauthorized(new { success = false, message = "Invalid email or password" });
+                return Failure("Invalid email or password", 401);
             }
 
             // 2. Verify password
@@ -131,20 +131,21 @@ namespace AUTHApi.Controllers
 
             if (!result.Succeeded)
             {
-                return Unauthorized(new { success = false, message = "Invalid email or password" });
+                return Failure("Invalid email or password", 401);
             }
 
             // 3. Check Account Status (IsActive)
             // EXEMPT SuperAdmin from this check to ensure they can never be locked out.
             var userRoles = await _userManager.GetRolesAsync(user);
-            bool isSuperAdmin = userRoles.Contains("SuperAdmin") || user.Email.Equals("martinsharma18@gmail.com", StringComparison.OrdinalIgnoreCase);
+            bool isSuperAdmin = userRoles.Contains("SuperAdmin") ||
+                                user.Email.Equals("martinsharma18@gmail.com", StringComparison.OrdinalIgnoreCase);
 
             if (!isSuperAdmin)
             {
                 // Only check IsActive for non-SuperAdmins
                 if (!user.IsActive)
                 {
-                    return Unauthorized(new { success = false, message = "Admin blocked you" });
+                    return Failure("Admin blocked you", 401);
                 }
             }
             else
@@ -164,7 +165,7 @@ namespace AUTHApi.Controllers
             // 5. Get Roles for frontend (so frontend knows what UI to show)
             var roles = await _userManager.GetRolesAsync(user);
 
-            return Ok(new { success = true, token = token, roles = roles });
+            return Success(new { token = token, roles = roles });
         }
 
         /// <summary>
@@ -175,7 +176,7 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> Logout()
         {
             await _signinManager.SignOutAsync();
-            return Ok(new { success = true, message = "User logged out successfully" });
+            return Success("User logged out successfully");
         }
 
         /// <summary>
@@ -201,11 +202,11 @@ namespace AUTHApi.Controllers
             // Create standard claims list
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id),            // UserID
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id), // UserID
                 new Claim(JwtRegisteredClaimNames.Email, user.Email ?? ""), // Email
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), // Unique Token ID
-                new Claim(ClaimTypes.Name, user.Name ?? ""),                // User Name
-                new Claim(ClaimTypes.NameIdentifier, user.Id)               // Standard Name ID
+                new Claim(ClaimTypes.Name, user.Name ?? ""), // User Name
+                new Claim(ClaimTypes.NameIdentifier, user.Id) // Standard Name ID
             };
 
             // Add Roles to claims list
@@ -252,33 +253,35 @@ namespace AUTHApi.Controllers
         /// Endpoint: POST /api/UserAuth/forgot-password
         /// </summary>
         [HttpPost("forgot-password")]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto model, [FromServices] IEmailService emailService)
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto model,
+            [FromServices] IEmailService emailService)
         {
             if (model == null || string.IsNullOrEmpty(model.Email))
-                return BadRequest(new { success = false, message = "Email is required." });
+                return Failure("Email is required.");
 
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
             {
                 // Don't reveal user doesn't exist
-                return Ok(new { success = true, message = "If your email is registered, you will receive a password reset link." });
+                return Success("If your email is registered, you will receive a password reset link.");
             }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            
+
             // Build the frontend URL
             var frontendUrl = _configuration["Frontend:Url"] ?? "http://localhost:5173";
-            var resetLink = $"{frontendUrl}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(user.Email)}";
+            var resetLink =
+                $"{frontendUrl}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(user.Email)}";
 
             try
             {
                 await emailService.SendPasswordResetEmailAsync(user.Email, resetLink);
-                return Ok(new { success = true, message = "If your email is registered, you will receive a password reset link." });
+                return Success("If your email is registered, you will receive a password reset link.");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error sending email: {ex.Message}");
-                return StatusCode(500, new { success = false, message = "Failed to send email. Please try again later." });
+                return Failure("Failed to send email. Please try again later.", 500);
             }
         }
 
@@ -290,15 +293,17 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> VerifyToken([FromQuery] string email, [FromQuery] string token)
         {
             if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(token))
-                return BadRequest(new { success = false, message = "Invalid request" });
+                return Failure("Invalid request");
 
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
-                return Ok(new { valid = false, message = "Invalid token" }); // User not found effectively means token invalid for this context
+                return Success(new { valid = false },
+                    "Invalid token"); // User not found effectively means token invalid for this context
 
-            var isValid = await _userManager.VerifyUserTokenAsync(user, _userManager.Options.Tokens.PasswordResetTokenProvider, "ResetPassword", token);
-            
-            return Ok(new { valid = isValid });
+            var isValid = await _userManager.VerifyUserTokenAsync(user,
+                _userManager.Options.Tokens.PasswordResetTokenProvider, "ResetPassword", token);
+
+            return Success(new { valid = isValid });
         }
 
         /// <summary>
@@ -308,22 +313,23 @@ namespace AUTHApi.Controllers
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromQuery] string email, [FromBody] ResetPasswordDto model)
         {
-            if (model == null || string.IsNullOrEmpty(model.Token) || string.IsNullOrEmpty(model.NewPassword) || string.IsNullOrEmpty(email))
-                return BadRequest(new { success = false, message = "Invalid request" });
+            if (model == null || string.IsNullOrEmpty(model.Token) || string.IsNullOrEmpty(model.NewPassword) ||
+                string.IsNullOrEmpty(email))
+                return Failure("Invalid request");
 
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
-                return BadRequest(new { success = false, message = "Invalid request" });
+                return Failure("Invalid request");
 
             var result = await _userManager.ResetPasswordAsync(user, model.Token, model.NewPassword);
-            
+
             if (result.Succeeded)
             {
-                return Ok(new { success = true, message = "Password has been reset successfully." });
+                return Success("Password has been reset successfully.");
             }
 
             var errors = result.Errors.Select(e => e.Description).ToList();
-            return BadRequest(new { success = false, message = "Failed to reset password", errors = errors });
+            return Failure("Failed to reset password", 400, errors);
         }
     }
 }

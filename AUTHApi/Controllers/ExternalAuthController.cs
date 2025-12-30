@@ -1,5 +1,4 @@
-﻿using AUTHApi.DTOs;
-using AUTHApi.Entities;
+﻿using AUTHApi.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -8,7 +7,6 @@ using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using AUTHApi.Data;
 using System.Linq;
 using System.Text.Json;
 using System.Net.Http;
@@ -17,7 +15,7 @@ namespace AUTHApi.Controllers
 {
     [Route("api/auth")]
     [ApiController]
-    public class ExternalAuthController : ControllerBase
+    public class ExternalAuthController : BaseApiController
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
@@ -67,7 +65,8 @@ namespace AUTHApi.Controllers
             if (string.IsNullOrEmpty(picture))
             {
                 picture = authenticateResult.Principal.FindFirst("urn:google:picture")?.Value
-                         ?? authenticateResult.Principal.FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/picture")?.Value;
+                          ?? authenticateResult.Principal
+                              .FindFirst("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/picture")?.Value;
 
                 // Search through all claims for picture-related claims
                 if (string.IsNullOrEmpty(picture))
@@ -91,12 +90,14 @@ namespace AUTHApi.Controllers
             {
                 try
                 {
-                    var accessToken = await HttpContext.GetTokenAsync(GoogleDefaults.AuthenticationScheme, "access_token");
+                    var accessToken =
+                        await HttpContext.GetTokenAsync(GoogleDefaults.AuthenticationScheme, "access_token");
                     if (!string.IsNullOrEmpty(accessToken))
                     {
                         using (var httpClient = new HttpClient())
                         {
-                            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                            httpClient.DefaultRequestHeaders.Authorization =
+                                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
                             var response = await httpClient.GetAsync("https://www.googleapis.com/oauth2/v2/userinfo");
                             if (response.IsSuccessStatusCode)
                             {
@@ -107,6 +108,7 @@ namespace AUTHApi.Controllers
                                     picture = pictureElement.GetString();
                                     Console.WriteLine($"Fetched picture from Google UserInfo: {picture}");
                                 }
+
                                 // Also update name if not already set
                                 if (string.IsNullOrEmpty(name) && userInfo.TryGetProperty("name", out var nameElement))
                                 {
@@ -142,7 +144,8 @@ namespace AUTHApi.Controllers
                 var createResult = await _userManager.CreateAsync(user);
                 if (!createResult.Succeeded)
                 {
-                    return Redirect($"http://localhost:5173/login?error={Uri.EscapeDataString(string.Join(", ", createResult.Errors.Select(e => e.Description)))}");
+                    return Redirect(
+                        $"http://localhost:5173/login?error={Uri.EscapeDataString(string.Join(", ", createResult.Errors.Select(e => e.Description)))}");
                 }
 
                 // Assign default role
@@ -162,7 +165,7 @@ namespace AUTHApi.Controllers
             }
 
             // Generate JWT token with Google picture
-            var token = await GenerateJWTToken(user, picture);
+            var token = await GenerateJwtToken(user, picture);
 
             // Sign out the cookie auth to clean up
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
@@ -171,7 +174,7 @@ namespace AUTHApi.Controllers
             return Redirect($"http://localhost:5173/?token={Uri.EscapeDataString(token)}");
         }
 
-        private async Task<string> GenerateJWTToken(ApplicationUser user, string picture = null)
+        private async Task<string> GenerateJwtToken(ApplicationUser user, string? picture = null)
         {
             var roles = await _userManager.GetRolesAsync(user);
             var userClaims = await _userManager.GetClaimsAsync(user);

@@ -19,7 +19,7 @@ namespace AUTHApi.Controllers
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
-    public class KycController : ControllerBase
+    public class KycController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
@@ -40,10 +40,10 @@ namespace AUTHApi.Controllers
             var email = User.FindFirstValue(ClaimTypes.Email);
 
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(email))
-                return Unauthorized();
+                return Failure("Unauthorized", 401);
 
             var session = await _context.KycFormSessions
-                .Include(s => s.PersonalInfo)
+                .Include(s => s.KycDetail)
                 .Include(s => s.StepCompletions)
                 .FirstOrDefaultAsync(s => s.UserId == userId || s.Email == email);
 
@@ -82,7 +82,7 @@ namespace AUTHApi.Controllers
             }
             // Note: We no longer auto-verify EmailVerified here to ensure the OTP flow is followed
 
-            return Ok(new
+            return Success(new
             {
                 sessionId = session.Id,
                 sessionToken = session.SessionToken,
@@ -99,7 +99,7 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> SubmitKyc(int sessionId)
         {
             var session = await _context.KycFormSessions.FindAsync(sessionId);
-            if (session == null) return NotFound("Session not found");
+            if (session == null) return Failure("Session not found", 404);
 
             // Verify all required steps are completed
             var requiredSteps = await _context.KycFormSteps.Where(s => s.IsRequired).Select(s => s.StepNumber)
@@ -111,14 +111,14 @@ namespace AUTHApi.Controllers
 
             if (!requiredSteps.All(rs => completedSteps.Contains(rs)))
             {
-                return BadRequest("Please complete all required steps before submission.");
+                return Failure("Please complete all required steps before submission.");
             }
 
             session.FormStatus = 3; // Submitted
             session.ModifiedDate = DateTime.Now;
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "KYC submitted successfully for review." });
+            return Success("KYC submitted successfully for review.");
         }
 
         /// <summary>
@@ -129,15 +129,15 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> MakerVerify(int sessionId)
         {
             var session = await _context.KycFormSessions.FindAsync(sessionId);
-            if (session == null) return NotFound();
-            if (session.FormStatus != 3) return BadRequest("KYC must be submitted first.");
+            if (session == null) return Failure("Session not found", 404);
+            if (session.FormStatus != 3) return Failure("KYC must be submitted first.");
 
             // In a real scenario, we might move this to a 'Verified' status
             // For now, let's just update activity
             session.LastActivityDate = DateTime.Now;
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "KYC verified by Maker." });
+            return Success("KYC verified by Maker.");
         }
 
         /// <summary>
@@ -148,7 +148,7 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> CheckerApprove(int sessionId)
         {
             var session = await _context.KycFormSessions.FindAsync(sessionId);
-            if (session == null) return NotFound();
+            if (session == null) return Failure("Session not found", 404);
 
             session.FormStatus = 2; // Completed/Approved
             session.ModifiedDate = DateTime.Now;
@@ -156,7 +156,7 @@ namespace AUTHApi.Controllers
             // Here we could also update the main ApplicationUser profile if needed
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "KYC approved successfully." });
+            return Success("KYC approved successfully.");
         }
     }
 }

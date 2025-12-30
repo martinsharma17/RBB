@@ -1,4 +1,5 @@
 // Controllers/SuperAdminController.cs
+
 using AUTHApi.Data;
 using AUTHApi.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -7,10 +8,12 @@ using Microsoft.AspNetCore.Mvc;
 using System.Linq;
 using System.Threading.Tasks;
 
+namespace AUTHApi.Controllers;
+
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "SuperAdmin")] // Only SuperAdmin can call these endpoints
-public class SuperAdminController : ControllerBase
+public class SuperAdminController : BaseApiController
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
@@ -25,7 +28,8 @@ public class SuperAdminController : ControllerBase
     [HttpGet("users")]
     public IActionResult GetAllUsers()
     {
-        var users = _userManager.Users.Select(u => new {
+        var users = _userManager.Users.Select(u => new
+        {
             u.Id,
             u.UserName,
             // u.Email, // This was original
@@ -33,7 +37,7 @@ public class SuperAdminController : ControllerBase
             u.IsActive
         }).ToList();
 
-        return Ok(users);
+        return Success(users);
     }
 
     // GET: api/SuperAdmin/admins
@@ -41,9 +45,9 @@ public class SuperAdminController : ControllerBase
     public async Task<IActionResult> GetAllAdmins()
     {
         var admins = (await _userManager.GetUsersInRoleAsync("Admin"))
-                     .Select(u => new { u.Id, u.Email, u.UserName, u.IsActive })
-                     .ToList();
-        return Ok(admins);
+            .Select(u => new { u.Id, u.Email, u.UserName, u.IsActive })
+            .ToList();
+        return Success(admins);
     }
 
     // POST: api/SuperAdmin/promote/{userId}
@@ -51,19 +55,19 @@ public class SuperAdminController : ControllerBase
     public async Task<IActionResult> PromoteToAdmin(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
-        if (user == null) return NotFound("User not found");
+        if (user == null) return Failure("User not found", 404);
 
         if (!await _roleManager.RoleExistsAsync("Admin"))
             await _roleManager.CreateAsync(new IdentityRole("Admin"));
 
         if (await _userManager.IsInRoleAsync(user, "Admin"))
-            return BadRequest("User is already an admin");
+            return Failure("User is already an admin");
 
         var result = await _userManager.AddToRoleAsync(user, "Admin");
         if (!result.Succeeded)
-            return BadRequest(result.Errors);
+            return Failure("Failed to promote user", 400, result.Errors);
 
-        return Ok(new { message = "User promoted to Admin", userId = user.Id });
+        return Success(new { userId = user.Id }, "User promoted to Admin");
     }
 
     // Optionally: GET: api/SuperAdmin/users-with-roles
@@ -77,7 +81,8 @@ public class SuperAdminController : ControllerBase
             var roles = await _userManager.GetRolesAsync(u);
             results.Add(new { u.Id, u.Email, Roles = roles });
         }
-        return Ok(results);
+
+        return Success(results);
     }
 
     // DELETE: api/SuperAdmin/delete/{userId}
@@ -85,17 +90,17 @@ public class SuperAdminController : ControllerBase
     public async Task<IActionResult> DeleteUser(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
-        if (user == null) return NotFound(new { success = false, message = "User not found" });
+        if (user == null) return Failure("User not found", 404);
 
         // Prevent deleting SuperAdmin
         if (await _userManager.IsInRoleAsync(user, "SuperAdmin"))
-            return BadRequest(new { success = false, message = "Cannot delete SuperAdmin" });
+            return Failure("Cannot delete SuperAdmin");
 
         var result = await _userManager.DeleteAsync(user);
         if (!result.Succeeded)
-            return BadRequest(new { success = false, message = "Failed to delete user", errors = result.Errors });
+            return Failure("Failed to delete user", 400, result.Errors);
 
-        return Ok(new { success = true, message = "User deleted successfully" });
+        return Success("User deleted successfully");
     }
 
     // POST: api/SuperAdmin/revoke-admin/{userId}
@@ -103,14 +108,14 @@ public class SuperAdminController : ControllerBase
     public async Task<IActionResult> RevokeAdminAccess(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
-        if (user == null) return NotFound(new { success = false, message = "User not found" });
+        if (user == null) return Failure("User not found", 404);
 
         if (!await _userManager.IsInRoleAsync(user, "Admin"))
-            return BadRequest(new { success = false, message = "User is not an admin" });
+            return Failure("User is not an admin");
 
         var result = await _userManager.RemoveFromRoleAsync(user, "Admin");
         if (!result.Succeeded)
-            return BadRequest(new { success = false, message = "Failed to revoke admin access", errors = result.Errors });
+            return Failure("Failed to revoke admin access", 400, result.Errors);
 
         // Ensure user has User role
         if (!await _userManager.IsInRoleAsync(user, "User"))
@@ -118,7 +123,7 @@ public class SuperAdminController : ControllerBase
             await _userManager.AddToRoleAsync(user, "User");
         }
 
-        return Ok(new { success = true, message = "Admin access revoked successfully" });
+        return Success("Admin access revoked successfully");
     }
 
     // POST: api/SuperAdmin/toggle-status/{userId}
@@ -126,27 +131,27 @@ public class SuperAdminController : ControllerBase
     public async Task<IActionResult> ToggleUserStatus(string userId)
     {
         var user = await _userManager.FindByIdAsync(userId);
-        if (user == null) return NotFound(new { success = false, message = "User not found" });
+        if (user == null) return Failure("User not found", 404);
 
         // Prevent deactivating yourself if you are the logged in SuperAdmin
         var currentUserId = _userManager.GetUserId(User);
         if (userId == currentUserId)
         {
-             return BadRequest(new { success = false, message = "You cannot deactivate yourself." });
+            return Failure("You cannot deactivate yourself.");
         }
 
         // Prevent deactivating ANY SuperAdmin
         if (await _userManager.IsInRoleAsync(user, "SuperAdmin"))
         {
-            return BadRequest(new { success = false, message = "Cannot deactivate a SuperAdmin account." });
+            return Failure("Cannot deactivate a SuperAdmin account.");
         }
 
         user.IsActive = !user.IsActive;
         var result = await _userManager.UpdateAsync(user);
 
         if (!result.Succeeded)
-            return BadRequest(new { success = false, message = "Failed to update user status", errors = result.Errors });
+            return Failure("Failed to update user status", 400, result.Errors);
 
-        return Ok(new { success = true, message = user.IsActive ? "User activated" : "User deactivated", isActive = user.IsActive });
+        return Success(new { isActive = user.IsActive }, user.IsActive ? "User activated" : "User deactivated");
     }
 }

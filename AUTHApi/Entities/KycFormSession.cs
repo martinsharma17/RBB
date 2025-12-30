@@ -44,8 +44,8 @@ namespace AUTHApi.Entities
         public DateTime? SessionExpiryDate { get; set; }
         public bool IsExpired { get; set; } = false;
 
-        public int? KycPersonalInfoId { get; set; }
-        [ForeignKey("KycPersonalInfoId")] public virtual KycPersonalInfo? PersonalInfo { get; set; }
+        public int? KycDetailId { get; set; }
+        [ForeignKey("KycDetailId")] public virtual KycDetail? KycDetail { get; set; }
 
         public DateTime CreatedDate { get; set; } = DateTime.Now;
         public DateTime? ModifiedDate { get; set; }

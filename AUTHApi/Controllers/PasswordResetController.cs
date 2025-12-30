@@ -15,7 +15,7 @@ namespace AUTHApi.Controllers
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    public class PasswordResetController : ControllerBase
+    public class PasswordResetController : BaseApiController
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailService _emailService;
@@ -48,13 +48,11 @@ namespace AUTHApi.Controllers
             // to discover which emails are registered in the system.
 
             var user = await _userManager.FindByEmailAsync(dto.Email);
-            
+
             // If user doesn't exist, still return success (security best practice)
             if (user == null)
             {
-                return Ok(new { 
-                    message = "If your email is registered, you will receive a password reset link shortly." 
-                });
+                return Success("If your email is registered, you will receive a password reset link shortly.");
             }
 
             // Generate a password reset token using ASP.NET Identity
@@ -64,19 +62,18 @@ namespace AUTHApi.Controllers
             // 3. Expires after a set time (default: 24 hours)
             // 4. Cannot be guessed or forged
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            
+
             // Construct the reset link
             // This will direct the user to the frontend reset password page
             var frontendUrl = _configuration["Frontend:Url"] ?? "http://localhost:5173";
-            var resetLink = $"{frontendUrl}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(user.Email)}";
-            
+            var resetLink =
+                $"{frontendUrl}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(user.Email)}";
+
             // Send the email with the reset link
             await _emailService.SendPasswordResetEmailAsync(user.Email, resetLink);
-            
+
             // Return generic success message
-            return Ok(new { 
-                message = "If your email is registered, you will receive a password reset link shortly." 
-            });
+            return Success("If your email is registered, you will receive a password reset link shortly.");
         }
 
         // ============================================================================
@@ -96,31 +93,25 @@ namespace AUTHApi.Controllers
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
-                return BadRequest(new { 
-                    valid = false, 
-                    message = "Invalid or expired reset link" 
-                });
+                return Failure("Invalid or expired reset link", 400, new { valid = false });
             }
 
             // Verify the token is valid
             // This uses ASP.NET Identity's built-in token validation
             var isValid = await _userManager.VerifyUserTokenAsync(
-                user, 
-                _userManager.Options.Tokens.PasswordResetTokenProvider, 
-                "ResetPassword", 
+                user,
+                _userManager.Options.Tokens.PasswordResetTokenProvider,
+                "ResetPassword",
                 token
             );
-            
+
             if (isValid)
             {
-                return Ok(new { valid = true, message = "Token is valid" });
+                return Success(new { valid = true }, "Token is valid");
             }
             else
             {
-                return BadRequest(new { 
-                    valid = false, 
-                    message = "Invalid or expired reset link. Please request a new one." 
-                });
+                return Failure("Invalid or expired reset link. Please request a new one.", 400, new { valid = false });
             }
         }
 
@@ -136,16 +127,14 @@ namespace AUTHApi.Controllers
         /// <returns>Success or error message</returns>
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword(
-            [FromQuery] string email, 
+            [FromQuery] string email,
             [FromBody] ResetPasswordDto dto)
         {
             // Find the user by email
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
-                return BadRequest(new { 
-                    message = "Invalid reset request. Please try again." 
-                });
+                return Failure("Invalid reset request. Please try again.");
             }
 
             // Reset the password using the token
@@ -155,16 +144,14 @@ namespace AUTHApi.Controllers
             // 3. Check the token hasn't expired
             // 4. Update the password if all checks pass
             var result = await _userManager.ResetPasswordAsync(user, dto.Token, dto.NewPassword);
-            
+
             if (result.Succeeded)
             {
                 // Password reset successful!
                 // The user can now login with their new password
-                return Ok(new { 
-                    message = "Password has been reset successfully. You can now login with your new password." 
-                });
+                return Success("Password has been reset successfully. You can now login with your new password.");
             }
-            
+
             // If we get here, something went wrong
             // Common reasons:
             // - Token expired (> 24 hours old)
@@ -172,11 +159,8 @@ namespace AUTHApi.Controllers
             // - Token invalid/tampered with
             // - New password doesn't meet requirements
             var errors = result.Errors.Select(e => e.Description).ToList();
-            
-            return BadRequest(new { 
-                message = "Failed to reset password", 
-                errors = errors 
-            });
+
+            return Failure("Failed to reset password", 400, errors);
         }
 
         // ============================================================================
@@ -192,15 +176,12 @@ namespace AUTHApi.Controllers
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
-                return NotFound(new { message = "User not found" });
+                return Failure("User not found", 404);
             }
 
             // You could extend this to track reset history in a database table
             // For now, we just confirm the user exists
-            return Ok(new { 
-                email = user.Email,
-                message = "User exists and can request password reset" 
-            });
+            return Success(new { email = user.Email }, "User exists and can request password reset");
         }
     }
 }
