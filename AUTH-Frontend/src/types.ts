@@ -1,4 +1,5 @@
 // Global TypeScript type definitions for the application
+import React from 'react';
 
 // ============================================================================
 // USER & AUTHENTICATION TYPES
