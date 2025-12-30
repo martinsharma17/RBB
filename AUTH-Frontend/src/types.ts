@@ -221,3 +221,75 @@ export interface TaskData {
   createdAt: string;
   updatedAt: string;
 }
+
+// ============================================================================
+// ADDITIONAL COMPONENT PROP TYPES
+// ============================================================================
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name?: string;
+  roles?: string[];
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  Name?: string;
+  Id?: string;
+}
+
+export interface AccessManagementViewProps {
+  admins: AdminUser[];
+  onAddUser: () => void;
+  onRevokeAdmin: (adminId: string) => void;
+}
+
+export interface AddUserModalProps {
+  show: boolean;
+  newUser: unknown;
+  setNewUser: (user: unknown) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}
+
+export interface AssignRoleModalProps {
+  show: boolean;
+  user: AdminUser | null;
+  roles: Role[];
+  onClose: () => void;
+  onAssign: (roleId: string) => void;
+}
+
+export interface ChartsViewProps {
+  regularUsers: number;
+  totalAdmins: number;
+  totalAccounts: number;
+}
+
+export interface DashboardViewProps {
+  regularUsers: number;
+  totalAdmins: number;
+  totalAccounts: number;
+  loginTime?: string;
+  onViewUsers: () => void;
+  onViewAdmins: () => void;
+  onViewCharts: () => void;
+  onAddUser: () => void;
+}
+
+export interface PolicyEditorViewProps {
+  roles: Role[];
+  onPermissionsUpdated?: () => void;
+}
+
+export interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+export interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: React.ErrorInfo | null;
+}
