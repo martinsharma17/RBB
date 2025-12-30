@@ -2,7 +2,7 @@
 
 // src/components/Navbar.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 
 // Inline SVG Icons (same as before)

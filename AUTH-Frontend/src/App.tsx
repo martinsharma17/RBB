@@ -10,20 +10,20 @@
 
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './context/AuthContext.jsx';
-import LoginForm from './components/auth/LoginForm.jsx';
-import RegisterForm from './components/auth/RegisterForm.jsx';
-import Dashboard from './pages/Dashboard.jsx';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import LoginForm from './components/auth/LoginForm';
+import RegisterForm from './components/auth/RegisterForm';
+import Dashboard from './pages/Dashboard';
 
 
 
 // Password reset pages
-import ForgotPassword from './pages/ForgotPassword.jsx';
-import ResetPassword from './pages/ResetPassword.jsx';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 import { jwtDecode } from "jwt-decode";
-import Navbar from './components/layout/Navbar.jsx';
-import ErrorBoundary from './components/common/ErrorBoundary.jsx';
+import Navbar from './components/layout/Navbar';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 const API_BASE_URL = "http://localhost:3001/api/";
 

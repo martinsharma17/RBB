@@ -1,7 +1,7 @@
 // src/components/dashboard/Sidebar.jsx
 import React from 'react';
 
-import SidebarUserContext from './SidebarUserContext.jsx'; // [NEW]
+import SidebarUserContext from './SidebarUserContext'; // [NEW]
 
 const Sidebar = ({
     sidebarOpen,

@@ -71,7 +71,7 @@
 
 // // src/components/ProfileSidebar.jsx
 // import React, { useState, useEffect } from "react";
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useAuth } from '../../context/AuthContext';
 
 // // Inline SVG Icons
 //   </svg>

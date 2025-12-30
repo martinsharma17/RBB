@@ -5,7 +5,7 @@
 
 // import React, { useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
-// import { useAuth } from '../context/AuthContext.jsx'; // For auto-login after register
+// import { useAuth } from '../context/AuthContext'; // For auto-login after register
 
 // const RegisterForm = () => {
 //     const [name, setName] = useState(''); // New state for name
@@ -146,7 +146,7 @@
 // src/components/RegisterForm.jsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useAuth } from '../../context/AuthContext';
 
 // Inline SVG Icons
 const UserIcon = ({ className = "h-5 w-5" }) => (

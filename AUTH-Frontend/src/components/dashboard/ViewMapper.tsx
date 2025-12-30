@@ -1,17 +1,17 @@
 import React from 'react';
-import AdminDashboardView from './admin/AdminDashboardView.jsx';
-import AdminUsersListView from './admin/AdminUsersListView.jsx';
-import AdminChartsView from './admin/AdminChartsView.jsx';
-import AccessManagementView from './AccessManagementView.jsx';
-import RolesManagementView from './RolesManagementView.jsx';
-import PolicyEditorView from './PolicyEditorView.jsx';
-import SettingsView from './SettingsView.jsx';
-import NotificationsView from './NotificationsView.jsx';
-import ProjectSettingsDummy from './ProjectSettingsDummy.jsx';
-import AdminResourceView from './admin/AdminResourceView.jsx';
-import TaskListView from './tasks/TaskListView.jsx';
-import TaskKanbanView from './tasks/TaskKanbanView.jsx';
-import KycFormMaster from './user/KycFormMaster.jsx';
+import AdminDashboardView from './admin/AdminDashboardView';
+import AdminUsersListView from './admin/AdminUsersListView';
+import AdminChartsView from './admin/AdminChartsView';
+import AccessManagementView from './AccessManagementView';
+import RolesManagementView from './RolesManagementView';
+import PolicyEditorView from './PolicyEditorView';
+import SettingsView from './SettingsView';
+import NotificationsView from './NotificationsView';
+import ProjectSettingsDummy from './ProjectSettingsDummy';
+import AdminResourceView from './admin/AdminResourceView';
+import TaskListView from './tasks/TaskListView';
+import TaskKanbanView from './tasks/TaskKanbanView';
+import KycFormMaster from './user/KycFormMaster';
 
 
 /**

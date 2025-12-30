@@ -1,4 +1,4 @@
-import * as SidebarIcons from '../components/dashboard/SidebarIcons.jsx';
+import * as SidebarIcons from '../components/dashboard/SidebarIcons';
 
 /**
  * Maps a list of backend menu items (MenuItem entities) to the frontend Sidebar item structure.

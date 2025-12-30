@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useAuth } from '../context/AuthContext.jsx';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import Sidebar from './dashboard/Sidebar.jsx';
-import { getViewComponent } from './dashboard/ViewMapper.jsx';
-import AddUserModal from './dashboard/AddUserModal.jsx';
-import AssignRoleModal from './dashboard/AssignRoleModal.jsx'; // Ensure this exists or remove if unused
+import Sidebar from './dashboard/Sidebar';
+import { getViewComponent } from './dashboard/ViewMapper';
+import AddUserModal from './dashboard/AddUserModal';
+import AssignRoleModal from './dashboard/AssignRoleModal'; // Ensure this exists or remove if unused
 
 const Dashboard = () => {
     // 1. Auth & Context

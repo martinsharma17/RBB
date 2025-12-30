@@ -1,6 +1,6 @@
 // src/components/dashboard/RolesManagementView.jsx
 import React, { useState, useEffect } from 'react';
-import AssignRoleModal from './AssignRoleModal.jsx';
+import AssignRoleModal from './AssignRoleModal';
 
 const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesChange }) => {
     const [roles, setRoles] = useState([]);
