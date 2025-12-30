@@ -11,7 +11,7 @@ const KycAttachment = ({ onBack, onComplete }) => {
         setFiles(Array.from(e.target.files));
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (files.length === 0) {
             setError("Please select at least one file.");

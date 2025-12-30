@@ -12,7 +12,7 @@ const KycVerification = ({ initialEmail, sessionId, onVerified, apiBase }) => {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
 
-    const handleSendOtp = async (e) => {
+    const handleSendOtp = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         setError('');
@@ -41,7 +41,7 @@ const KycVerification = ({ initialEmail, sessionId, onVerified, apiBase }) => {
         }
     };
 
-    const handleVerifyOtp = async (e) => {
+    const handleVerifyOtp = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         setError('');
@@ -90,7 +90,7 @@ const KycVerification = ({ initialEmail, sessionId, onVerified, apiBase }) => {
                         <input
                             type="email"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                             required
                             placeholder="your@email.com"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -113,7 +113,7 @@ const KycVerification = ({ initialEmail, sessionId, onVerified, apiBase }) => {
                             type="text"
                             maxLength="6"
                             value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtp(e.target.value)}
                             required
                             placeholder="123456"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-center text-2xl tracking-widest font-mono"

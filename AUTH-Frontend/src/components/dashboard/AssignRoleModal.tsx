@@ -57,7 +57,7 @@ const AssignRoleModal = ({
                         <label className="block text-sm font-medium text-gray-700 mb-1">Select Role to Assign</label>
                         <select
                             value={selectedRole}
-                            onChange={(e) => setSelectedRole(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSelectedRole(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                         >
                             <option value="">-- Select a role --</option>

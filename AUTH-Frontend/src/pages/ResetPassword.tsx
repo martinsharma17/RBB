@@ -91,7 +91,7 @@ const ResetPassword = () => {
      * Handles the password reset form submission
      * Validates passwords match and calls backend to reset
      */
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         // Client-side validation: passwords must match
@@ -222,7 +222,7 @@ const ResetPassword = () => {
                                 id="password"
                                 type="password"
                                 value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                                 placeholder="Enter new password"
                                 required
@@ -243,7 +243,7 @@ const ResetPassword = () => {
                                 id="confirmPassword"
                                 type="password"
                                 value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                                 placeholder="Confirm new password"
                                 required

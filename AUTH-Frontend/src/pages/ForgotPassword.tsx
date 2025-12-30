@@ -38,7 +38,7 @@ const ForgotPassword = () => {
      * Handles the forgot password form submission
      * Sends email to backend which will generate and send reset link
      */
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         // Clear previous messages
@@ -132,7 +132,7 @@ const ForgotPassword = () => {
                                     id="email"
                                     type="email"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                                     placeholder="Enter your email"
                                     required

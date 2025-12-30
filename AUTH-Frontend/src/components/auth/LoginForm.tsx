@@ -18,7 +18,7 @@ const LoginForm = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = async (event) => {
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setError('');
         setLoading(true);
@@ -87,7 +87,7 @@ const LoginForm = () => {
                                         type="email"
                                         id="email"
                                         value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                                         onBlur={handleBlur('email')}
                                         className={`block w-full pl-10 pr-3 py-3 border rounded-xl shadow-sm focus:ring-2 focus:ring-offset-1 focus:outline-none transition-all duration-200 ${touched.email && email
                                             ? isValidEmail(email)
@@ -134,7 +134,7 @@ const LoginForm = () => {
                                         type="password"
                                         id="password"
                                         value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                                         onBlur={handleBlur('password')}
                                         className={`block w-full pl-10 pr-3 py-3 border rounded-xl shadow-sm focus:ring-2 focus:ring-offset-1 focus:outline-none transition-all duration-200 ${touched.password && password
                                             ? password.length >= 6

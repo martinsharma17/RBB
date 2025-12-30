@@ -16,7 +16,7 @@ const KycInvestment = ({ initialData, onNext, onBack }) => {
         setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setSaving(true);
         setError(null);

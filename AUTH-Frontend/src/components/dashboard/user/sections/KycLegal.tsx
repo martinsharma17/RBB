@@ -12,7 +12,7 @@ const KycLegal = ({ initialData, onNext, onBack }) => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!formData.isAgreed) {
             setError("You must agree to the declaration.");
@@ -63,7 +63,7 @@ const KycLegal = ({ initialData, onNext, onBack }) => {
                     type="checkbox"
                     id="isAgreed"
                     checked={formData.isAgreed}
-                    onChange={(e) => setFormData(prev => ({ ...prev, isAgreed: e.target.checked }))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, isAgreed: e.target.checked }))}
                     className="mt-1 w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                 />
                 <label htmlFor="isAgreed" className="text-sm font-medium text-gray-700 cursor-pointer">

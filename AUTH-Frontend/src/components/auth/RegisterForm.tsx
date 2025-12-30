@@ -18,7 +18,7 @@
 //     const { login } = useAuth(); // Reuse login for post-register auth
 //     const navigate = useNavigate();
 
-//     const handleSubmit = async (event) => {
+//     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 //         event.preventDefault();
 //         setError('');
 //         setLoading(true);
@@ -86,7 +86,7 @@
 //                         type="text"
 //                         id="name"
 //                         value={name}
-//                         onChange={(e) => setName(e.target.value)}
+//                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
 //                         placeholder="Enter your name"
 //                         required
 //                         disabled={loading}
@@ -98,7 +98,7 @@
 //                         type="email"
 //                         id="email"
 //                         value={email}
-//                         onChange={(e) => setEmail(e.target.value)}
+//                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
 //                         placeholder="Enter your email"
 //                         required
 //                         disabled={loading}
@@ -110,7 +110,7 @@
 //                         type="password"
 //                         id="password"
 //                         value={password}
-//                         onChange={(e) => setPassword(e.target.value)}
+//                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
 //                         placeholder="At least 6 characters"
 //                         minLength={6}
 //                         required
@@ -123,7 +123,7 @@
 //                         type="password"
 //                         id="confirmPassword"
 //                         value={confirmPassword}
-//                         onChange={(e) => setConfirmPassword(e.target.value)}
+//                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
 //                         placeholder="Repeat password"
 //                         required
 //                         disabled={loading}
@@ -196,7 +196,7 @@ const RegisterForm = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = async (event) => {
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setError('');
         setLoading(true);
@@ -306,7 +306,7 @@ const RegisterForm = () => {
                                         type="text"
                                         id="name"
                                         value={name}
-                                        onChange={(e) => setName(e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
                                         onBlur={handleBlur('name')}
                                         className={`block w-full pl-10 pr-3 py-3 border rounded-xl shadow-sm focus:ring-2 focus:ring-offset-1 focus:outline-none transition-all duration-200 ${touched.name && name.trim()
                                             ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
@@ -340,7 +340,7 @@ const RegisterForm = () => {
                                         type="email"
                                         id="email"
                                         value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                                         onBlur={handleBlur('email')}
                                         className={`block w-full pl-10 pr-3 py-3 border rounded-xl shadow-sm focus:ring-2 focus:ring-offset-1 focus:outline-none transition-all duration-200 ${touched.email && email
                                             ? isValidEmail(email)
@@ -373,7 +373,7 @@ const RegisterForm = () => {
                                         type="password"
                                         id="password"
                                         value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                                         onBlur={handleBlur('password')}
                                         className={`block w-full pl-10 pr-3 py-3 border rounded-xl shadow-sm focus:ring-2 focus:ring-offset-1 focus:outline-none transition-all duration-200 ${touched.password && password
                                             ? password.length >= 6
@@ -434,7 +434,7 @@ const RegisterForm = () => {
                                         type="password"
                                         id="confirmPassword"
                                         value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
                                         onBlur={handleBlur('confirmPassword')}
                                         className={`block w-full pl-10 pr-3 py-3 border rounded-xl shadow-sm focus:ring-2 focus:ring-offset-1 focus:outline-none transition-all duration-200 ${touched.confirmPassword && confirmPassword
                                             ? passwordsMatch

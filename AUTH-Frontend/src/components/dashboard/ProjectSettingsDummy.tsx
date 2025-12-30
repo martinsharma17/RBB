@@ -52,14 +52,14 @@ const ProjectSettingsDummy = () => {
                         placeholder="Setting Key"
                         className="flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                         value={currentSetting.key}
-                        onChange={(e) => setCurrentSetting({ ...currentSetting, key: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentSetting({ ...currentSetting, key: e.target.value })}
                     />
                     <input
                         type="text"
                         placeholder="Value"
                         className="flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none"
                         value={currentSetting.value}
-                        onChange={(e) => setCurrentSetting({ ...currentSetting, value: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCurrentSetting({ ...currentSetting, value: e.target.value })}
                     />
                     <button
                         onClick={handleSave}

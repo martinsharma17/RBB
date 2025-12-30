@@ -375,7 +375,7 @@ const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesCha
                                         type="text"
                                         placeholder="e.g., Manager, Editor, Viewer"
                                         value={newRoleName}
-                                        onChange={(e) => setNewRoleName(e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewRoleName(e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                                         onKeyPress={(e) => {
                                             if (e.key === 'Enter') handleCreateRole();

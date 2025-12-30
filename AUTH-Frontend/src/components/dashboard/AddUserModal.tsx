@@ -20,27 +20,27 @@ const AddUserModal = ({
                         type="text"
                         placeholder="Name"
                         value={newUser.name}
-                        onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUser({ ...newUser, name: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
                     <input
                         type="email"
                         placeholder="Email"
                         value={newUser.email}
-                        onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUser({ ...newUser, email: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
                     <input
                         type="password"
                         placeholder="Password"
                         value={newUser.password}
-                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUser({ ...newUser, password: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
                     {allowRoleSelection && (
                         <select
                             value={newUser.role}
-                            onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUser({ ...newUser, role: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                         >
                             {/* Default option if roles empty or to prompt selection, but keeping simple defaults for now */}
