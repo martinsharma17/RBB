@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.tsx
 // ==============================================================================
 // MAIN APPLICATION COMPONENT
 // ==============================================================================
@@ -8,14 +8,11 @@
 // 2. Routing: Uses React Router to navigate between pages.
 // 3. Protected Routes: Checks if user is logged in AND has the right role before showing a page.
 
-import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import Dashboard from './pages/Dashboard';
-
-
 
 // Password reset pages
 import ForgotPassword from './pages/ForgotPassword';
@@ -23,9 +20,7 @@ import ResetPassword from './pages/ResetPassword';
 
 import { jwtDecode } from "jwt-decode";
 import Navbar from './components/layout/Navbar';
-import ErrorBoundary from './components/common/ErrorBoundary';
-
-const API_BASE_URL = "http://localhost:3001/api/";
+import type { DecodedToken } from './types';
 
 // ==============================================================================
 // HELPER: ROLE EXTRACTION
@@ -33,10 +28,10 @@ const API_BASE_URL = "http://localhost:3001/api/";
 // Decodes the JWT token to find what roles the user has.
 // This is needed because the "Role" claim in tokens can appear under different key names
 // depending on whether it's Microsoft Identity, Google, or custom.
-function getUserRoles(token) {
+function getUserRoles(token: string | null): string[] {
   if (!token) return [];
   try {
-    const decoded = jwtDecode(token);
+    const decoded = jwtDecode<DecodedToken>(token);
 
     // Check multiple potential keys for roles:
     // 1. Microsoft Identity Standard URL
@@ -71,6 +66,12 @@ function AppContent() {
   const isAdmin = roles.includes("Admin");
   const isManager = roles.includes("Manager");
   const isUser = roles.includes("User");
+
+  // Suppress unused variable warnings (these are here for future use)
+  void isSuperAdmin;
+  void isAdmin;
+  void isManager;
+  void isUser;
 
   return (
     <div className="App">
