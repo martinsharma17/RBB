@@ -1,44 +1,102 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
-import { cleanKycData } from '../../../../utils/kycUtils';
 
-const KycPersonalInfo = ({ initialData, onNext }) => {
+interface KycPersonalInfoProps {
+    sessionId: number | null;
+    initialData?: any;
+    onNext: (data: any) => void;
+}
+
+interface KycPersonalInfoData {
+    fullName: string;
+    dobAd: string;
+    dobBs: string;
+    gender: string;
+    nationality: string;
+    citizenshipNo: string;
+    citizenshipIssueDate: string;
+    citizenshipIssueDistrict: string;
+    panNo: string;
+    [key: string]: any;
+}
+
+const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({ sessionId, initialData, onNext }) => {
     const { token, apiBase } = useAuth();
-    const [formData, setFormData] = useState(initialData || {
-        fullName: '',
-        dobAd: '',
-        dobBs: '',
-        gender: '',
-        nationality: 'Nepali',
-        citizenshipNo: '',
-        citizenshipIssueDate: '',
-        citizenshipIssueDistrict: '',
-        panNo: ''
-    });
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState(null);
 
-    const handleChange = (e) => {
+    // Normalize data from either backend format (Pascal/Camel) or previous frontend format
+    const [formData, setFormData] = useState<KycPersonalInfoData>({
+        fullName: initialData?.fullName || initialData?.FullName || '',
+        dobAd: initialData?.dateOfBirthAd || initialData?.DateOfBirthAd || '',
+        dobBs: initialData?.dateOfBirthBs || initialData?.DateOfBirthBs || '',
+        gender: initialData?.gender === 1 ? "Male" : (initialData?.gender === 2 ? "Female" : (initialData?.gender === 3 ? "Other" : (typeof initialData?.gender === 'string' ? initialData.gender : ""))),
+        nationality: initialData?.isNepali || initialData?.IsNepali ? 'Nepali' : (initialData?.otherNationality || initialData?.OtherNationality || initialData?.nationality || 'Nepali'),
+        citizenshipNo: initialData?.citizenshipNo || initialData?.CitizenshipNo || '',
+        citizenshipIssueDate: initialData?.citizenshipIssueDate || initialData?.CitizenshipIssueDate || '',
+        citizenshipIssueDistrict: initialData?.citizenshipIssueDistrict || initialData?.CitizenshipIssueDistrict || '',
+        panNo: initialData?.panNo || initialData?.PanNo || ''
+    });
+
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Sync if initialData changes (e.g. after a fetch)
+    React.useEffect(() => {
+        if (initialData) {
+            setFormData({
+                fullName: initialData?.fullName || initialData?.FullName || '',
+                dobAd: initialData?.dateOfBirthAd || initialData?.DateOfBirthAd || '',
+                dobBs: initialData?.dateOfBirthBs || initialData?.DateOfBirthBs || '',
+                gender: initialData?.gender === 1 ? "Male" : (initialData?.gender === 2 ? "Female" : (initialData?.gender === 3 ? "Other" : (typeof initialData?.gender === 'string' ? initialData.gender : ""))),
+                nationality: initialData?.isNepali || initialData?.IsNepali ? 'Nepali' : (initialData?.otherNationality || initialData?.OtherNationality || initialData?.nationality || 'Nepali'),
+                citizenshipNo: initialData?.citizenshipNo || initialData?.CitizenshipNo || '',
+                citizenshipIssueDate: initialData?.citizenshipIssueDate || initialData?.CitizenshipIssueDate || '',
+                citizenshipIssueDistrict: initialData?.citizenshipIssueDistrict || initialData?.CitizenshipIssueDistrict || '',
+                panNo: initialData?.panNo || initialData?.PanNo || ''
+            });
+        }
+    }, [initialData]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!sessionId) {
+            setError("KYC Session not initialized correctly.");
+            return;
+        }
         setSaving(true);
         setError(null);
 
-        // Sanitize data (empty strings to null)
-        const cleanedData = cleanKycData(formData);
+        // Map frontend data to backend PersonalInfoDto
+        const mappedData = {
+            fullName: formData.fullName,
+            dateOfBirthBs: formData.dobBs || null,
+            dateOfBirthAd: formData.dobAd || null,
+            gender: formData.gender === "Male" ? 1 : (formData.gender === "Female" ? 2 : (formData.gender === "Other" ? 3 : null)),
+            isNepali: formData.nationality?.toLowerCase() === "nepali",
+            otherNationality: formData.nationality?.toLowerCase() === "nepali" ? null : formData.nationality,
+            citizenshipNo: formData.citizenshipNo || null,
+            citizenshipIssueDistrict: formData.citizenshipIssueDistrict || null,
+            citizenshipIssueDate: formData.citizenshipIssueDate || null,
+            panNo: formData.panNo || null
+        };
 
         try {
-            const response = await fetch(`${apiBase}/api/Kyc/section/personal-info`, {
+            // Updated to use KycDataController and SaveStepDto wrapper
+            const response = await fetch(`${apiBase}/api/KycData/save-personal-info`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(cleanedData)
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    stepNumber: 1, // Explicitly required by SaveStepDto
+                    data: mappedData
+                })
             });
 
             if (response.ok) {
@@ -48,9 +106,9 @@ const KycPersonalInfo = ({ initialData, onNext }) => {
                 // Handle structured error from API
                 if (data.errors) {
                     const firstErr = Object.values(data.errors)[0];
-                    setError(Array.isArray(firstErr) ? firstErr[0] : "Validation error");
+                    setError(Array.isArray(firstErr) ? (firstErr[0] as string) : "Validation error");
                 } else {
-                    setError(data.title || "Failed to save section");
+                    setError(data.message || data.title || "Failed to save section");
                 }
             }
         } catch (err) {

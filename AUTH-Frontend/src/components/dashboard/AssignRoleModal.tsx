@@ -1,7 +1,15 @@
 // src/components/dashboard/AssignRoleModal.jsx
 import React, { useState, useEffect } from 'react';
 
-const AssignRoleModal = ({
+interface AssignRoleModalProps {
+    show: boolean;
+    user: any;
+    roles: any[];
+    onClose: () => void;
+    onAssign: (email: string, role: string) => void;
+}
+
+const AssignRoleModal: React.FC<AssignRoleModalProps> = ({
     show,
     user,
     roles,
@@ -42,7 +50,7 @@ const AssignRoleModal = ({
                         <label className="block text-sm font-medium text-gray-700 mb-1">Current Roles</label>
                         <div className="flex flex-wrap gap-2">
                             {userRoles.length > 0 ? (
-                                userRoles.map((role, idx) => (
+                                userRoles.map((role: string, idx: number) => (
                                     <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
                                         {role}
                                     </span>
@@ -57,7 +65,7 @@ const AssignRoleModal = ({
                         <label className="block text-sm font-medium text-gray-700 mb-1">Select Role to Assign</label>
                         <select
                             value={selectedRole}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSelectedRole(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedRole(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                         >
                             <option value="">-- Select a role --</option>

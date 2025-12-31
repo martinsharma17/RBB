@@ -31,7 +31,13 @@ namespace AUTHApi.Services
             var detail = await _context.KycDetails.FirstOrDefaultAsync(k => k.SessionId == sessionId);
             if (detail == null)
             {
-                detail = new KycDetail { SessionId = sessionId };
+                detail = new KycDetail
+                {
+                    SessionId = sessionId,
+                    UpdatedAt = DateTime.UtcNow,
+                    FirstName = "Draft",
+                    LastName = "Draft"
+                };
                 _context.KycDetails.Add(detail);
                 await _context.SaveChangesAsync();
             }
@@ -46,21 +52,30 @@ namespace AUTHApi.Services
             switch (dto)
             {
                 case PersonalInfoDto p:
-                    detail.FirstName = p.FullName?.Split(' ')[0] ?? string.Empty;
-                    // Simple split for demo – real implementation may need more robust parsing
-                    if (p.FullName != null)
+                    if (!string.IsNullOrEmpty(p.FullName))
                     {
                         var parts = p.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        detail.FirstName = parts[0];
                         if (parts.Length > 1) detail.LastName = parts[^1];
                         if (parts.Length > 2) detail.MiddleName = string.Join(' ', parts[1..^1]);
                     }
 
-                    detail.DateOfBirth = p.DateOfBirthAd ?? DateTime.MinValue;
+                    if (p.DateOfBirthAd.HasValue)
+                    {
+                        detail.DateOfBirth = DateTime.SpecifyKind(p.DateOfBirthAd.Value, DateTimeKind.Utc);
+                    }
+
                     detail.Gender = p.Gender == 1 ? "Male" : p.Gender == 2 ? "Female" : "Other";
                     detail.Nationality = p.IsNepali ? "Nepali" : p.OtherNationality ?? "";
                     detail.CitizenshipNumber = p.CitizenshipNo;
                     detail.CitizenshipIssuedDistrict = p.CitizenshipIssueDistrict;
-                    detail.CitizenshipIssuedDate = p.CitizenshipIssueDate;
+
+                    if (p.CitizenshipIssueDate.HasValue)
+                    {
+                        detail.CitizenshipIssuedDate =
+                            DateTime.SpecifyKind(p.CitizenshipIssueDate.Value, DateTimeKind.Utc);
+                    }
+
                     break;
 
                 case AddressDto a:
@@ -102,7 +117,9 @@ namespace AUTHApi.Services
                 case OccupationDto o:
                     detail.Occupation = o.OccupationType?.ToString();
                     detail.OrganizationName = o.OrganizationName;
-                    // detail.AnnualIncome = o.AnnualIncomeRange; // Property does not exist on OccupationDto
+                    detail.OrganizationAddress = o.OrganizationAddress;
+                    detail.Designation = o.Designation;
+                    detail.AnnualIncome = o.AnnualIncomeRange;
                     break;
 
                 case FinancialDetailsDto f:
@@ -145,7 +162,7 @@ namespace AUTHApi.Services
                     throw new ArgumentException($"Unsupported DTO type: {typeof(TDto).Name}");
             }
 
-            detail.UpdatedAt = DateTime.Now;
+            detail.UpdatedAt = DateTime.UtcNow;
             try
             {
                 await _context.SaveChangesAsync();
@@ -163,11 +180,18 @@ namespace AUTHApi.Services
             byte[] content, string contentType)
         {
             var detail = await GetOrCreateDetailAsync(sessionId);
-            var uploadsRoot = Path.Combine(_env.WebRootPath, "uploads", "kyc", sessionId.ToString());
-            if (!Directory.Exists(uploadsRoot)) Directory.CreateDirectory(uploadsRoot);
+
+            // WebRootPath can be null if wwwroot folder doesn't exist
+            var wwwRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var uploadsRoot = Path.Combine(wwwRoot, "uploads", "kyc", sessionId.ToString());
+
+            if (!Directory.Exists(uploadsRoot))
+                Directory.CreateDirectory(uploadsRoot);
 
             var safeFileName = Path.GetFileNameWithoutExtension(fileName);
             var ext = Path.GetExtension(fileName);
+            if (string.IsNullOrEmpty(ext)) ext = ".dat"; // Fallback ext
+
             var uniqueName = $"{documentType}_{DateTime.UtcNow:yyyyMMddHHmmss}_{Guid.NewGuid():N}{ext}";
             var filePath = Path.Combine(uploadsRoot, uniqueName);
             await File.WriteAllBytesAsync(filePath, content);
@@ -177,6 +201,7 @@ namespace AUTHApi.Services
                 KycDetailId = detail.Id,
                 DocumentType = documentType,
                 OriginalFileName = fileName,
+                Data = content, // Storing binary data in database
                 FilePath = filePath,
                 FileExtension = ext,
                 ContentType = contentType,
@@ -232,6 +257,59 @@ namespace AUTHApi.Services
                 Steps = steps
             };
             return progress;
+        }
+
+        public async Task<KycFormSession> GetOrCreateSessionAsync(string? userId, string? email)
+        {
+            if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(email))
+                throw new ArgumentException("Both userId and email cannot be null or empty.");
+
+            var session = await _context.KycFormSessions
+                .Include(s => s.KycDetail)
+                .Include(s => s.StepCompletions)
+                .FirstOrDefaultAsync(s =>
+                    (userId != null && s.UserId == userId) || (email != null && s.Email == email));
+
+            if (session == null)
+            {
+                if (string.IsNullOrEmpty(email))
+                    throw new ArgumentException("Email is required to create a new session.");
+
+                session = new KycFormSession
+                {
+                    UserId = userId,
+                    Email = email,
+                    SessionExpiryDate = DateTime.UtcNow.AddDays(30),
+                    CurrentStep = 1,
+                    EmailVerified = false
+                };
+                await _context.KycFormSessions.AddAsync(session);
+                await _context.SaveChangesAsync();
+
+                // Seed steps for new session
+                var steps = await _context.KycFormSteps.Where(s => s.IsActive).ToListAsync();
+                foreach (var step in steps)
+                {
+                    await _context.KycStepCompletions.AddAsync(new KycStepCompletion
+                    {
+                        SessionId = session.Id,
+                        StepNumber = step.StepNumber
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+            }
+            else if (session.UserId == null && !string.IsNullOrEmpty(userId))
+            {
+                // Link session if it was previously created via guest email flow and user is now logged in
+                session.UserId = userId;
+                if (!string.IsNullOrEmpty(email))
+                    session.Email =
+                        email; // Update email to current user's email if different? Usually keep original or update.
+                await _context.SaveChangesAsync();
+            }
+
+            return session;
         }
     }
 }

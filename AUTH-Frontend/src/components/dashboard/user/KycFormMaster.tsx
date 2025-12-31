@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import KycPersonalInfo from './sections/KycPersonalInfo';
 import KycAddress from './sections/KycAddress';
@@ -19,43 +19,64 @@ import KycVerification from './sections/KycVerification';
  * 3. Section rendering
  */
 const KycFormMaster = () => {
-    const { token, apiBase } = useAuth();
-    const [kycData, setKycData] = useState(null);
+    const { token, apiBase, user } = useAuth();
+    const [kycData, setKycData] = useState<any>(null);
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
     const [isEmailVerified, setIsEmailVerified] = useState(false);
-    const [sessionId, setSessionId] = useState(null);
+    const [sessionId, setSessionId] = useState<number | null>(null);
 
     // Fetch existing KYC data on load
     useEffect(() => {
         const fetchKyc = async () => {
             try {
-                const response = await fetch(`${apiBase}/api/Kyc`, {
+                // Step 1: Get/Create Session Metadata
+                const sessionResponse = await fetch(`${apiBase}/api/Kyc/my-session`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (response.ok) {
-                    const data = await response.json();
-                    setKycData(data);
-                    setSessionId(data.sessionId);
-                    setIsEmailVerified(data.isEmailVerified);
-                    // Start at the furthest completed step, but allow navigation
-                    setCurrentStep(data.currentStep || 1);
+
+                if (sessionResponse.ok) {
+                    const sessionRes = await sessionResponse.json();
+
+                    if (sessionRes.success && sessionRes.data) {
+                        const sess = sessionRes.data;
+                        setSessionId(sess.sessionId);
+                        setIsEmailVerified(sess.isEmailVerified);
+                        setCurrentStep(sess.currentStep || 1);
+
+                        // Step 2: Fetch all consolidated details if session is active
+                        if (sess.sessionId) {
+                            const detailsResponse = await fetch(`${apiBase}/api/KycData/all-details/${sess.sessionId}`, {
+                                headers: { 'Authorization': `Bearer ${token}` }
+                            });
+
+                            if (detailsResponse.ok) {
+                                const detailsRes = await detailsResponse.json();
+                                if (detailsRes.success && detailsRes.data) {
+                                    setKycData(detailsRes.data);
+                                }
+                            }
+                        }
+                    } else {
+                        setError(sessionRes.message || "Failed to initialize KYC session");
+                    }
                 } else {
-                    setError("Failed to load KYC data");
+                    setError("Failed to load KYC session (HTTP " + sessionResponse.status + ")");
                 }
             } catch (err) {
+                console.error("KYC Fetch error:", err);
                 setError("Network error loading KYC");
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchKyc();
+        if (token) fetchKyc();
     }, [token, apiBase]);
 
-    const handleNext = (nextStepData) => {
-        setKycData(prev => ({ ...prev, ...nextStepData }));
+    const handleNext = (nextStepData: any) => {
+        setKycData((prev: any) => ({ ...prev, ...nextStepData }));
         setCurrentStep(prev => prev + 1);
     };
 
@@ -125,15 +146,15 @@ const KycFormMaster = () => {
                     />
                 ) : (
                     <>
-                        {currentStep === 1 && <KycPersonalInfo initialData={kycData?.personalInfo} onNext={handleNext} />}
-                        {currentStep === 2 && <KycAddress initialData={kycData?.address} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 3 && <KycFamily initialData={kycData?.family} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 4 && <KycBank initialData={kycData?.bank} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 5 && <KycOccupation initialData={kycData?.occupation} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 6 && <KycGuardian initialData={kycData?.guardian} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 7 && <KycLegal initialData={kycData?.legal} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 8 && <KycInvestment initialData={kycData?.investment} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 9 && <KycAttachment onBack={handlePrev} onComplete={() => setCurrentStep(10)} />}
+                        {currentStep === 1 && <KycPersonalInfo sessionId={sessionId} initialData={kycData?.personalInfo} onNext={handleNext} />}
+                        {currentStep === 2 && <KycAddress sessionId={sessionId} initialData={kycData?.address} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 3 && <KycFamily sessionId={sessionId} initialData={kycData?.family} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 4 && <KycBank sessionId={sessionId} initialData={kycData?.bank} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 5 && <KycOccupation sessionId={sessionId} initialData={kycData?.occupation} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 6 && <KycGuardian sessionId={sessionId} initialData={kycData?.guardian} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 7 && <KycLegal sessionId={sessionId} initialData={kycData?.legal} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 8 && <KycInvestment sessionId={sessionId} initialData={kycData?.investment} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 9 && <KycAttachment sessionId={sessionId} onBack={handlePrev} onComplete={() => setCurrentStep(10)} />}
 
                         {currentStep === 10 && (
                             <div className="text-center py-16">

@@ -2,8 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import AssignRoleModal from './AssignRoleModal';
 
-const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesChange }) => {
-    const [roles, setRoles] = useState([]);
+interface RolesManagementViewProps {
+    apiBase: string;
+    token: string;
+    users: any[];
+    onRefreshUsers: () => void;
+    onRolesChange: () => void;
+}
+
+const RolesManagementView: React.FC<RolesManagementViewProps> = ({ apiBase, token, users, onRefreshUsers, onRolesChange }) => {
+    const [roles, setRoles] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -11,7 +19,7 @@ const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesCha
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [newRoleName, setNewRoleName] = useState("");
     const [assignRoleData, setAssignRoleData] = useState({ email: "", roleName: "" });
-    const [selectedUser, setSelectedUser] = useState(null);
+    const [selectedUser, setSelectedUser] = useState<any | null>(null);
 
     // System roles that cannot be deleted
     const systemRoles = ["SuperAdmin", "Admin", "User"];
@@ -28,7 +36,8 @@ const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesCha
             });
 
             if (response.ok) {
-                const data = await response.json();
+                const res = await response.json();
+                const data = res.data || {};
                 setRoles(data.roles || []);
             } else {
                 setError("Failed to fetch roles");
@@ -71,7 +80,7 @@ const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesCha
         }
     };
 
-    const handleDeleteRole = async (roleName) => {
+    const handleDeleteRole = async (roleName: string) => {
         if (systemRoles.includes(roleName)) {
             setError("Cannot delete system roles");
             return;
@@ -97,7 +106,7 @@ const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesCha
         }
     };
 
-    const handleAssignRole = async (emailInput, roleInput) => {
+    const handleAssignRole = async (emailInput: string, roleInput: string) => {
         const emailToUse = emailInput || assignRoleData.email;
         const roleToUse = roleInput || assignRoleData.roleName;
 
@@ -134,7 +143,7 @@ const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesCha
         }
     };
 
-    const handleRemoveRole = async (email, roleName) => {
+    const handleRemoveRole = async (email: string, roleName: string) => {
         if (!window.confirm(`Are you sure you want to remove the role "${roleName}" from this user?`)) return;
 
         try {
@@ -162,7 +171,7 @@ const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesCha
         }
     };
 
-    const handleToggleStatus = async (userId, isActive, userName) => {
+    const handleToggleStatus = async (userId: string, isActive: boolean, userName: string) => {
         const action = isActive ? "Deactivate" : "Activate";
         if (!window.confirm(`Are you sure you want to ${action} user "${userName}"?`)) return;
 
@@ -184,7 +193,7 @@ const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesCha
         }
     };
 
-    const openAssignModal = (user) => {
+    const openAssignModal = (user: any) => {
         setSelectedUser(user);
         setAssignRoleData({ email: user.Email || user.email, roleName: "" });
         setShowAssignModal(true);
@@ -277,7 +286,7 @@ const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesCha
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
-                            {users.map((user) => {
+                            {users.map((user: any) => {
                                 const userRoles = user.Roles || user.roles || [];
                                 // Fix: Handle case sensitivity issues from API (IsActive vs isActive)
                                 // Fix: Handle case sensitivity issues from API (IsActive vs isActive)
@@ -293,7 +302,7 @@ const RolesManagementView = ({ apiBase, token, users, onRefreshUsers, onRolesCha
                                                 {userRoles.length === 0 ? (
                                                     <span className="text-xs text-gray-500">No roles</span>
                                                 ) : (
-                                                    userRoles.map((role, idx) => (
+                                                    userRoles.map((role: string, idx: number) => (
                                                         <span
                                                             key={idx}
                                                             className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded"

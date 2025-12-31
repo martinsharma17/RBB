@@ -1,39 +1,79 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
-import { cleanKycData } from '../../../../utils/kycUtils';
 
-const KycFamily = ({ initialData, onNext, onBack }) => {
+interface KycFamilyProps {
+    sessionId: number | null;
+    initialData?: any;
+    onNext: (data: any) => void;
+    onBack: () => void;
+}
+
+interface KycFamilyData {
+    fatherName: string;
+    motherName: string;
+    grandfatherName: string;
+    spouseName: string;
+    childrenNames: string;
+    inlawsNames: string;
+    [key: string]: any;
+}
+
+const KycFamily: React.FC<KycFamilyProps> = ({ sessionId, initialData, onNext, onBack }) => {
     const { token, apiBase } = useAuth();
-    const [formData, setFormData] = useState(initialData || {
-        fatherName: '',
-        motherName: '',
-        grandfatherName: '',
-        spouseName: '',
-        childrenNames: '',
-        inlawsNames: ''
-    });
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState(null);
 
-    const handleChange = (e) => {
+    const [formData, setFormData] = useState<KycFamilyData>({
+        fatherName: initialData?.fatherName || initialData?.FatherName || '',
+        motherName: initialData?.motherName || initialData?.MotherName || '',
+        grandfatherName: initialData?.grandFatherName || initialData?.GrandFatherName || initialData?.grandfatherName || '',
+        spouseName: initialData?.spouseName || initialData?.SpouseName || '',
+        childrenNames: initialData?.childrenNames || '',
+        inlawsNames: initialData?.inlawsNames || ''
+    });
+
+    useEffect(() => {
+        if (initialData) {
+            setFormData({
+                fatherName: initialData?.fatherName || initialData?.FatherName || '',
+                motherName: initialData?.motherName || initialData?.MotherName || '',
+                grandfatherName: initialData?.grandFatherName || initialData?.GrandFatherName || initialData?.grandfatherName || '',
+                spouseName: initialData?.spouseName || initialData?.SpouseName || '',
+                childrenNames: initialData?.childrenNames || '',
+                inlawsNames: initialData?.inlawsNames || ''
+            });
+        }
+    }, [initialData]);
+
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!sessionId) {
+            setError("Session not initialized");
+            return;
+        }
         setSaving(true);
         setError(null);
-        const cleanedData = cleanKycData(formData);
 
         try {
-            const response = await fetch(`${apiBase}/api/Kyc/section/family`, {
+            const response = await fetch(`${apiBase}/api/KycData/save-family`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(cleanedData)
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    stepNumber: 4,
+                    data: {
+                        fatherName: formData.fatherName,
+                        motherName: formData.motherName,
+                        grandFatherName: formData.grandfatherName,
+                        spouseName: formData.spouseName
+                    }
+                })
             });
 
             if (response.ok) {
@@ -51,79 +91,58 @@ const KycFamily = ({ initialData, onNext, onBack }) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-bold text-gray-800">Section 3: Family Information</h2>
-                <p className="text-sm text-gray-500">Provide details of your immediate family members.</p>
+                <h2 className="text-xl font-bold text-gray-800">Section 3: Family Details</h2>
+                <p className="text-sm text-gray-500">Provide details about your immediate family members.</p>
             </div>
 
-            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
+            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium border border-red-200">{error}</div>}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Father's Name</label>
-                    <input
-                        type="text"
-                        name="fatherName"
-                        value={formData.fatherName}
-                        onChange={handleChange}
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                </div>
-
-                <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Mother's Name</label>
-                    <input
-                        type="text"
-                        name="motherName"
-                        value={formData.motherName}
-                        onChange={handleChange}
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                </div>
-
-                <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Grandfather's Name</label>
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Grandfather's Name *</label>
                     <input
                         type="text"
                         name="grandfatherName"
                         value={formData.grandfatherName}
                         onChange={handleChange}
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        required
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     />
                 </div>
 
                 <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Spouse's Name (if married)</label>
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Father's Name *</label>
+                    <input
+                        type="text"
+                        name="fatherName"
+                        value={formData.fatherName}
+                        onChange={handleChange}
+                        required
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    />
+                </div>
+
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Mother's Name *</label>
+                    <input
+                        type="text"
+                        name="motherName"
+                        value={formData.motherName}
+                        onChange={handleChange}
+                        required
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    />
+                </div>
+
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Spouse Name (If married)</label>
                     <input
                         type="text"
                         name="spouseName"
                         value={formData.spouseName}
                         onChange={handleChange}
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     />
-                </div>
-
-                <div className="flex flex-col md:col-span-2">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Children's Names (Separated by comma)</label>
-                    <textarea
-                        name="childrenNames"
-                        value={formData.childrenNames}
-                        onChange={handleChange}
-                        rows="2"
-                        placeholder="e.g. John Doe, Jane Doe"
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    ></textarea>
-                </div>
-
-                <div className="flex flex-col md:col-span-2">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">In-laws' Names (Separated by comma)</label>
-                    <textarea
-                        name="inlawsNames"
-                        value={formData.inlawsNames}
-                        onChange={handleChange}
-                        rows="2"
-                        placeholder="e.g. Father-in-law, Mother-in-law"
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    ></textarea>
                 </div>
             </div>
 

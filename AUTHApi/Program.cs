@@ -111,9 +111,18 @@ internal class Program
                 };
 
                 options.IncludeErrorDetails = true;
-                // Use configuration or fallback to hardcoded (for safety/compatibility during transition)
-                var jwtKey = builder.Configuration["Jwt:Key"] ?? "vS2B9#kL8@pQ5$zN1*rT4&mJ9!wX3^hG7_bV0)fD2";
-                // Console.WriteLine($"[JWT DEBUG] Configuration Key Present: {!string.IsNullOrEmpty(builder.Configuration["Jwt:Key"])}");
+                options.IncludeErrorDetails = true;
+
+                // Get key from configuration
+                var jwtKey = builder.Configuration["Jwt:Key"];
+
+                // Enforce presence of key. Do NOT fallback to a hardcoded string in production.
+                // This ensures we don't accidentally ship with a known weak key.
+                if (string.IsNullOrEmpty(jwtKey))
+                {
+                    throw new InvalidOperationException(
+                        "JWT Key is missing in Configuration. Please add 'Jwt:Key' to appsettings.json or Environment Variables.");
+                }
 
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
@@ -173,6 +182,9 @@ internal class Program
         // --- Email Service Registration ---
         // Register the email service for password reset and other email functionality
         builder.Services.AddScoped<AUTHApi.Services.IEmailService, AUTHApi.Services.EmailService>();
+
+        // Register the KYC service for document and data handling
+        builder.Services.AddScoped<AUTHApi.Services.IKycService, AUTHApi.Services.KycService>();
 
 
         var app = builder.Build();

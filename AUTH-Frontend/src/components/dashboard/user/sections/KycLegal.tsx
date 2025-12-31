@@ -1,16 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
-import { cleanKycData } from '../../../../utils/kycUtils';
 
-const KycLegal = ({ initialData, onNext, onBack }) => {
+interface KycLegalProps {
+    sessionId: number | null;
+    initialData?: any;
+    onNext: (data: any) => void;
+    onBack: () => void;
+}
+
+interface KycLegalData {
+    declarationText: string;
+    isAgreed: boolean;
+    consentDate: string;
+    [key: string]: any;
+}
+
+const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onBack }) => {
     const { token, apiBase } = useAuth();
-    const [formData, setFormData] = useState(initialData || {
-        declarationText: "I hereby declare that the information provided above is true and correct to the best of my knowledge.",
-        isAgreed: false,
-        consentDate: new Date().toISOString()
+
+    const [formData, setFormData] = useState<KycLegalData>({
+        declarationText: initialData?.declarationText || "I hereby declare that the information provided above is true and correct to the best of my knowledge.",
+        isAgreed: initialData?.agreeToTerms || initialData?.isAgreed || false,
+        consentDate: initialData?.consentDate || new Date().toISOString()
     });
+
+    useEffect(() => {
+        if (initialData) {
+            setFormData({
+                declarationText: initialData?.declarationText || "I hereby declare that the information provided above is true and correct to the best of my knowledge.",
+                isAgreed: initialData?.agreeToTerms || initialData?.isAgreed || false,
+                consentDate: initialData?.consentDate || new Date().toISOString()
+            });
+        }
+    }, [initialData]);
+
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -19,18 +44,27 @@ const KycLegal = ({ initialData, onNext, onBack }) => {
             return;
         }
 
+        if (!sessionId) {
+            setError("Session not initialized");
+            return;
+        }
+
         setSaving(true);
         setError(null);
-        const cleanedData = cleanKycData(formData);
 
         try {
-            const response = await fetch(`${apiBase}/api/Kyc/section/legal`, {
+            const response = await fetch(`${apiBase}/api/KycData/save-declarations`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(cleanedData)
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    stepNumber: 12, // Declarations is step 12 in backend
+                    data: {
+                        agreeToTerms: formData.isAgreed,
+                        isPep: false, // Defaulting to false, typically handled in a separate AML section
+                        isBlacklisted: false
+                    }
+                })
             });
 
             if (response.ok) {
@@ -48,28 +82,30 @@ const KycLegal = ({ initialData, onNext, onBack }) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-bold text-gray-800">Section 7: Legal Declaration</h2>
-                <p className="text-sm text-gray-500">Please review and provide your consent.</p>
+                <h2 className="text-xl font-bold text-gray-800">Section 7: Declarations</h2>
+                <p className="text-sm text-gray-500">Legal confirmation of the provided information.</p>
             </div>
 
-            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
+            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium border border-red-200">{error}</div>}
 
-            <div className="bg-indigo-50 p-6 rounded-lg border border-indigo-100 italic text-gray-700">
-                "{formData.declarationText}"
-            </div>
+            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <p className="text-gray-700 italic mb-6 leading-relaxed">
+                    "{formData.declarationText}"
+                </p>
 
-            <div className="flex items-start space-x-3 p-4 bg-white border rounded-lg shadow-sm">
-                <input
-                    type="checkbox"
-                    id="isAgreed"
-                    checked={formData.isAgreed}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, isAgreed: e.target.checked }))}
-                    className="mt-1 w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                />
-                <label htmlFor="isAgreed" className="text-sm font-medium text-gray-700 cursor-pointer">
-                    I confirm that I have read the declaration and all information provided is accurate.
-                    I understand that providing false information is a punishable offense.
-                </label>
+                <div className="flex items-start space-x-3">
+                    <input
+                        type="checkbox"
+                        id="isAgreed"
+                        name="isAgreed"
+                        checked={formData.isAgreed}
+                        onChange={(e) => setFormData(prev => ({ ...prev, isAgreed: e.target.checked }))}
+                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                    />
+                    <label htmlFor="isAgreed" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        I confirm that the above declaration is true and I am responsible for any discrepancies found later. *
+                    </label>
+                </div>
             </div>
 
             <div className="flex justify-between pt-6">
@@ -82,11 +118,11 @@ const KycLegal = ({ initialData, onNext, onBack }) => {
                 </button>
                 <button
                     type="submit"
-                    disabled={saving || !formData.isAgreed}
-                    className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${saving || !formData.isAgreed ? 'opacity-50 cursor-not-allowed' : ''
+                    disabled={saving}
+                    className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${saving ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                 >
-                    {saving ? 'Saving...' : 'Accept & Proceed'}
+                    {saving ? 'Saving...' : 'Agree & Next'}
                 </button>
             </div>
         </form>

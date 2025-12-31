@@ -1,7 +1,17 @@
-// src/components/dashboard/admin/AdminUsersListView.jsx
+import React from 'react';
 
-const AdminUsersListView = ({ users, onDelete, canEdit, onAssignRole, onAddUser, roles = [], filterRole }) => {
-    const [activeTab, setActiveTab] = React.useState(filterRole || 'All');
+interface AdminUsersListViewProps {
+    users: any[];
+    onDelete: (userId: string) => void;
+    canEdit: boolean;
+    onAssignRole: (user: any) => void;
+    onAddUser: () => void;
+    roles: any[];
+    filterRole?: string;
+}
+
+const AdminUsersListView: React.FC<AdminUsersListViewProps> = ({ users, onDelete, canEdit, onAssignRole, onAddUser, roles = [], filterRole }) => {
+    const [activeTab, setActiveTab] = React.useState<string>(filterRole || 'All');
 
     // Get unique roles for tabs - combining default roles with any roles found in user list
     const availableRoles = [
@@ -42,8 +52,8 @@ const AdminUsersListView = ({ users, onDelete, canEdit, onAssignRole, onAddUser,
                         key={role}
                         onClick={() => setActiveTab(role)}
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${activeTab === role
-                                ? 'bg-indigo-600 text-white shadow-md transform scale-105'
-                                : 'bg-white text-gray-600 border border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                            ? 'bg-indigo-600 text-white shadow-md transform scale-105'
+                            : 'bg-white text-gray-600 border border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
                             }`}
                     >
                         {role}{role !== 'All' ? 's' : ''}
@@ -81,7 +91,7 @@ const AdminUsersListView = ({ users, onDelete, canEdit, onAssignRole, onAddUser,
                         <tbody className="divide-y divide-gray-200">
                             {filteredUsers.length === 0 ? (
                                 <tr>
-                                    <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                                         No users matching criteria.
                                     </td>
                                 </tr>

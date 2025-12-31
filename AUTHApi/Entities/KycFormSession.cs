@@ -28,7 +28,7 @@ namespace AUTHApi.Entities
 
         public int CurrentStep { get; set; } = 1;
         public int LastSavedStep { get; set; } = 0;
-        public DateTime LastActivityDate { get; set; } = DateTime.Now;
+        public DateTime LastActivityDate { get; set; } = DateTime.UtcNow;
 
         /// <summary>
         /// 1=In Progress, 2=Completed, 3=Submitted
@@ -47,7 +47,7 @@ namespace AUTHApi.Entities
         public int? KycDetailId { get; set; }
         [ForeignKey("KycDetailId")] public virtual KycDetail? KycDetail { get; set; }
 
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public DateTime? ModifiedDate { get; set; }
 
         public virtual ICollection<KycStepCompletion> StepCompletions { get; set; } = new List<KycStepCompletion>();

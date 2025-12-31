@@ -1,6 +1,10 @@
-// src/components/dashboard/admin/AdminChartsView.jsx
+import React from 'react';
 
-const AdminChartsView = ({ totalUsers }) => {
+interface AdminChartsViewProps {
+    totalUsers: number;
+}
+
+const AdminChartsView: React.FC<AdminChartsViewProps> = ({ totalUsers }) => {
     return (
         <div className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">Statistics & Charts</h2>

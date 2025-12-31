@@ -1,53 +1,127 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
-import { cleanKycData } from '../../../../utils/kycUtils';
 
-const KycAddress = ({ initialData, onNext, onBack }) => {
+interface KycAddressProps {
+    sessionId: number | null;
+    initialData?: any;
+    onNext: (data: any) => void;
+    onBack: () => void;
+}
+
+interface KycAddressData {
+    currentMunicipality: string;
+    currentDistrict: string;
+    currentProvince: string;
+    currentCountry: string;
+    permanentMunicipality: string;
+    permanentDistrict: string;
+    permanentProvince: string;
+    permanentCountry: string;
+    wardNo: string;
+    contactNumber: string;
+    email: string;
+    [key: string]: any;
+}
+
+const KycAddress: React.FC<KycAddressProps> = ({ sessionId, initialData, onNext, onBack }) => {
     const { token, apiBase } = useAuth();
-    const [formData, setFormData] = useState(initialData || {
-        currentMunicipality: '',
-        currentDistrict: '',
-        currentProvince: '',
-        currentCountry: 'Nepal',
-        permanentMunicipality: '',
-        permanentDistrict: '',
-        permanentProvince: '',
-        permanentCountry: 'Nepal',
-        wardNo: '',
-        contactNumber: '',
-        email: ''
-    });
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState(null);
 
-    const handleChange = (e) => {
+    // Normalize data from backend (which split current/permanent into different objects)
+    const [formData, setFormData] = useState<KycAddressData>({
+        currentMunicipality: initialData?.currentAddress?.municipalityName || '',
+        currentDistrict: initialData?.currentAddress?.district || '',
+        currentProvince: initialData?.currentAddress?.province || '',
+        currentCountry: initialData?.currentAddress?.country || 'Nepal',
+        permanentMunicipality: initialData?.permanentAddress?.municipalityName || '',
+        permanentDistrict: initialData?.permanentAddress?.district || '',
+        permanentProvince: initialData?.permanentAddress?.province || '',
+        permanentCountry: initialData?.permanentAddress?.country || 'Nepal',
+        wardNo: initialData?.currentAddress?.wardNo?.toString() || '',
+        contactNumber: initialData?.currentAddress?.mobileNo || '',
+        email: initialData?.currentAddress?.emailId || ''
+    });
+
+    useEffect(() => {
+        if (initialData) {
+            setFormData({
+                currentMunicipality: initialData?.currentAddress?.municipalityName || initialData?.currentMunicipality || '',
+                currentDistrict: initialData?.currentAddress?.district || initialData?.currentDistrict || '',
+                currentProvince: initialData?.currentAddress?.province || initialData?.currentProvince || '',
+                currentCountry: initialData?.currentAddress?.country || initialData?.currentCountry || 'Nepal',
+                permanentMunicipality: initialData?.permanentAddress?.municipalityName || initialData?.permanentMunicipality || '',
+                permanentDistrict: initialData?.permanentAddress?.district || initialData?.permanentDistrict || '',
+                permanentProvince: initialData?.permanentAddress?.province || initialData?.permanentProvince || '',
+                permanentCountry: initialData?.permanentAddress?.country || initialData?.permanentCountry || 'Nepal',
+                wardNo: initialData?.currentAddress?.wardNo?.toString() || initialData?.wardNo?.toString() || '',
+                contactNumber: initialData?.currentAddress?.mobileNo || initialData?.contactNumber || '',
+                email: initialData?.currentAddress?.emailId || initialData?.email || ''
+            });
+        }
+    }, [initialData]);
+
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!sessionId) {
+            setError("KYC session not initialized.");
+            return;
+        }
         setSaving(true);
         setError(null);
-        const cleanedData = cleanKycData(formData);
 
         try {
-            const response = await fetch(`${apiBase}/api/Kyc/section/address`, {
+            // Step 2: Save Current Address
+            const currentRes = await fetch(`${apiBase}/api/KycData/save-current-address`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(cleanedData)
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    stepNumber: 2,
+                    data: {
+                        country: formData.currentCountry,
+                        province: formData.currentProvince,
+                        district: formData.currentDistrict,
+                        municipalityName: formData.currentMunicipality,
+                        wardNo: parseInt(formData.wardNo) || null,
+                        mobileNo: formData.contactNumber,
+                        emailId: formData.email
+                    }
+                })
             });
 
-            if (response.ok) {
-                onNext({ address: formData });
-            } else {
-                setError("Failed to save address section");
-            }
-        } catch (err) {
-            setError("Network error while saving");
+            if (!currentRes.ok) throw new Error("Failed to save current address");
+
+            // Step 3: Save Permanent Address
+            const permanentRes = await fetch(`${apiBase}/api/KycData/save-permanent-address`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    stepNumber: 3,
+                    data: {
+                        country: formData.permanentCountry,
+                        province: formData.permanentProvince,
+                        district: formData.permanentDistrict,
+                        municipalityName: formData.permanentMunicipality,
+                        wardNo: parseInt(formData.wardNo) || null,
+                        mobileNo: formData.contactNumber,
+                        emailId: formData.email
+                    }
+                })
+            });
+
+            if (!permanentRes.ok) throw new Error("Failed to save permanent address");
+
+            onNext({ address: formData });
+        } catch (err: any) {
+            setError(err.message || "Error saving address information");
         } finally {
             setSaving(false);
         }
@@ -60,7 +134,7 @@ const KycAddress = ({ initialData, onNext, onBack }) => {
                 <p className="text-sm text-gray-500">Current and Permanent residence details.</p>
             </div>
 
-            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
+            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium border border-red-200">{error}</div>}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <h3 className="col-span-full text-md font-semibold text-indigo-700 border-l-4 border-indigo-600 pl-2 mt-2">Current Address</h3>

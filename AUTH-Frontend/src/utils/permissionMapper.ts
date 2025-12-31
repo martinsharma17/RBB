@@ -98,7 +98,7 @@ export const PERMISSION_CONSTANTS = {
 
     ROLES_VIEW: 'Permissions.Roles.View',
     ROLES_SIDEBAR: 'Permissions.Roles.Sidebar',
-    
+
     POLICIES_VIEW: 'Permissions.Policies.View',
     POLICIES_SIDEBAR: 'Permissions.Policies.Sidebar',
 
@@ -113,6 +113,15 @@ export const PERMISSION_CONSTANTS = {
 
     BACKUP_VIEW: 'Permissions.Backup.View',
     BACKUP_SIDEBAR: 'Permissions.Backup.Sidebar',
+
+    // KYC
+    KYC_VIEW: 'Permissions.Kyc.View',
+    KYC_CREATE: 'Permissions.Kyc.Create',
+    KYC_UPDATE: 'Permissions.Kyc.Edit',
+    KYC_DELETE: 'Permissions.Kyc.Delete',
+    KYC_SIDEBAR: 'Permissions.Kyc.Sidebar',
+    KYC_VERIFY: 'Permissions.Kyc.Verify',
+    KYC_APPROVE: 'Permissions.Kyc.Approve',
 } as const;
 
 /**
@@ -137,7 +146,7 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             sidebar: permSet.has(PERMISSION_CONSTANTS.ANALYTICS_SIDEBAR),
         },
         permission_charts: { // Charts acts as analytics alias
-             sidebar: permSet.has(PERMISSION_CONSTANTS.ANALYTICS_SIDEBAR),
+            sidebar: permSet.has(PERMISSION_CONSTANTS.ANALYTICS_SIDEBAR),
         },
 
         // Tasks (Parent)
@@ -238,6 +247,15 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             sidebar: permSet.has(PERMISSION_CONSTANTS.BACKUP_SIDEBAR),
         },
 
+        // KYC
+        kyc: {
+            read: permSet.has(PERMISSION_CONSTANTS.KYC_VIEW),
+            create: permSet.has(PERMISSION_CONSTANTS.KYC_CREATE),
+            update: permSet.has(PERMISSION_CONSTANTS.KYC_UPDATE),
+            delete: permSet.has(PERMISSION_CONSTANTS.KYC_DELETE),
+            sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_SIDEBAR),
+        },
+
         // Computed permissions for convenience
         create_users: permSet.has(PERMISSION_CONSTANTS.USERS_CREATE),
         read_users: permSet.has(PERMISSION_CONSTANTS.USERS_VIEW),
@@ -283,7 +301,7 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
         view_settings: permSet.has(PERMISSION_CONSTANTS.SETTINGS_SIDEBAR),
         view_security: permSet.has(PERMISSION_CONSTANTS.SECURITY_SIDEBAR),
         view_backup: permSet.has(PERMISSION_CONSTANTS.BACKUP_SIDEBAR),
-        
+
         dashboard: true, // Dashboard is always visible
     };
 }
@@ -390,6 +408,13 @@ export function mapFrontendPermissionsToBackend(frontendPermissions: Permissions
 
     pushIfTrue(frontendPermissions.backup?.read, PERMISSION_CONSTANTS.BACKUP_VIEW);
     pushIfTrue(frontendPermissions.backup?.sidebar, PERMISSION_CONSTANTS.BACKUP_SIDEBAR);
+
+    // KYC
+    pushIfTrue(frontendPermissions.kyc?.create, PERMISSION_CONSTANTS.KYC_CREATE);
+    pushIfTrue(frontendPermissions.kyc?.read, PERMISSION_CONSTANTS.KYC_VIEW);
+    pushIfTrue(frontendPermissions.kyc?.update, PERMISSION_CONSTANTS.KYC_UPDATE);
+    pushIfTrue(frontendPermissions.kyc?.delete, PERMISSION_CONSTANTS.KYC_DELETE);
+    pushIfTrue(frontendPermissions.kyc?.sidebar, PERMISSION_CONSTANTS.KYC_SIDEBAR);
 
     return permissions;
 }

@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace AUTHApi.DTOs
 {
     public class PersonalInfoDto
@@ -60,6 +57,7 @@ namespace AUTHApi.DTOs
         public string? OrganizationAddress { get; set; }
         public string? Designation { get; set; }
         public string? EmployeeIdNo { get; set; }
+        public string? AnnualIncomeRange { get; set; }
     }
 
     public class FinancialDetailsDto

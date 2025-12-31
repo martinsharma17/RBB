@@ -1,35 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
-import { cleanKycData } from '../../../../utils/kycUtils';
 
-const KycInvestment = ({ initialData, onNext, onBack }) => {
+interface KycInvestmentProps {
+    sessionId: number | null;
+    initialData?: any;
+    onNext: (data: any) => void;
+    onBack: () => void;
+}
+
+interface KycInvestmentData {
+    details: string;
+    isInvolved: boolean;
+    [key: string]: any;
+}
+
+const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionId, initialData, onNext, onBack }) => {
     const { token, apiBase } = useAuth();
-    const [formData, setFormData] = useState(initialData || {
-        details: '',
-        isInvolved: false
-    });
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState(null);
 
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
+    const [formData, setFormData] = useState<KycInvestmentData>({
+        details: initialData?.annualIncomeRange || initialData?.details || '',
+        isInvolved: initialData?.isInvolved || false
+    });
+
+    useEffect(() => {
+        if (initialData) {
+            setFormData({
+                details: initialData?.annualIncomeRange || initialData?.details || '',
+                isInvolved: initialData?.isInvolved || false
+            });
+        }
+    }, [initialData]);
+
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const target = e.target as any;
+        const { name, value, type, checked } = target;
         setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+
+        if (!sessionId) {
+            setError("Session not initialized");
+            return;
+        }
+
         setSaving(true);
         setError(null);
-        const cleanedData = cleanKycData(formData);
 
         try {
-            const response = await fetch(`${apiBase}/api/Kyc/section/investment`, {
+            const response = await fetch(`${apiBase}/api/KycData/save-financial-details`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(cleanedData)
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    stepNumber: 7, // Financial details is step 7 in backend
+                    data: {
+                        annualIncomeRange: formData.details
+                    }
+                })
             });
 
             if (response.ok) {
@@ -47,37 +79,39 @@ const KycInvestment = ({ initialData, onNext, onBack }) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-bold text-gray-800">Section 8: Other Investments</h2>
-                <p className="text-sm text-gray-500">Provide details of your other investment involvesments.</p>
+                <h2 className="text-xl font-bold text-gray-800">Section 8: Financial Details</h2>
+                <p className="text-sm text-gray-500">Information about your source of funds and income level.</p>
             </div>
 
-            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
+            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium border border-red-200">{error}</div>}
 
-            <div className="flex items-center space-x-3 p-4 bg-white border rounded-lg">
-                <input
-                    type="checkbox"
-                    name="isInvolved"
-                    id="isInvolved"
-                    checked={formData.isInvolved}
-                    onChange={handleChange}
-                    className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                />
-                <label htmlFor="isInvolved" className="font-medium text-gray-700">Are you involved in any other investments?</label>
-            </div>
-
-            {formData.isInvolved && (
-                <div className="flex flex-col animate-fadeIn">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Investment Details</label>
+            <div className="space-y-4">
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Source of Income / Wealth Details</label>
                     <textarea
                         name="details"
                         value={formData.details}
                         onChange={handleChange}
-                        rows="4"
-                        placeholder="Please specify your investment details..."
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    ></textarea>
+                        rows={4}
+                        placeholder="e.g. Salary from employment, Business profits, etc."
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    />
                 </div>
-            )}
+
+                <div className="flex items-center space-x-3">
+                    <input
+                        type="checkbox"
+                        id="isInvolved"
+                        name="isInvolved"
+                        checked={formData.isInvolved}
+                        onChange={handleChange}
+                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                    />
+                    <label htmlFor="isInvolved" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        I confirm that my source of funds is legal and not involved in money laundering. *
+                    </label>
+                </div>
+            </div>
 
             <div className="flex justify-between pt-6">
                 <button

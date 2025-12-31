@@ -5,7 +5,6 @@ using AUTHApi.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -69,16 +68,16 @@ namespace AUTHApi.Controllers
                     Province = detail.CurrentState,
                     District = detail.CurrentDistrict,
                     MunicipalityName = detail.CurrentMunicipality,
-                    WardNo = int.TryParse(detail.CurrentWardNo, out var currentWard) ? currentWard : (int?)null,
+                    WardNo = int.TryParse(detail.CurrentWardNo, out var currentWard) ? currentWard : null,
                     Tole = detail.CurrentStreet,
-                    MobileNo = detail.MobileNumber ?? ""
+                    MobileNo = detail.MobileNumber
                 },
                 PermanentAddress = new AddressDto
                 {
                     Province = detail.PermanentState,
                     District = detail.PermanentDistrict,
                     MunicipalityName = detail.PermanentMunicipality,
-                    WardNo = int.TryParse(detail.PermanentWardNo, out var permWard) ? permWard : (int?)null,
+                    WardNo = int.TryParse(detail.PermanentWardNo, out var permWard) ? permWard : null,
                     Tole = detail.PermanentStreet
                 },
                 Family = new FamilyDto
@@ -90,15 +89,15 @@ namespace AUTHApi.Controllers
                 },
                 Bank = new BankDto
                 {
-                    BankName = detail.BankName,
-                    BankAccountNo = detail.BankAccountNumber,
+                    BankName = detail.BankName ?? string.Empty,
+                    BankAccountNo = detail.BankAccountNumber ?? string.Empty,
                     BankAddress = detail.BankBranch
                 },
                 Occupation = new OccupationDto
                 {
                     OccupationType = detail.Occupation,
                     OrganizationName = detail.OrganizationName,
-                    Designation = detail.Occupation // Mapping generic
+                    Designation = detail.Designation
                 },
                 FinancialDetails = new FinancialDetailsDto
                 {
@@ -112,7 +111,7 @@ namespace AUTHApi.Controllers
                         d.DocumentType == "CitizenshipFront" ? 2 :
                         d.DocumentType == "CitizenshipBack" ? 3 : 10), // Simple mapping
                     DocumentName = d.OriginalFileName,
-                    FilePath = d.FilePath,
+                    FilePath = $"/api/KycData/document/{d.Id}", // URL for the frontend to fetch the image
                     MimeType = d.ContentType,
                     FileSize = d.FileSize
                 }).ToList()
@@ -125,15 +124,12 @@ namespace AUTHApi.Controllers
         // SUBMIT ENDPOINTS (CONSOLIDATED)
         // ==========================================
 
-        // Helper to get or create KycDetail
-// Helper removed – GetOrCreateDetail is now handled by KycService.
-
-        [HttpPost("save-personal-info")]
         /// <summary>
         /// Save personal information for a KYC session.
         /// </summary>
         /// <param name="model">DTO containing personal info and session id.</param>
         /// <returns>Success envelope with the KycDetail record id.</returns>
+        [HttpPost("save-personal-info")]
         public async Task<IActionResult> SavePersonalInfo([FromBody] SaveStepDto<PersonalInfoDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -145,10 +141,10 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("save-current-address")]
         /// <summary>
         /// Save current address for a KYC session.
         /// </summary>
+        [HttpPost("save-current-address")]
         public async Task<IActionResult> SaveCurrentAddress([FromBody] SaveStepDto<AddressDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -159,10 +155,10 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("save-permanent-address")]
         /// <summary>
         /// Save permanent address for a KYC session.
         /// </summary>
+        [HttpPost("save-permanent-address")]
         public async Task<IActionResult> SavePermanentAddress([FromBody] SaveStepDto<AddressDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -173,10 +169,10 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("save-family")]
         /// <summary>
-        /// Save family information for a KYC session.
+        /// Save family details for a KYC session.
         /// </summary>
+        [HttpPost("save-family")]
         public async Task<IActionResult> SaveFamily([FromBody] SaveStepDto<FamilyDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -187,16 +183,11 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        // Continuing pattern for all other sections...
-        // For brevity and hitting the "no error" requirement, I will map remaining commonly used ones 
-        // and just stub/ignore the complex specific tables if they don't map neatly, 
-        // OR add columns to KycDetail if critical.
-
-        [HttpPost("save-bank-account")]
         /// <summary>
         /// Save bank account details for a KYC session.
         /// </summary>
-        public async Task<IActionResult> SaveBank([FromBody] SaveStepDto<BankDto> model)
+        [HttpPost("save-bank-account")]
+        public async Task<IActionResult> SaveBankAccount([FromBody] SaveStepDto<BankDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
@@ -206,10 +197,10 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("save-occupation")]
         /// <summary>
         /// Save occupation details for a KYC session.
         /// </summary>
+        [HttpPost("save-occupation")]
         public async Task<IActionResult> SaveOccupation([FromBody] SaveStepDto<OccupationDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -220,10 +211,10 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("save-financial-details")]
         /// <summary>
         /// Save financial details for a KYC session.
         /// </summary>
+        [HttpPost("save-financial-details")]
         public async Task<IActionResult> SaveFinancialDetails([FromBody] SaveStepDto<FinancialDetailsDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -234,10 +225,10 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("save-transaction-info")]
         /// <summary>
         /// Save transaction info for a KYC session.
         /// </summary>
+        [HttpPost("save-transaction-info")]
         public async Task<IActionResult> SaveTransactionInfo([FromBody] SaveStepDto<TransactionInfoDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -248,10 +239,10 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("save-guardian")]
         /// <summary>
-        /// Save guardian information for a KYC session.
+        /// Save guardian details for a KYC session.
         /// </summary>
+        [HttpPost("save-guardian")]
         public async Task<IActionResult> SaveGuardian([FromBody] SaveStepDto<GuardianDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -262,10 +253,10 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("save-aml-compliance")]
         /// <summary>
         /// Save AML compliance info for a KYC session.
         /// </summary>
+        [HttpPost("save-aml-compliance")]
         public async Task<IActionResult> SaveAmlCompliance([FromBody] SaveStepDto<AmlComplianceDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -276,10 +267,24 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("save-declarations")]
         /// <summary>
-        /// Save declarations for a KYC session.
+        /// Save location map details for a KYC session.
         /// </summary>
+        [HttpPost("save-location-map")]
+        public async Task<IActionResult> SaveLocationMap([FromBody] SaveStepDto<LocationMapDto> model)
+        {
+            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
+            if (!isValid) return Failure(msg);
+
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 11, model.Data);
+            await UpdateStepProgress(model.SessionId, 11, recordId);
+            return Success(new { recordId });
+        }
+
+        /// <summary>
+        /// Save legal declarations for a KYC session.
+        /// </summary>
+        [HttpPost("save-declarations")]
         public async Task<IActionResult> SaveDeclarations([FromBody] SaveStepDto<DeclarationsDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -290,10 +295,10 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("save-agreement")]
         /// <summary>
-        /// Save agreement for a KYC session.
+        /// Save general agreement for a KYC session.
         /// </summary>
+        [HttpPost("save-agreement")]
         public async Task<IActionResult> SaveAgreement([FromBody] SaveStepDto<AgreementDto> model)
         {
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
@@ -304,41 +309,71 @@ namespace AUTHApi.Controllers
             return Success(new { recordId });
         }
 
-        [HttpPost("upload-document")]
         /// <summary>
         /// Upload a KYC related document (photo, citizenship front/back, etc.).
         /// </summary>
+        [HttpPost("upload-document")]
         public async Task<IActionResult> UploadDocument([FromForm] int sessionId, [FromForm] byte documentType,
-            [FromForm] Microsoft.AspNetCore.Http.IFormFile file)
+            [FromForm] IFormFile file)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(sessionId);
-            if (!isValid) return Failure(msg);
-
-            if (file == null || file.Length == 0) return Failure("No file uploaded");
-
-            // Read file bytes
-            byte[] content;
-            using (var ms = new MemoryStream())
+            try
             {
-                await file.CopyToAsync(ms);
-                content = ms.ToArray();
+                var (isValid, msg, _) = await ValidateSessionAsync(sessionId);
+                if (!isValid) return Failure(msg);
+
+                if (file == null || file.Length == 0) return Failure("No file uploaded");
+
+                // Read file bytes
+                byte[] content;
+                using (var ms = new MemoryStream())
+                {
+                    await file.CopyToAsync(ms);
+                    content = ms.ToArray();
+                }
+
+                // Map byte type to string for legacy frontend compatibility (1=Photo, 2=CitFront, 3=CitBack)
+                string docTypeStr = documentType switch
+                {
+                    1 => "Photo",
+                    2 => "CitizenshipFront",
+                    3 => "CitizenshipBack",
+                    _ => "Other_" + documentType
+                };
+
+                var doc = await _kycService.UploadDocumentAsync(sessionId, docTypeStr, file.FileName, content,
+                    file.ContentType);
+
+                // Assuming step 11 is documents
+                try
+                {
+                    await UpdateStepProgress(sessionId, 11, doc.Id);
+                }
+                catch
+                {
+                    // Ignore progress update errors for documents to prevent blocking the upload itself
+                }
+
+                return Success(new { filePath = doc.FilePath, id = doc.Id });
+            }
+            catch (Exception ex)
+            {
+                return Failure($"Upload error: {ex.Message} | {ex.InnerException?.Message}", 500);
+            }
+        }
+
+        /// <summary>
+        /// Retrieve a document's binary data from the database.
+        /// </summary>
+        [HttpGet("document/{id}")]
+        public async Task<IActionResult> GetDocument(int id)
+        {
+            var doc = await _context.KycDocuments.FindAsync(id);
+            if (doc == null || doc.Data == null)
+            {
+                return NotFound("Document or image data not found.");
             }
 
-            // Map byte type to string for legacy frontend compatibility (1=Photo, 2=CitFront, 3=CitBack)
-            string docTypeStr = documentType switch
-            {
-                1 => "Photo",
-                2 => "CitizenshipFront",
-                3 => "CitizenshipBack",
-                _ => "Other_" + documentType
-            };
-
-            var doc = await _kycService.UploadDocumentAsync(sessionId, docTypeStr, file.FileName, content,
-                file.ContentType);
-
-            // Assuming step 11 is documents
-            await UpdateStepProgress(sessionId, 11, doc.Id);
-            return Success(new { filePath = doc.FilePath, id = doc.Id });
+            return File(doc.Data, doc.ContentType, doc.OriginalFileName);
         }
 
         // Helpers
@@ -346,7 +381,8 @@ namespace AUTHApi.Controllers
         {
             var session = await _context.KycFormSessions.FindAsync(sessionId);
             if (session == null) return (false, "KYC session not found.", null);
-            if (session.IsExpired || (session.SessionExpiryDate.HasValue && session.SessionExpiryDate < DateTime.Now))
+            if (session.IsExpired ||
+                (session.SessionExpiryDate.HasValue && session.SessionExpiryDate < DateTime.UtcNow))
                 return (false, "Your session has expired.", null);
             return (true, string.Empty, session);
         }
@@ -358,17 +394,16 @@ namespace AUTHApi.Controllers
             if (progress != null)
             {
                 progress.IsSaved = true;
-                progress.SavedDate = DateTime.Now;
+                progress.SavedDate = DateTime.UtcNow;
                 progress.RecordId = recordId;
-                progress.ModifiedDate = DateTime.Now;
+                progress.ModifiedDate = DateTime.UtcNow;
             }
 
             var session = await _context.KycFormSessions.FindAsync(sessionId);
             if (session != null)
             {
                 if (session.LastSavedStep < stepNumber) session.LastSavedStep = stepNumber;
-                session.LastActivityDate = DateTime.Now;
-                // session.KycDetailId = recordId; // Update main link
+                session.LastActivityDate = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync();

@@ -17,13 +17,14 @@
 import React, { createContext, useState, useContext, useEffect, useCallback, ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { mapBackendPermissionsToFrontend } from '../utils/permissionMapper';
-import type { 
-    User, 
-    DecodedToken, 
-    Permissions, 
-    AuthContextValue, 
-    LoginResult, 
-    LoginResponse 
+import type {
+    User,
+    DecodedToken,
+    Permissions,
+    AuthContextValue,
+    LoginResult,
+    LoginResponse,
+    PermissionsResponse
 } from '../types';
 
 // Create the context object
@@ -165,7 +166,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
 
             if (response.ok) {
-                const backendPermissions: string[] = await response.json();
+                const res: PermissionsResponse = await response.json();
+                const backendPermissions = res.data || [];
                 console.log('📥 Backend permissions received:', backendPermissions);
 
                 // Convert backend permission strings to frontend structure
@@ -237,32 +239,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 body: JSON.stringify({ email, password }),
             });
 
-            const data: LoginResponse = await response.json();
+            const res: LoginResponse = await response.json();
 
             // 2. Handle Success
-            if (data.success && data.token && data.roles) {
+            if (res.success && res.data?.token && res.data?.roles) {
+                const { token: authToken, roles } = res.data;
+
                 // Save Token & Roles
-                localStorage.setItem('authToken', data.token);
-                localStorage.setItem('userRoles', JSON.stringify(data.roles));
+                localStorage.setItem('authToken', authToken);
+                localStorage.setItem('userRoles', JSON.stringify(roles));
 
                 // Decode Token to get User Details immediately
-                const decodedToken = jwtDecode<DecodedToken>(data.token);
+                const decodedToken = jwtDecode<DecodedToken>(authToken);
                 const userEmail = decodedToken.email || '';
                 const userId = decodedToken.sub || decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] || '';
                 const userName = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || decodedToken.name || '';
                 const userPicture = decodedToken.picture || null;
 
                 // Update State
-                setToken(data.token);
-                setUser({ id: userId, email: userEmail, name: userName, roles: data.roles, picture: userPicture });
+                setToken(authToken);
+                setUser({ id: userId, email: userEmail, name: userName, roles: roles, picture: userPicture });
 
                 // Fetch permissions from backend
-                await fetchPermissions(data.token);
+                await fetchPermissions(authToken);
 
                 return { success: true };
             } else {
                 // 3. Handle Failure
-                return { success: false, message: data.message || 'Invalid credentials' };
+                return { success: false, message: res.message || 'Invalid credentials' };
             }
         } catch (error) {
             console.error('Login error:', error);

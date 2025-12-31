@@ -34,6 +34,6 @@ namespace AUTHApi.Entities
         public int AttemptCount { get; set; } = 0;
         public int MaxAttempts { get; set; } = 3;
 
-        public DateTime CreatedDate { get; set; } = DateTime.Now;
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
     }
 }

@@ -23,11 +23,14 @@ namespace AUTHApi.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly AUTHApi.Services.IKycService _kycService;
 
-        public KycController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public KycController(ApplicationDbContext context, UserManager<ApplicationUser> userManager,
+            AUTHApi.Services.IKycService kycService)
         {
             _context = context;
             _userManager = userManager;
+            _kycService = kycService;
         }
 
         /// <summary>
@@ -36,60 +39,32 @@ namespace AUTHApi.Controllers
         [HttpGet("my-session")]
         public async Task<IActionResult> GetMySession()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var email = User.FindFirstValue(ClaimTypes.Email);
-
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(email))
-                return Failure("Unauthorized", 401);
-
-            var session = await _context.KycFormSessions
-                .Include(s => s.KycDetail)
-                .Include(s => s.StepCompletions)
-                .FirstOrDefaultAsync(s => s.UserId == userId || s.Email == email);
-
-            if (session == null)
+            try
             {
-                session = new KycFormSession
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var email = User.FindFirstValue(ClaimTypes.Email);
+
+                if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(email))
+                    return Failure("Unauthorized", 401);
+
+                // Use the service to handle session logic (creation, seeding, linking)
+                var session = await _kycService.GetOrCreateSessionAsync(userId, email);
+
+                return Success(new
                 {
-                    UserId = userId,
-                    Email = email,
-                    SessionExpiryDate = DateTime.Now.AddDays(30),
-                    CurrentStep = 1,
-                    // Users must verify email via OTP even if logged in
-                    EmailVerified = false
-                };
-                await _context.KycFormSessions.AddAsync(session);
-                await _context.SaveChangesAsync();
-
-                // Seed steps for new session
-                var steps = await _context.KycFormSteps.Where(s => s.IsActive).ToListAsync();
-                foreach (var step in steps)
-                {
-                    await _context.KycStepCompletions.AddAsync(new KycStepCompletion
-                    {
-                        SessionId = session.Id,
-                        StepNumber = step.StepNumber
-                    });
-                }
-
-                await _context.SaveChangesAsync();
+                    sessionId = session.Id,
+                    sessionToken = session.SessionToken,
+                    currentStep = session.CurrentStep,
+                    status = session.FormStatus,
+                    isEmailVerified = session.EmailVerified
+                });
             }
-            else if (session.UserId == null)
+            catch (Exception ex)
             {
-                // Link session if it was previously created via guest email flow
-                session.UserId = userId;
-                await _context.SaveChangesAsync();
+                // In production, do not expose stack traces.
+                // Log the error internally (the logger is available in BaseApiController or can be injected)
+                return Failure("An unexpected error occurred while retrieving the session.", 500);
             }
-            // Note: We no longer auto-verify EmailVerified here to ensure the OTP flow is followed
-
-            return Success(new
-            {
-                sessionId = session.Id,
-                sessionToken = session.SessionToken,
-                currentStep = session.CurrentStep,
-                status = session.FormStatus,
-                isEmailVerified = session.EmailVerified
-            });
         }
 
         /// <summary>
@@ -115,7 +90,7 @@ namespace AUTHApi.Controllers
             }
 
             session.FormStatus = 3; // Submitted
-            session.ModifiedDate = DateTime.Now;
+            session.ModifiedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return Success("KYC submitted successfully for review.");
@@ -134,7 +109,7 @@ namespace AUTHApi.Controllers
 
             // In a real scenario, we might move this to a 'Verified' status
             // For now, let's just update activity
-            session.LastActivityDate = DateTime.Now;
+            session.LastActivityDate = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return Success("KYC verified by Maker.");
@@ -151,7 +126,7 @@ namespace AUTHApi.Controllers
             if (session == null) return Failure("Session not found", 404);
 
             session.FormStatus = 2; // Completed/Approved
-            session.ModifiedDate = DateTime.Now;
+            session.ModifiedDate = DateTime.UtcNow;
 
             // Here we could also update the main ApplicationUser profile if needed
 

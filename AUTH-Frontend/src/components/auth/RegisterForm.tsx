@@ -1,179 +1,39 @@
-// // src/components/RegisterForm.js
-// // Similar to LoginForm but for /api/register. Includes password confirmation.
-// // On success: Auto-calls login() to seamless onboard, redirects to dashboard.
-// // Validation: Matches backend expectations (email unique, password strength).
 
-// import React, { useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import { useAuth } from '../context/AuthContext'; // For auto-login after register
-
-// const RegisterForm = () => {
-//     const [name, setName] = useState(''); // New state for name
-//     const [email, setEmail] = useState('');
-//     const [password, setPassword] = useState('');
-//     const [confirmPassword, setConfirmPassword] = useState('');
-//     const [error, setError] = useState('');
-//     const [loading, setLoading] = useState(false);
-
-//     const { login } = useAuth(); // Reuse login for post-register auth
-//     const navigate = useNavigate();
-
-//     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-//         event.preventDefault();
-//         setError('');
-//         setLoading(true);
-
-//         // Validation: Comprehensive - empty, match, length, email format.
-//         const trimmedEmail = email.trim();
-//         const trimmedName = name.trim(); // Trim name
-//         if (!trimmedName || !trimmedEmail || !password || !confirmPassword) { // Add name to validation
-//             setError('All fields are required.');
-//             setLoading(false);
-//             return;
-//         }
-//         if (password !== confirmPassword) {
-//             setError('Passwords do not match.');
-//             setLoading(false);
-//             return;
-//         }
-//         if (password.length < 6) {
-//             setError('Password must be at least 6 characters.');
-//             setLoading(false);
-//             return;
-//         }
-//         // Basic email regex (enhance with library if needed).
-//         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-//         if (!emailRegex.test(trimmedEmail)) {
-//             setError('Please enter a valid email.');
-//             setLoading(false);
-//             return;
-//         }
-
-//         try {
-//             // Register call: POST to your backend /api/register.
-//             const registerResponse = await fetch('http://localhost:3001/api/UserAuth/Register', {
-//                 method: 'POST',
-//                 headers: { 'Content-Type': 'application/json' },
-//                 body: JSON.stringify({ name: trimmedName, email: trimmedEmail, password }), // Include name
-//             });
-//             const registerData = await registerResponse.json();
-
-//             if (registerData.success) {
-//                 // Auto-login: Immediately auth the new user (no re-enter creds).
-//                 const loginResult = await login(trimmedEmail, password);
-//                 if (loginResult.success) {
-//                     navigate('/dashboard', { replace: true });
-//                 } else {
-//                     setError('Registration successful, but login failed. Please login manually.');
-//                 }
-//             } else {
-//                 setError(registerData.message || 'Registration failed.'); // More generic message
-//             }
-//         } catch (err) {
-//             console.error('Register error:', err);
-//             setError('Server error. Ensure backend is running on port 3001.');
-//         }
-//         setLoading(false);
-//     };
-
-//     return (
-//         <div className="form-container">
-//             <h2>Create New Account</h2>
-//             <form onSubmit={handleSubmit}>
-//                 <div className="form-group">
-//                     <label htmlFor="name">Name</label> {/* New name input */}
-//                     <input
-//                         type="text"
-//                         id="name"
-//                         value={name}
-//                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
-//                         placeholder="Enter your name"
-//                         required
-//                         disabled={loading}
-//                     />
-//                 </div>
-//                 <div className="form-group">
-//                     <label htmlFor="email">Email Address</label>
-//                     <input
-//                         type="email"
-//                         id="email"
-//                         value={email}
-//                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-//                         placeholder="Enter your email"
-//                         required
-//                         disabled={loading}
-//                     />
-//                 </div>
-//                 <div className="form-group">
-//                     <label htmlFor="password">Password</label>
-//                     <input
-//                         type="password"
-//                         id="password"
-//                         value={password}
-//                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-//                         placeholder="At least 6 characters"
-//                         minLength={6}
-//                         required
-//                         disabled={loading}
-//                     />
-//                 </div>
-//                 <div className="form-group">
-//                     <label htmlFor="confirmPassword">Confirm Password</label>
-//                     <input
-//                         type="password"
-//                         id="confirmPassword"
-//                         value={confirmPassword}
-//                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
-//                         placeholder="Repeat password"
-//                         required
-//                         disabled={loading}
-//                     />
-//                 </div>
-//                 {error && <p className="error-message" role="alert">{error}</p>}
-//                 <button type="submit" disabled={loading}>
-//                     {loading ? 'Registering...' : 'Register'}
-//                 </button>
-//             </form>
-//             <p className="form-link">
-//                 Already have an account? <a href="/login">Login here</a>
-//             </p>
-//         </div>
-//     );
-// };
-
-// export default RegisterForm;
 
 // src/components/RegisterForm.jsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
-// Inline SVG Icons
-const UserIcon = ({ className = "h-5 w-5" }) => (
+interface IconProps {
+    className?: string;
+}
+
+const UserIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
     </svg>
 );
 
-const EnvelopeIcon = ({ className = "h-5 w-5" }) => (
+const EnvelopeIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
     </svg>
 );
 
-const LockClosedIcon = ({ className = "h-5 w-5" }) => (
+const LockClosedIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
     </svg>
 );
 
-const ExclamationCircleIcon = ({ className = "h-5 w-5" }) => (
+const ExclamationCircleIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 );
 
-const CheckCircleIcon = ({ className = "h-5 w-5" }) => (
+const CheckCircleIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
@@ -250,12 +110,12 @@ const RegisterForm = () => {
         setLoading(false);
     };
 
-    const handleBlur = (field) => () => {
+    const handleBlur = (field: keyof typeof touched) => () => {
         setTouched({ ...touched, [field]: true });
     };
 
-    const isValidEmail = (email) => {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    const isValidEmail = (emailStr: string) => {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr.trim());
     };
 
     const passwordsMatch = password && confirmPassword && password === confirmPassword;

@@ -19,6 +19,10 @@ namespace AUTHApi.Data
         public DbSet<KycDetail> KycDetails { get; set; }
         public DbSet<KycDocument> KycDocuments { get; set; }
 
+        // --- Permission & Policy System ---
+        public DbSet<SystemPolicy> SystemPolicies { get; set; }
+        public DbSet<RolePolicy> RolePolicies { get; set; }
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
@@ -58,6 +62,10 @@ namespace AUTHApi.Data
                 .WithOne(d => d.KycDetail)
                 .HasForeignKey(d => d.KycDetailId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure Permission System
+            builder.Entity<SystemPolicy>().HasIndex(p => p.PolicyKey).IsUnique();
+            builder.Entity<RolePolicy>().HasIndex(rp => new { rp.RoleId, rp.PolicyId }).IsUnique();
         }
     }
 }

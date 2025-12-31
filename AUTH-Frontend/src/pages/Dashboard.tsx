@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/dashboard/Sidebar';
@@ -14,20 +14,18 @@ const Dashboard = () => {
     // 2. Local State
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [activeView, setActiveView] = useState("dashboard");
-    const [menuItems, setMenuItems] = useState([]);
-    const [loadingMenu, setLoadingMenu] = useState(true);
+    const [menuItems, setMenuItems] = useState<any[]>([]);
 
     // Data States (shared across views via props)
-    const [users, setUsers] = useState([]);
-    const [roles, setRoles] = useState([]);
-    const [admins, setAdmins] = useState([]);
-    const [loadingData, setLoadingData] = useState(false);
+    const [users, setUsers] = useState<any[]>([]);
+    const [roles, setRoles] = useState<any[]>([]);
+    const [admins, setAdmins] = useState<any[]>([]);
 
     // UI States
     const [showAddModal, setShowAddModal] = useState(false);
     const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "User" });
     const [showAssignModal, setShowAssignModal] = useState(false);
-    const [selectedUserForRole, setSelectedUserForRole] = useState(null);
+    const [selectedUserForRole, setSelectedUserForRole] = useState<any | null>(null);
 
     // 3. Effect: Auth Check
     useEffect(() => {
@@ -42,10 +40,12 @@ const Dashboard = () => {
             if (token) {
                 try {
                     // Lazy load utility to avoid circular dep issues if any
-                    const { fetchDynamicMenu, mapBackendMenuToSidebar, filterDynamicMenus } = await import('../utils/menuUtils.jsx');
+                    const { fetchDynamicMenu, mapBackendMenuToSidebar, filterDynamicMenus } = await import('../utils/menuUtils');
 
                     const rawMenu = await fetchDynamicMenu(apiBase, token);
+                    console.log("Dashboard: rawMenu received:", rawMenu);
                     const mappedMenu = mapBackendMenuToSidebar(rawMenu);
+                    console.log("Dashboard: mappedMenu:", mappedMenu);
 
                     if (permissions) {
                         // Pass 'user' object to allow SuperAdmin bypass
@@ -62,7 +62,6 @@ const Dashboard = () => {
                 } catch (err) {
                     console.error("Failed to load menu", err);
                 } finally {
-                    setLoadingMenu(false);
                 }
             }
         };
@@ -73,16 +72,19 @@ const Dashboard = () => {
     const fetchData = useCallback(async () => {
         if (!permissions || !permissions.read_users) return;
 
-        setLoadingData(true);
         try {
             // Fetch Users
             const userRes = await fetch(`${apiBase}/api/User/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (userRes.ok) {
-                const data = await userRes.json();
+                const res = await userRes.json();
+                const data = res.data || [];
                 setUsers(data);
-                const adminList = data.filter(u => u.roles && (u.roles.includes("Admin") || u.roles.includes("SuperAdmin")));
+                const adminList = data.filter((u: any) => {
+                    const r = u.roles || u.Roles || [];
+                    return r.includes("Admin") || r.includes("SuperAdmin");
+                });
                 setAdmins(adminList);
             }
 
@@ -92,15 +94,15 @@ const Dashboard = () => {
                     headers: { Authorization: `Bearer ${token}` }
                 });
                 if (roleRes.ok) {
-                    const roleData = await roleRes.json();
-                    setRoles(roleData.roles || []);
+                    const res = await roleRes.json();
+                    const data = res.data || {};
+                    setRoles(data.roles || []);
                 }
             }
 
         } catch (err) {
             console.error("Data fetch error:", err);
         } finally {
-            setLoadingData(false);
         }
     }, [apiBase, token, permissions]);
 
@@ -139,7 +141,7 @@ const Dashboard = () => {
         } catch (e) { alert("Error adding user"); }
     };
 
-    const handleDeleteUser = async (userId) => {
+    const handleDeleteUser = async (userId: string) => {
         if (!window.confirm("Delete user?")) return;
         try {
             await fetch(`${apiBase}/api/User/${userId}`, {
@@ -153,12 +155,12 @@ const Dashboard = () => {
     // 7. Render
     if (!token) return null;
 
-    const handleAssignRole = (user) => {
+    const handleAssignRole = (user: any) => {
         setSelectedUserForRole(user);
         setShowAssignModal(true);
     };
 
-    const handleRoleUpdate = async (email, newRole) => {
+    const handleRoleUpdate = async (email: string, newRole: string) => {
         try {
             const response = await fetch(`${apiBase}/api/Roles/AssignRole`, {
                 method: 'POST',

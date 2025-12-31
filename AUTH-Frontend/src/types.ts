@@ -61,28 +61,28 @@ export interface Permissions {
   notifications?: PermissionSet;
   security?: PermissionSet;
   backup?: PermissionSet;
-  
+
   // Computed permissions
   create_users?: boolean;
   read_users?: boolean;
   update_users?: boolean;
   delete_users?: boolean;
-  
+
   create_task_list?: boolean;
   read_task_list?: boolean;
   update_task_list?: boolean;
   delete_task_list?: boolean;
-  
+
   create_task_kanban?: boolean;
   read_task_kanban?: boolean;
   update_task_kanban?: boolean;
   delete_task_kanban?: boolean;
-  
+
   create_projects?: boolean;
   read_projects?: boolean;
   update_projects?: boolean;
   delete_projects?: boolean;
-  
+
   // View permissions
   view_users?: boolean;
   view_charts?: boolean;
@@ -103,8 +103,9 @@ export interface Permissions {
   view_settings?: boolean;
   view_security?: boolean;
   view_backup?: boolean;
-  
+
   dashboard?: boolean;
+  [key: string]: any;
 }
 
 // ============================================================================
@@ -128,19 +129,24 @@ export interface AuthContextValue {
 }
 
 // ============================================================================
-// API RESPONSE TYPES
+// API RESPONSE TYPES (Standardized with Backend)
 // ============================================================================
 
-export interface LoginResponse {
+export interface ApiResponse<T> {
   success: boolean;
-  token?: string;
-  roles?: string[];
-  message?: string;
+  message: string;
+  data: T;
+  errors?: any;
 }
 
-export interface PermissionsResponse {
-  permissions: string[];
+export interface LoginData {
+  token: string;
+  roles: string[];
 }
+
+export type LoginResponse = ApiResponse<LoginData>;
+
+export type PermissionsResponse = ApiResponse<string[]>;
 
 // ============================================================================
 // KYC FORM TYPES
@@ -183,6 +189,7 @@ export interface SidebarItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   permission?: string;
+  url?: string; // Optional URL path for navigation (e.g., '/kyc', '/users')
   children?: SidebarItem[];
 }
 

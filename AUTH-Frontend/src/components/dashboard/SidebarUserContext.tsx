@@ -1,10 +1,14 @@
+import React from 'react';
+import { User, Permissions } from '../../types';
 
-const SidebarUserContext = ({ user, permissions, sidebarOpen }) => {
+interface SidebarUserContextProps {
+    user: User | null;
+    permissions: Permissions | null;
+    sidebarOpen: boolean;
+}
+
+const SidebarUserContext: React.FC<SidebarUserContextProps> = ({ sidebarOpen }) => {
     if (!sidebarOpen) return null;
-
-    // Calculate stats
-    const rolesCount = user?.roles?.length || 0;
-    const permissionsCount = permissions ? Object.values(permissions).filter(v => v === true).length : 0;
 
     return (
         <div className="px-4 py-2 bg-gray-800 border-t border-gray-700">

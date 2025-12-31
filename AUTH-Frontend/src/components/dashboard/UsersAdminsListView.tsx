@@ -1,9 +1,21 @@
-// src/components/dashboard/UsersAdminsListView.jsx
+import React from 'react';
 
-const UsersAdminsListView = ({
+interface UsersAdminsListViewProps {
+    users: any[];
+    admins: any[];
+    roles?: any[];
+    isAlreadyAdmin: (email: string) => boolean;
+    onAddUser: () => void;
+    onMakeAdmin: (userId: string) => void;
+    onDelete: (userId: string, isAdmin?: boolean) => void;
+    onRevokeAdmin: (userId: string) => void;
+    onAssignRole: (user: any) => void;
+}
+
+const UsersAdminsListView: React.FC<UsersAdminsListViewProps> = ({
     users,
     admins,
-    roles = [], // [NEW]
+    roles = [],
     isAlreadyAdmin,
     onAddUser,
     onMakeAdmin,
@@ -12,8 +24,8 @@ const UsersAdminsListView = ({
     onAssignRole
 }) => {
     // Helper to get users for a specific role
-    const getUsersSuccessByRole = (roleName) => {
-        return users.filter(user => {
+    const getUsersSuccessByRole = (roleName: string) => {
+        return users.filter((user: any) => {
             const userRoles = user.Roles || user.roles || [];
             // If user has no roles, they are typically considered standard "User"
             if (roleName === "User" && userRoles.length === 0) return true;
@@ -68,7 +80,7 @@ const UsersAdminsListView = ({
                                                     <td className="px-6 py-4 text-sm">{user.Email || user.email || 'N/A'}</td>
                                                     <td className="px-6 py-4 text-sm">
                                                         <div className="flex flex-wrap gap-1">
-                                                            {userRoles.map((r, i) => (
+                                                            {userRoles.map((r: any, i: number) => (
                                                                 <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs">
                                                                     {r}
                                                                 </span>
@@ -97,7 +109,7 @@ const UsersAdminsListView = ({
                                                                             Revoke Admin
                                                                         </button>
                                                                     ) : (
-                                                                        !isAlreadyAdmin(user) && (
+                                                                        !isAlreadyAdmin(user.Email || user.email) && (
                                                                             <button
                                                                                 onClick={() => onMakeAdmin(user.Id || user.id)}
                                                                                 className="px-3 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 rounded"
@@ -121,7 +133,7 @@ const UsersAdminsListView = ({
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan="4" className="px-6 py-4 text-center text-gray-500 text-sm">
+                                            <td colSpan={4} className="px-6 py-4 text-center text-gray-500 text-sm">
                                                 No users in this role
                                             </td>
                                         </tr>

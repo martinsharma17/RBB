@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -18,32 +16,25 @@ namespace AUTHApi.Entities
         // Circular reference care needed. For now just ID.
 
         // --- 1. Personal Information ---
-        [Required] [MaxLength(50)] public string FirstName { get; set; } = string.Empty;
-
+        [MaxLength(50)] public string? FirstName { get; set; }
         [MaxLength(50)] public string? MiddleName { get; set; }
+        [MaxLength(50)] public string? LastName { get; set; }
+        public DateTime? DateOfBirth { get; set; }
 
-        [Required] [MaxLength(50)] public string LastName { get; set; } = string.Empty;
-
-        public DateTime DateOfBirth { get; set; }
-
-        [MaxLength(10)] public string Gender { get; set; } = string.Empty; // Male, Female, Other
-
-        [MaxLength(20)] public string MaritalStatus { get; set; } = string.Empty;
-
-        [MaxLength(50)] public string Nationality { get; set; } = string.Empty;
-
-        [Phone] [MaxLength(20)] public string MobileNumber { get; set; } = string.Empty;
-
-        [EmailAddress] [MaxLength(100)] public string Email { get; set; } = string.Empty;
+        [MaxLength(10)] public string? Gender { get; set; } // Male, Female, Other
+        [MaxLength(20)] public string? MaritalStatus { get; set; }
+        [MaxLength(50)] public string? Nationality { get; set; }
+        [Phone] [MaxLength(20)] public string? MobileNumber { get; set; }
+        [EmailAddress] [MaxLength(100)] public string? Email { get; set; }
 
         // --- 2. Address Details ---
 
         // Permanent Address
-        [MaxLength(100)] public string PermanentState { get; set; } = string.Empty;
-        [MaxLength(100)] public string PermanentDistrict { get; set; } = string.Empty;
-        [MaxLength(100)] public string PermanentMunicipality { get; set; } = string.Empty; // or City
-        [MaxLength(10)] public string PermanentWardNo { get; set; } = string.Empty;
-        [MaxLength(200)] public string PermanentStreet { get; set; } = string.Empty;
+        [MaxLength(100)] public string? PermanentState { get; set; }
+        [MaxLength(100)] public string? PermanentDistrict { get; set; }
+        [MaxLength(100)] public string? PermanentMunicipality { get; set; }
+        [MaxLength(10)] public string? PermanentWardNo { get; set; }
+        [MaxLength(200)] public string? PermanentStreet { get; set; }
 
         // Current Address
         [MaxLength(100)] public string? CurrentState { get; set; }
@@ -53,9 +44,9 @@ namespace AUTHApi.Entities
         [MaxLength(200)] public string? CurrentStreet { get; set; }
 
         // --- 3. Family Details ---
-        [MaxLength(100)] public string FatherName { get; set; } = string.Empty;
-        [MaxLength(100)] public string MotherName { get; set; } = string.Empty;
-        [MaxLength(100)] public string GrandFatherName { get; set; } = string.Empty;
+        [MaxLength(100)] public string? FatherName { get; set; }
+        [MaxLength(100)] public string? MotherName { get; set; }
+        [MaxLength(100)] public string? GrandFatherName { get; set; }
         [MaxLength(100)] public string? SpouseName { get; set; }
 
         // --- 4. Identification & Financial ---
@@ -66,6 +57,8 @@ namespace AUTHApi.Entities
         [MaxLength(50)] public string? PanNumber { get; set; }
         [MaxLength(100)] public string? Occupation { get; set; }
         [MaxLength(100)] public string? OrganizationName { get; set; }
+        [MaxLength(200)] public string? OrganizationAddress { get; set; }
+        [MaxLength(100)] public string? Designation { get; set; }
         [MaxLength(50)] public string? AnnualIncome { get; set; }
 
         // --- 5. Bank Info (If needed) ---
@@ -103,7 +96,7 @@ namespace AUTHApi.Entities
         public bool TermsAgreed { get; set; }
         public DateTime? AgreementDate { get; set; }
 
-        [Timestamp] public byte[] RowVersion { get; set; }
+        [Timestamp] public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public DateTime? UpdatedAt { get; set; }
 

@@ -3,10 +3,8 @@
 
 namespace AUTHApi.Services
 {
-    
     /// Email service interface for sending various types of emails
     /// Currently supports password reset emails, can be extended for other types
- 
     public interface IEmailService
     {
         /// <summary>
@@ -16,5 +14,7 @@ namespace AUTHApi.Services
         /// <param name="resetLink">The password reset link to include in the email</param>
         /// <returns>Task representing the async operation</returns>
         Task SendPasswordResetEmailAsync(string email, string resetLink);
+
+        Task SendEmailAsync(string toEmail, string subject, string body);
     }
 }

@@ -1,6 +1,13 @@
-// src/components/dashboard/admin/AdminDashboardView.jsx
+import React from 'react';
 
-const AdminDashboardView = ({ totalUsers, onViewUsers, onViewCharts, onAddUser }) => {
+interface AdminDashboardViewProps {
+    totalUsers: number;
+    onViewUsers: () => void;
+    onViewCharts: () => void;
+    onAddUser: () => void;
+}
+
+const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ totalUsers, onViewUsers, onViewCharts, onAddUser }) => {
     return (
         <div className="space-y-6">
             <div>
@@ -46,14 +53,14 @@ const AdminDashboardView = ({ totalUsers, onViewUsers, onViewCharts, onAddUser }
                     >
                         Add User
                     </button>
-              
+
                 </div>
             </div>
 
             {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> You can only manage users that have been assigned to you by the SuperAdmin. 
+                    <strong>Note:</strong> You can only manage users that have been assigned to you by the SuperAdmin.
                     Contact SuperAdmin if you need access to additional users.
                 </p>
             </div>

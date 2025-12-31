@@ -37,8 +37,8 @@ const ResetPassword = () => {
     const [tokenValid, setTokenValid] = useState(false);
 
     // Extract token and email from URL query parameters
-    const token = searchParams.get('token');
-    const email = searchParams.get('email');
+    const token = searchParams.get('token') || '';
+    const email = searchParams.get('email') || '';
 
     // API base URL
     const apiBase = 'http://localhost:3001';
@@ -66,7 +66,7 @@ const ResetPassword = () => {
                 );
                 const data = await response.json();
 
-                if (data.valid) {
+                if (data.success && data.data?.valid) {
                     // Token is valid! User can proceed
                     setTokenValid(true);
                 } else {
@@ -125,7 +125,7 @@ const ResetPassword = () => {
 
             const data = await response.json();
 
-            if (response.ok) {
+            if (response.ok && data.success) {
                 // Success! Password has been reset
                 setMessage('Password reset successfully! Redirecting to login...');
 
@@ -135,11 +135,14 @@ const ResetPassword = () => {
                 }, 2000);
             } else {
                 // Error from backend
-                if (data.errors && Array.isArray(data.errors)) {
-                    // Show all validation errors
-                    setError(data.errors.join('. '));
+                if (data.errors) {
+                    if (Array.isArray(data.errors)) {
+                        setError(data.errors.join('. '));
+                    } else {
+                        setError(typeof data.errors === 'string' ? data.errors : 'Password reset failed');
+                    }
                 } else {
-                    setError(data.message || 'Failed to reset password. Please try again.');
+                    setError(data.message || 'Password reset failed');
                 }
             }
         } catch (err) {

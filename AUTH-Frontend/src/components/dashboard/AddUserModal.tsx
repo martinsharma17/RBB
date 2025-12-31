@@ -1,13 +1,23 @@
-// src/components/dashboard/AddUserModal.jsx
+import React from 'react';
 
-const AddUserModal = ({
+interface AddUserModalProps {
+    show: boolean;
+    newUser: any;
+    setNewUser: (user: any) => void;
+    onClose: () => void;
+    onSubmit: () => void;
+    allowRoleSelection?: boolean;
+    roles?: any[];
+}
+
+const AddUserModal: React.FC<AddUserModalProps> = ({
     show,
     newUser,
     setNewUser,
     onClose,
     onSubmit,
     allowRoleSelection = true,
-    roles = [] // Default to empty array
+    roles = []
 }) => {
     if (!show) return null;
 
@@ -40,7 +50,7 @@ const AddUserModal = ({
                     {allowRoleSelection && (
                         <select
                             value={newUser.role}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewUser({ ...newUser, role: e.target.value })}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewUser({ ...newUser, role: e.target.value })}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                         >
                             {/* Default option if roles empty or to prompt selection, but keeping simple defaults for now */}

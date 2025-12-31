@@ -34,17 +34,17 @@ const LoginForm = () => {
         if (result.success) {
             navigate('/dashboard', { replace: true });
         } else {
-            setError(result.message);
+            setError(result.message || 'Login failed. Please check your credentials.');
         }
         setLoading(false);
     };
 
-    const handleBlur = (field) => () => {
+    const handleBlur = (field: 'email' | 'password') => () => {
         setTouched({ ...touched, [field]: true });
     };
 
-    const isValidEmail = (email) => {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    const isValidEmail = (emailStr: string) => {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr.trim());
     };
 
     const isFormValid = email.trim() && password && isValidEmail(email);

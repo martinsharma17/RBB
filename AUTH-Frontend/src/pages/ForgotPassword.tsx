@@ -58,7 +58,7 @@ const ForgotPassword = () => {
 
             if (response.ok) {
                 // Success! Show confirmation message
-                setMessage(data.message);
+                setMessage(data.message || 'If an account exists for that email, we have sent a reset link.');
                 setEmailSent(true);
 
                 // For DEVELOPMENT: Check console for the reset link (since we're not sending real emails yet)

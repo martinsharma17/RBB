@@ -1,86 +1,138 @@
-using AUTHApi.Core.Security;
+using AUTHApi.Data;
+using AUTHApi.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
 
 namespace AUTHApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "SuperAdmin")] // Only SuperAdmin can manage policies for now
+    [Authorize(Roles = "SuperAdmin")] // Only SuperAdmin can manage policies
     public class PoliciesController : BaseApiController
     {
+        private readonly ApplicationDbContext _context;
         private readonly RoleManager<IdentityRole> _roleManager;
 
-        public PoliciesController(RoleManager<IdentityRole> roleManager)
+        public PoliciesController(ApplicationDbContext context, RoleManager<IdentityRole> roleManager)
         {
+            _context = context;
             _roleManager = roleManager;
         }
 
+        // GET: api/policies/all
+        // Returns the list of ALL available system policies (permissions) in the database.
+        // Grouped by Category for easier UI rendering.
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllPolicies()
+        {
+            var policies = await _context.SystemPolicies
+                .OrderBy(p => p.Category)
+                .ThenBy(p => p.DisplayName)
+                .ToListAsync();
+
+            // Grouping logic for frontend convenience
+            var grouped = policies.GroupBy(p => p.Category)
+                .Select(g => new
+                {
+                    Category = g.Key,
+                    Policies = g.Select(p => new
+                    {
+                        p.Id,
+                        p.PolicyKey,
+                        p.DisplayName,
+                        p.Description
+                    })
+                });
+
+            return Success(grouped);
+        }
+
         // GET: api/policies/{roleName}
-        // Returns the list of PERMISSION claims assigned to this role
+        // Returns the list of policy keys that are GRANTED to this role.
         [HttpGet("{roleName}")]
         public async Task<IActionResult> GetRolePermissions(string roleName)
         {
             var role = await _roleManager.FindByNameAsync(roleName);
             if (role == null) return Failure("Role not found", 404);
 
-            var claims = await _roleManager.GetClaimsAsync(role);
-            var permissions = claims
-                .Where(c => c.Type == "Permission")
-                .Select(c => c.Value)
-                .ToList();
+            var grantedPolicyIds = await _context.RolePolicies
+                .Where(rp => rp.RoleId == role.Id && rp.IsGranted)
+                .Select(rp => rp.PolicyId)
+                .ToListAsync();
 
-            return Success(new { Role = roleName, Permissions = permissions });
+            var grantedPolicyKeys = await _context.SystemPolicies
+                .Where(p => grantedPolicyIds.Contains(p.Id))
+                .Select(p => p.PolicyKey)
+                .ToListAsync();
+
+            return Success(new { Role = roleName, Permissions = grantedPolicyKeys });
         }
 
         // PUT: api/policies/{roleName}
-        // Updates the permissions for the role (Replaces existing permissions)
+        // Updates the permissions for the role using the new relational table.
+        // If a policy is present in the list, it is GRANTED. If missing, it is REVOKED (deleted or set to false).
         [HttpPut("{roleName}")]
-        public async Task<IActionResult> UpdateRolePermissions(string roleName, [FromBody] List<string> newPermissions)
+        public async Task<IActionResult> UpdateRolePermissions(string roleName, [FromBody] List<string> newPolicyKeys)
         {
             var role = await _roleManager.FindByNameAsync(roleName);
             if (role == null) return Failure("Role not found", 404);
 
-            // Handle null input as empty list
-            newPermissions = newPermissions ?? new List<string>();
+            newPolicyKeys = newPolicyKeys ?? new List<string>();
 
-            Console.WriteLine($"📝 Updating permissions for role '{roleName}':");
-            Console.WriteLine($"   New permissions count: {newPermissions.Count}");
+            // 1. Resolve Policy Keys to IDs
+            var validPolicies = await _context.SystemPolicies
+                .Where(p => newPolicyKeys.Contains(p.PolicyKey))
+                .ToListAsync();
 
-            // 1. Get existing claims
-            var currentClaims = await _roleManager.GetClaimsAsync(role);
+            var validPolicyIds = validPolicies.Select(p => p.Id).ToHashSet();
 
-            // 2. Identify Permission claims to remove
-            var permissionsToRemove = currentClaims.Where(c => c.Type == "Permission").ToList();
+            // 2. Fetch Existing Links
+            var existingLinks = await _context.RolePolicies
+                .Where(rp => rp.RoleId == role.Id)
+                .ToListAsync();
 
-            Console.WriteLine($"   Removing {permissionsToRemove.Count} old permissions...");
+            // 3. Update / Insert / Delete Logic
+            // Strategy: We want the database state to match the input list.
 
-            // 3. Remove them ALL (even if newPermissions is empty)
-            foreach (var claim in permissionsToRemove)
+            // A. policies to GRANT (in input)
+            foreach (var policyId in validPolicyIds)
             {
-                await _roleManager.RemoveClaimAsync(role, claim);
-                Console.WriteLine($"   ✓ Removed: {claim.Value}");
-            }
-
-            // 4. Add new permissions as Claims (if any)
-            if (newPermissions.Count > 0)
-            {
-                Console.WriteLine($"   Adding {newPermissions.Count} new permissions...");
-                foreach (var permission in newPermissions)
+                var existing = existingLinks.FirstOrDefault(rp => rp.PolicyId == policyId);
+                if (existing != null)
                 {
-                    await _roleManager.AddClaimAsync(role, new Claim("Permission", permission));
-                    Console.WriteLine($"   ✓ Added: {permission}");
+                    // Already exists, ensure it is granted
+                    if (!existing.IsGranted) existing.IsGranted = true;
+                }
+                else
+                {
+                    // Does not exist, create new link
+                    _context.RolePolicies.Add(new RolePolicy
+                    {
+                        RoleId = role.Id,
+                        PolicyId = policyId,
+                        IsGranted = true
+                    });
                 }
             }
-            else
+
+            // B. policies to REVOKE (not in input, but exist in db)
+            foreach (var link in existingLinks)
             {
-                Console.WriteLine($"   ⊘ No new permissions to add (role will have ZERO permissions)");
+                if (!validPolicyIds.Contains(link.PolicyId))
+                {
+                    // Option 1: Hard Delete (Cleaner table)
+                    _context.RolePolicies.Remove(link);
+
+                    // Option 2: Soft Delete (IsGranted = false)
+                    // link.IsGranted = false; 
+                }
             }
 
-            Console.WriteLine($"✅ Permission update complete for '{roleName}'");
-            return Success(new { Message = $"Permissions updated for role {roleName}", Count = newPermissions.Count });
+            await _context.SaveChangesAsync();
+
+            return Success(new { Message = $"Permissions updated for role {roleName}", Count = validPolicyIds.Count });
         }
     }
 }

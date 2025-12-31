@@ -1,3 +1,4 @@
+import React from 'react';
 import AdminDashboardView from './admin/AdminDashboardView';
 import AdminUsersListView from './admin/AdminUsersListView';
 import AdminChartsView from './admin/AdminChartsView';
@@ -11,13 +12,19 @@ import AdminResourceView from './admin/AdminResourceView';
 import TaskListView from './tasks/TaskListView';
 import TaskKanbanView from './tasks/TaskKanbanView';
 import KycFormMaster from './user/KycFormMaster';
+import MenuManagementView from './admin/MenuManagementView';
 
+
+// Placeholder for missing component
+const SupportComponent = () => (
+    <div className="p-8 text-center text-gray-500">Support Module (Coming Soon)</div>
+);
 
 /**
  * Maps a viewId (from database/menu) to a React Component.
  * Supports permission checks if needed directly, but usually filtering handles it.
  */
-export const getViewComponent = (viewId, props) => {
+export const getViewComponent = (viewId: string, props: any): React.ReactNode => {
     switch (viewId) {
         // --- Core Dashboards ---
         case 'dashboard':
@@ -26,10 +33,8 @@ export const getViewComponent = (viewId, props) => {
         case 'kyc':
             return <KycFormMaster {...props} />;
 
-
-
         case 'support_view':  // This ID must match the 'ViewId' in the backend
-            return <SupportComponent {...props} />;
+            return <SupportComponent />;
 
         // --- Users & Roles ---
         case 'users':
@@ -39,13 +44,10 @@ export const getViewComponent = (viewId, props) => {
             return <RolesManagementView {...props} />;
         case 'policies':
             return <PolicyEditorView {...props} />;
+        case 'menu_management':
+            return <MenuManagementView {...props} />;
         case 'access':
             return <AccessManagementView {...props} />;
-
-        //  mapped viewId 'support_view' to SupportComponent
-        // case 'support_view': 
-        //     return <SupportComponent {...props} />;
-
 
         // --- Analytics ---
         case 'charts':
@@ -53,7 +55,6 @@ export const getViewComponent = (viewId, props) => {
 
         // --- Tasks ---
         case 'tasks':
-            // Generic Parent View (can be generic resource view or a landing page)
             return <AdminResourceView resourceName="Tasks Overview" {...props} />;
         case 'task_list':
             return <TaskListView {...props} />;

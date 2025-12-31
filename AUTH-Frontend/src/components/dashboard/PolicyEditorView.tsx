@@ -11,7 +11,12 @@ import { mapBackendPermissionsToFrontend, mapFrontendPermissionsToBackend } from
  * 
  * Now integrated with backend API for real-time permission updates.
  */
-const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
+interface PolicyEditorViewProps {
+    roles: any[];
+    onPermissionsUpdated?: () => void;
+}
+
+const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermissionsUpdated }) => {
     /**
      * ===================================================================================
      * 🛠️ DEVELOPER GUIDE: POLICY EDITOR RESOURCES
@@ -52,6 +57,7 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
         { id: 'reports', name: 'Reports' },
         { id: 'audit', name: 'Audit Logs' },
         { id: 'notifications', name: 'Notifications' },
+        { id: 'kyc', name: 'KYC Verification' },
         { id: 'security', name: 'Security' },
         { id: 'backup', name: 'Backup & Restore' }
     ];
@@ -65,10 +71,10 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
         { id: 'sidebar', name: 'Sidebar', color: 'bg-green-100 text-green-700' } // Explicit Sidebar Visibility
     ];
 
-    const [policies, setPolicies] = useState({});
+    const [policies, setPolicies] = useState<Record<string, Record<string, any>>>({});
     const [loading, setLoading] = useState(true);
     const [saveMessage, setSaveMessage] = useState("");
-    const [activeRole, setActiveRole] = useState(null);
+    const [activeRole, setActiveRole] = useState<string | null>(null);
 
     // Filter editable roles (exclude SuperAdmin)
     const editableRoles = roles.filter(r => {
@@ -80,7 +86,7 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
     useEffect(() => {
         const fetchPoliciesFromBackend = async () => {
             setLoading(true);
-            const policiesData = {};
+            const policiesData: Record<string, Record<string, any>> = {};
             const apiBase = 'http://localhost:3001';
             const token = localStorage.getItem('authToken');
 
@@ -97,9 +103,10 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
                     });
 
                     if (response.ok) {
-                        const data = await response.json();
-                        // data.permissions is an array of backend permission strings
-                        const backendPermissions = data.permissions || [];
+                        const res = await response.json();
+                        const data = res.data || {};
+                        // data.Permissions is an array of backend permission strings
+                        const backendPermissions = data.permissions || data.Permissions || [];
 
                         // Convert to frontend format
                         const frontendPermissions = mapBackendPermissionsToFrontend(backendPermissions);
@@ -109,9 +116,9 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
                     } else {
                         console.error(`Failed to fetch permissions for ${roleName}`);
                         // Initialize with empty permissions
-                        policiesData[roleName] = {};
+                        const emptyPolicy: Record<string, any> = {};
                         resources.forEach(res => {
-                            policiesData[roleName][res.id] = {
+                            (emptyPolicy as any)[res.id] = {
                                 create: false,
                                 read: false,
                                 update: false,
@@ -119,6 +126,7 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
                                 sidebar: false
                             };
                         });
+                        (policiesData as any)[roleName] = emptyPolicy;
                     }
                 }
 
@@ -142,9 +150,8 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
         }
     }, [roles]);
 
-    // Helper: Convert frontend permissions to resource-based format
-    const convertToResourceFormat = (frontendPermissions) => {
-        const resourceFormat = {};
+    const convertToResourceFormat = (frontendPermissions: any) => {
+        const resourceFormat: Record<string, any> = {};
 
         resources.forEach(res => {
             // Check both nested object format (users.create) and flat format (create_users)
@@ -163,25 +170,28 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
     };
 
     const initializeDefaultPolicies = () => {
-        const defaults = {};
+        const defaults: Record<string, Record<string, any>> = {};
         roles.forEach(role => {
             const roleName = role.Name || role.name || role;
             defaults[roleName] = {};
             resources.forEach(res => {
                 const isSuper = roleName === 'SuperAdmin';
-                defaults[roleName][res.id] = {
+                const resourcePolicy: Record<string, boolean> = {
                     create: isSuper,
                     read: isSuper || (roleName === 'User' && res.id === 'projects'),
                     update: isSuper,
                     delete: isSuper,
                     sidebar: isSuper || (roleName === 'User' && res.id === 'projects')
                 };
+                if (defaults[roleName]) {
+                    defaults[roleName][res.id] = resourcePolicy;
+                }
             });
         });
         setPolicies(defaults);
     };
 
-    const handlePermissionChange = (roleName, resourceId, actionId) => {
+    const handlePermissionChange = (roleName: string, resourceId: string, actionId: string) => {
         setPolicies(prev => {
             const rolePolicy = prev[roleName] || {};
 
@@ -234,6 +244,7 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
             // Save each role's permissions to backend
             for (const roleName of Object.keys(policies)) {
                 const rolePolicy = policies[roleName];
+                if (!rolePolicy) continue;
 
                 // Convert resource-based format to backend permission array
                 const backendPermissions = convertResourceFormatToBackend(rolePolicy);
@@ -280,8 +291,8 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
     };
 
     // Helper: Convert resource-based format to backend permission array
-    const convertResourceFormatToBackend = (resourcePolicy) => {
-        const frontendPermissions = {};
+    const convertResourceFormatToBackend = (resourcePolicy: Record<string, any>) => {
+        const frontendPermissions: Record<string, any> = {};
 
         // Convert resource format to nested frontend format that mapper expects
         Object.keys(resourcePolicy).forEach(resourceId => {
@@ -381,7 +392,7 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
                                     </h3>
                                     <p className="text-xs text-gray-500 mt-1">Configure permissions for {activeRole}</p>
                                 </div>
-                                <div className="text-xs text-gray-400 font-mono">id: {activeRole.toLowerCase().replace(/\s+/g, '_')}</div>
+                                <div className="text-xs text-gray-400 font-mono">id: {activeRole ? activeRole.toLowerCase().replace(/\s+/g, '_') : ''}</div>
                             </div>
 
                             <div className="p-0 overflow-x-auto">
@@ -399,15 +410,15 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
                                     <tbody className="divide-y divide-gray-100">
                                         {resources.map((resource, idx) => {
                                             // Helper to calculate depth recursively
-                                            const getDepth = (id, currentDepth = 0) => {
+                                            const getDepth = (id: string, currentDepth: number = 0): number => {
                                                 const res = resources.find(r => r.id === id);
                                                 if (!res || !res.parent) return currentDepth;
                                                 return getDepth(res.parent, currentDepth + 1);
                                             };
 
                                             const depth = getDepth(resource.id);
-                                            const rolePolicy = policies[activeRole] || {};
-                                            const resPolicy = rolePolicy[resource.id] || {};
+                                            const rolePolicy = activeRole ? policies[activeRole] : null;
+                                            const resPolicy = rolePolicy ? rolePolicy[resource.id] || {} : {};
                                             const isAlt = idx % 2 === 0;
 
                                             return (
@@ -439,7 +450,7 @@ const PolicyEditorView = ({ roles, onPermissionsUpdated }) => {
                                                         // -----------------------------------------------------------------------
                                                         // SPECIAL CASE: 'Tasks' and 'Projects' parents only need Sidebar toggle
                                                         // -----------------------------------------------------------------------
-                                                        if ((resource.id === 'tasks' || resource.id === 'projects' || resource.id === 'my_projects') 
+                                                        if ((resource.id === 'tasks' || resource.id === 'projects' || resource.id === 'my_projects')
                                                             && action.id !== 'sidebar') {
                                                             return (
                                                                 <td key={action.id} className="py-4 px-4 text-center align-middle">

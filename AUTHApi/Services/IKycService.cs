@@ -23,11 +23,18 @@ namespace AUTHApi.Services
         /// <summary>
         /// Uploads a document and creates a KycDocument record.
         /// </summary>
-        Task<KycDocument> UploadDocumentAsync(int sessionId, string documentType, string fileName, byte[] content, string contentType);
+        Task<KycDocument> UploadDocumentAsync(int sessionId, string documentType, string fileName, byte[] content,
+            string contentType);
 
         /// <summary>
         /// Retrieves the progress information for a KYC session.
         /// </summary>
         Task<KycProgressDto> GetProgressAsync(int sessionId);
+
+        /// <summary>
+        /// Retrieves an existing KYC session or creates a new one for the user/email.
+        /// Handles initial step seeding if creating a new session.
+        /// </summary>
+        Task<KycFormSession> GetOrCreateSessionAsync(string? userId, string? email);
     }
 }

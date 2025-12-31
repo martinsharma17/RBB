@@ -1,20 +1,31 @@
-// src/components/dashboard/Sidebar.jsx
-
+import React from 'react';
 import SidebarUserContext from './SidebarUserContext'; // [NEW]
+import { SidebarItem as SidebarItemType, Permissions } from '../../types';
 
-const Sidebar = ({
+interface SidebarProps {
+    sidebarOpen: boolean;
+    setSidebarOpen: (open: boolean) => void;
+    activeView: string;
+    setActiveView: (view: string) => void;
+    menuItems: SidebarItemType[];
+    onLogout: () => void;
+    user: any;
+    permissions: Permissions | null;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({
     sidebarOpen,
     setSidebarOpen,
     activeView,
     setActiveView,
     menuItems,
     onLogout,
-    user,        // [FIX] Restored user prop
-    permissions  // [NEW] Accept permissions prop
+    user,
+    permissions
 }) => {
-    const [expandedMenus, setExpandedMenus] = React.useState({});
+    const [expandedMenus, setExpandedMenus] = React.useState<Record<string, boolean>>({});
 
-    const toggleMenu = (menuId) => {
+    const toggleMenu = (menuId: string) => {
         setExpandedMenus(prev => ({
             ...prev,
             [menuId]: !prev[menuId]
@@ -92,7 +103,19 @@ const Sidebar = ({
 };
 
 // Recursive Sidebar Item Component
-const SidebarItem = ({
+interface SidebarItemProps {
+    item: any;
+    depth: number;
+    activeView: string;
+    setActiveView: (view: string) => void;
+    sidebarOpen: boolean;
+    setSidebarOpen: (open: boolean) => void;
+    expandedMenus: Record<string, boolean>;
+    toggleMenu: (menuId: string) => void;
+    permissions: Permissions | null;
+}
+
+const SidebarItem: React.FC<SidebarItemProps> = ({
     item,
     depth,
     activeView,
@@ -101,7 +124,7 @@ const SidebarItem = ({
     setSidebarOpen,
     expandedMenus,
     toggleMenu,
-    permissions // [NEW]
+    permissions
 }) => {
     const Icon = item.icon;
     const hasChildren = item.children && item.children.length > 0;
@@ -132,7 +155,7 @@ const SidebarItem = ({
                         : "text-gray-300 hover:bg-gray-800"
                     }`}
                 style={{ paddingLeft, paddingRight: '1rem' }}
-                title={item.title}
+                title={item.url ? `${item.label} (${item.url})` : item.label} // Show URL in tooltip if available
             >
                 <div className="flex items-center gap-3">
                     {/* Only show icon for top-level items to keep it clean, or use dot for children */}
@@ -143,7 +166,7 @@ const SidebarItem = ({
                         <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : 'bg-gray-500'}`}></div>
                     )}
 
-                    {sidebarOpen && <span className="text-sm truncate">{item.title}</span>}
+                    {sidebarOpen && <span className="text-sm truncate">{item.label}</span>}
                 </div>
 
                 {/* [NEW] Permission Context Badges */}
@@ -181,7 +204,7 @@ const SidebarItem = ({
             {/* Recursive Children Rendering */}
             {hasChildren && sidebarOpen && isExpanded && (
                 <div className="space-y-1">
-                    {item.children.map((child) => (
+                    {item.children.map((child: any) => (
                         <SidebarItem
                             key={child.id}
                             item={child}
@@ -201,8 +224,13 @@ const SidebarItem = ({
     );
 };
 
-// [NEW] Helper to render permission badge
-const PermissionBadge = ({ label, active, color }) => {
+interface PermissionBadgeProps {
+    label: string;
+    active: boolean | undefined;
+    color: string;
+}
+
+const PermissionBadge: React.FC<PermissionBadgeProps> = ({ label, active, color }) => {
     if (!active) return null;
     return (
         <span className={`text-[10px] uppercase font-bold px-1 rounded mx-0.5 ${color} text-white opacity-80`} title={label}>

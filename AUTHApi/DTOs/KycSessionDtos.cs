@@ -1,13 +1,10 @@
-using System;
-using System.Collections.Generic;
-
 namespace AUTHApi.DTOs
 {
     public class KycInitializeDto
     {
         public string Email { get; set; } = string.Empty;
         public string? MobileNo { get; set; }
-        public string? IPAddress { get; set; }
+        public string? IpAddress { get; set; }
         public string? UserAgent { get; set; }
         public string? DeviceFingerprint { get; set; }
     }
@@ -15,8 +12,9 @@ namespace AUTHApi.DTOs
     public class VerifyOtpDto
     {
         public int SessionId { get; set; }
-        public string OTPCode { get; set; } = string.Empty;
-        public byte OTPType { get; set; } // 1=Email, 2=Mobile
+        public string? Email { get; set; }
+        public string? OtpCode { get; set; }
+        public int OtpType { get; set; } // 1=Email, 2=Mobile
     }
 
     public class KycSessionResponseDto

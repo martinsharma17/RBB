@@ -3,6 +3,8 @@ using AUTHApi.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace AUTHApi.Controllers;
@@ -97,39 +99,35 @@ public class UserController : BaseApiController
     [HttpGet("my-permissions")]
     public async Task<IActionResult> GetMyPermissions()
     {
+        var context = HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
         var user = await _userManager.GetUserAsync(User);
         if (user == null) return Failure("User not found", 404);
 
         // 1. Get user's roles
         var roles = await _userManager.GetRolesAsync(user);
 
-        var distinctPermissions = new HashSet<string>();
-
-        // 2. Iterate through roles and collect Permission claims
-        // Note: In a real app, you might want to cache this or use a claims transformation service.
-        // For now, we query the DB for claims of each role.
-        var roleManager = HttpContext.RequestServices.GetRequiredService<RoleManager<IdentityRole>>();
-
-        foreach (var roleName in roles)
-        {
-            var role = await roleManager.FindByNameAsync(roleName);
-            if (role != null)
-            {
-                var claims = await roleManager.GetClaimsAsync(role);
-                foreach (var claim in claims.Where(c => c.Type == "Permission"))
-                {
-                    distinctPermissions.Add(claim.Value);
-                }
-            }
-        }
-
-        // 3. SuperAdmin Bypass: If user is SuperAdmin, give all Permissions
+        // 2. SuperAdmin Bypass: If user is SuperAdmin, give all Permissions
         if (roles.Contains("SuperAdmin"))
         {
             return Success(AUTHApi.Core.Security.Permissions.GetAllPermissions());
         }
 
-        return Success(distinctPermissions);
+        // 3. Resolve Effective Permissions (Policies) from RolePolicy table
+        var roleIds = await context.Roles
+            .Where(r => r.Name != null && roles.Contains(r.Name))
+            .Select(r => r.Id)
+            .ToListAsync();
+
+        var grantedPolicyKeys = await context.RolePolicies
+            .Where(rp => roleIds.Contains(rp.RoleId) && rp.IsGranted)
+            .Join(context.SystemPolicies,
+                rp => rp.PolicyId,
+                p => p.Id,
+                (rp, p) => p.PolicyKey)
+            .Distinct()
+            .ToListAsync();
+
+        return Success(grantedPolicyKeys);
     }
 
     // PUT: api/User/profile

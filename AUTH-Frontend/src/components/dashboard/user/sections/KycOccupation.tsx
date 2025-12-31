@@ -1,39 +1,81 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
-import { cleanKycData } from '../../../../utils/kycUtils';
 
-const KycOccupation = ({ initialData, onNext, onBack }) => {
+interface KycOccupationProps {
+    sessionId: number | null;
+    initialData?: any;
+    onNext: (data: any) => void;
+    onBack: () => void;
+}
+
+interface KycOccupationData {
+    occupation: string;
+    orgName: string;
+    orgAddress: string;
+    designation: string;
+    employeeIdNo: string;
+    annualIncomeBracket: string;
+    [key: string]: any;
+}
+
+const KycOccupation: React.FC<KycOccupationProps> = ({ sessionId, initialData, onNext, onBack }) => {
     const { token, apiBase } = useAuth();
-    const [formData, setFormData] = useState(initialData || {
-        occupation: '',
-        orgName: '',
-        orgAddress: '',
-        designation: '',
-        employeeIdNo: '',
-        annualIncomeBracket: ''
-    });
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState(null);
 
-    const handleChange = (e) => {
+    const [formData, setFormData] = useState<KycOccupationData>({
+        occupation: initialData?.occupationType || initialData?.occupation || '',
+        orgName: initialData?.organizationName || initialData?.orgName || '',
+        orgAddress: initialData?.organizationAddress || initialData?.orgAddress || '',
+        designation: initialData?.designation || '',
+        employeeIdNo: initialData?.employeeIdNo || '',
+        annualIncomeBracket: initialData?.annualIncomeRange || initialData?.annualIncomeBracket || ''
+    });
+
+    useEffect(() => {
+        if (initialData) {
+            setFormData({
+                occupation: initialData?.occupationType || initialData?.occupation || '',
+                orgName: initialData?.organizationName || initialData?.orgName || '',
+                orgAddress: initialData?.organizationAddress || initialData?.orgAddress || '',
+                designation: initialData?.designation || '',
+                employeeIdNo: initialData?.employeeIdNo || '',
+                annualIncomeBracket: initialData?.annualIncomeRange || initialData?.annualIncomeBracket || ''
+            });
+        }
+    }, [initialData]);
+
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        if (!sessionId) {
+            setError("Session not initialized");
+            return;
+        }
         setSaving(true);
         setError(null);
-        const cleanedData = cleanKycData(formData);
 
         try {
-            const response = await fetch(`${apiBase}/api/Kyc/section/occupation`, {
+            const response = await fetch(`${apiBase}/api/KycData/save-occupation`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(cleanedData)
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    stepNumber: 6, // Adjusted to match backend if necessary, assuming 6 for occupation
+                    data: {
+                        occupationType: formData.occupation,
+                        organizationName: formData.orgName,
+                        organizationAddress: formData.orgAddress,
+                        designation: formData.designation,
+                        employeeIdNo: formData.employeeIdNo,
+                        annualIncomeRange: formData.annualIncomeBracket
+                    }
+                })
             });
 
             if (response.ok) {
@@ -51,22 +93,32 @@ const KycOccupation = ({ initialData, onNext, onBack }) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-bold text-gray-800">Section 5: Occupation Information</h2>
-                <p className="text-sm text-gray-500">Provide details about your profession and income.</p>
+                <h2 className="text-xl font-bold text-gray-800">Section 5: Occupation Details</h2>
+                <p className="text-sm text-gray-500">Provide information about your profession and income.</p>
             </div>
 
-            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
+            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium border border-red-200">{error}</div>}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Occupation</label>
-                    <input
-                        type="text"
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Occupation *</label>
+                    <select
                         name="occupation"
                         value={formData.occupation}
                         onChange={handleChange}
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
+                        required
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    >
+                        <option value="">Select Occupation</option>
+                        <option value="Salaried">Salaried</option>
+                        <option value="SelfEmployed">Self Employed</option>
+                        <option value="Student">Student</option>
+                        <option value="Retired">Retired</option>
+                        <option value="Housewife">Housewife</option>
+                        <option value="Business">Business</option>
+                        <option value="Agriculture">Agriculture</option>
+                        <option value="Others">Others</option>
+                    </select>
                 </div>
 
                 <div className="flex flex-col">
@@ -76,18 +128,7 @@ const KycOccupation = ({ initialData, onNext, onBack }) => {
                         name="orgName"
                         value={formData.orgName}
                         onChange={handleChange}
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                </div>
-
-                <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Designation</label>
-                    <input
-                        type="text"
-                        name="designation"
-                        value={formData.designation}
-                        onChange={handleChange}
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     />
                 </div>
 
@@ -98,35 +139,47 @@ const KycOccupation = ({ initialData, onNext, onBack }) => {
                         name="orgAddress"
                         value={formData.orgAddress}
                         onChange={handleChange}
-                        placeholder="Location of workplace"
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     />
                 </div>
 
                 <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Employee ID No (if any)</label>
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Designation</label>
+                    <input
+                        type="text"
+                        name="designation"
+                        value={formData.designation}
+                        onChange={handleChange}
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    />
+                </div>
+
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Employee ID / Business Reg No</label>
                     <input
                         type="text"
                         name="employeeIdNo"
                         value={formData.employeeIdNo}
                         onChange={handleChange}
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     />
                 </div>
 
                 <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Annual Income Bracket</label>
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Annual Income Bracket *</label>
                     <select
                         name="annualIncomeBracket"
                         value={formData.annualIncomeBracket}
                         onChange={handleChange}
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        required
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     >
-                        <option value="">Select Bracket</option>
-                        <option value="Below 2 Lakhs">Below 2 Lakhs</option>
-                        <option value="2-5 Lakhs">2-5 Lakhs</option>
-                        <option value="5-10 Lakhs">5-10 Lakhs</option>
-                        <option value="Above 10 Lakhs">Above 10 Lakhs</option>
+                        <option value="">Select Range</option>
+                        <option value="Below1Lakh">Below 1 Lakh</option>
+                        <option value="1LakhTo5Lakh">1 Lakh - 5 Lakh</option>
+                        <option value="5LakhTo10Lakh">5 Lakh - 10 Lakh</option>
+                        <option value="10LakhTo20Lakh">10 Lakh - 20 Lakh</option>
+                        <option value="Above20Lakh">Above 20 Lakh</option>
                     </select>
                 </div>
             </div>

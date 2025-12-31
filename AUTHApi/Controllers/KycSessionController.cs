@@ -3,10 +3,7 @@ using AUTHApi.DTOs;
 using AUTHApi.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AUTHApi.Services;
 
 namespace AUTHApi.Controllers
 {
@@ -15,10 +12,12 @@ namespace AUTHApi.Controllers
     public class KycSessionController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
+        private readonly IEmailService _emailService;
 
-        public KycSessionController(ApplicationDbContext context)
+        public KycSessionController(ApplicationDbContext context, IEmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
         }
 
         [HttpPost("initialize")]
@@ -33,10 +32,10 @@ namespace AUTHApi.Controllers
                 {
                     Email = model.Email,
                     MobileNo = model.MobileNo,
-                    IpAddress = model.IPAddress ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    IpAddress = model.IpAddress ?? Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
                     UserAgent = model.UserAgent,
                     DeviceFingerprint = model.DeviceFingerprint,
-                    SessionExpiryDate = DateTime.Now.AddDays(30),
+                    SessionExpiryDate = DateTime.UtcNow.AddDays(30),
                     CurrentStep = 1,
                     LastSavedStep = 0
                 };
@@ -76,7 +75,7 @@ namespace AUTHApi.Controllers
             if (session == null) return Failure("Session not found", 404);
 
             var oldOtps = await _context.KycOtpVerifications
-                .Where(o => o.SessionId == model.SessionId && o.OtpType == model.OTPType && !o.IsExpired)
+                .Where(o => o.SessionId == model.SessionId && o.OtpType == model.OtpType && !o.IsExpired)
                 .ToListAsync();
 
             foreach (var old in oldOtps) old.IsExpired = true;
@@ -86,33 +85,44 @@ namespace AUTHApi.Controllers
             var otp = new KycOtpVerification
             {
                 SessionId = session.Id,
-                OtpType = model.OTPType,
+                OtpType = (byte)model.OtpType,
                 OtpCode = otpCode,
-                SentToEmail = model.OTPType == 1 ? session.Email : null,
-                SentToMobile = model.OTPType == 2 ? session.MobileNo : null,
-                ExpiryDate = DateTime.Now.AddMinutes(10)
+                SentToEmail = model.OtpType == 1 ? session.Email : null,
+                SentToMobile = model.OtpType == 2 ? session.MobileNo : null,
+                ExpiryDate = DateTime.UtcNow.AddMinutes(10)
             };
 
             await _context.KycOtpVerifications.AddAsync(otp);
             await _context.SaveChangesAsync();
 
-            return Success(new { otpCode = otpCode, expiry = otp.ExpiryDate }, "OTP sent successfully");
+            // Send actual email if type is email
+            if (model.OtpType == 1)
+            {
+                string subject = "Your KYC Verification OTP";
+                string body = $@"
+                    <h3>KYC Verification</h3>
+                    <p>Your OTP code for email verification is: <strong>{otpCode}</strong></p>
+                    <p>This code will expire in 10 minutes.</p>";
+                await _emailService.SendEmailAsync(session.Email, subject, body);
+            }
+
+            return Success(new { otpCode, expiry = otp.ExpiryDate }, "OTP sent successfully");
         }
 
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto model)
         {
             var otp = await _context.KycOtpVerifications
-                .Where(o => o.SessionId == model.SessionId && o.OtpType == model.OTPType &&
-                            o.OtpCode == model.OTPCode && !o.IsExpired && !o.IsVerified &&
-                            o.ExpiryDate > DateTime.Now)
+                .Where(o => o.SessionId == model.SessionId && o.OtpType == model.OtpType &&
+                            o.OtpCode == model.OtpCode && !o.IsExpired && !o.IsVerified &&
+                            o.ExpiryDate > DateTime.UtcNow)
                 .OrderByDescending(o => o.CreatedDate)
                 .FirstOrDefaultAsync();
 
             if (otp == null)
             {
                 var activeOtp = await _context.KycOtpVerifications
-                    .Where(o => o.SessionId == model.SessionId && o.OtpType == model.OTPType && !o.IsExpired)
+                    .Where(o => o.SessionId == model.SessionId && o.OtpType == model.OtpType && !o.IsExpired)
                     .FirstOrDefaultAsync();
 
                 if (activeOtp != null)
@@ -126,20 +136,20 @@ namespace AUTHApi.Controllers
             }
 
             otp.IsVerified = true;
-            otp.VerifiedDate = DateTime.Now;
+            otp.VerifiedDate = DateTime.UtcNow;
 
             var session = await _context.KycFormSessions.FindAsync(model.SessionId);
             if (session != null)
             {
-                if (model.OTPType == 1)
+                if (model.OtpType == 1)
                 {
                     session.EmailVerified = true;
-                    session.EmailVerifiedDate = DateTime.Now;
+                    session.EmailVerifiedDate = DateTime.UtcNow;
                 }
-                else if (model.OTPType == 2)
+                else if (model.OtpType == 2)
                 {
                     session.MobileVerified = true;
-                    session.MobileVerifiedDate = DateTime.Now;
+                    session.MobileVerifiedDate = DateTime.UtcNow;
                 }
 
                 await _context.SaveChangesAsync();
@@ -200,9 +210,9 @@ namespace AUTHApi.Controllers
             if (completion == null) return Failure("Step tracking not found", 404);
 
             completion.IsCompleted = true;
-            completion.CompletedDate = DateTime.Now;
+            completion.CompletedDate = DateTime.UtcNow;
             completion.IsSaved = true;
-            completion.SavedDate = DateTime.Now;
+            completion.SavedDate = DateTime.UtcNow;
             if (model.RecordId.HasValue) completion.RecordId = model.RecordId;
 
             var session = await _context.KycFormSessions.FindAsync(model.SessionId);
@@ -210,7 +220,7 @@ namespace AUTHApi.Controllers
             {
                 session.LastSavedStep = model.StepNumber;
                 session.CurrentStep = model.StepNumber + 1;
-                session.LastActivityDate = DateTime.Now;
+                session.LastActivityDate = DateTime.UtcNow;
 
                 var requiredSteps = await _context.KycFormSteps.Where(s => s.IsRequired).Select(s => s.StepNumber)
                     .ToListAsync();

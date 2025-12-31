@@ -4,12 +4,19 @@ import React, { useState } from 'react';
  * KycVerification - Handles the initial Email/OTP verification 
  * that must be completed before the KYC form is visible.
  */
-const KycVerification = ({ initialEmail, sessionId, onVerified, apiBase }) => {
+interface KycVerificationProps {
+    initialEmail?: string;
+    sessionId: string | number | null;
+    onVerified: () => void;
+    apiBase: string;
+}
+
+const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, sessionId, onVerified, apiBase }) => {
     const [email, setEmail] = useState(initialEmail || '');
     const [otp, setOtp] = useState('');
     const [step, setStep] = useState(1); // 1: Enter Email, 2: Enter OTP
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState('');
 
     const handleSendOtp = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -94,7 +101,7 @@ const KycVerification = ({ initialEmail, sessionId, onVerified, apiBase }) => {
                             required
                             placeholder="your@email.com"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                            disabled={initialEmail} // Disable if already provided by Auth
+                            disabled={!!initialEmail} // Disable if already provided by Auth
                         />
                     </div>
                     <button
@@ -111,7 +118,7 @@ const KycVerification = ({ initialEmail, sessionId, onVerified, apiBase }) => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Enter 6-Digit OTP</label>
                         <input
                             type="text"
-                            maxLength="6"
+                            maxLength={6}
                             value={otp}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtp(e.target.value)}
                             required
