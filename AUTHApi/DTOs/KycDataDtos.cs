@@ -51,8 +51,8 @@ namespace AUTHApi.DTOs
     {
         public string? OccupationType { get; set; }
         public string? OtherOccupation { get; set; }
-        public byte? ServiceSector { get; set; }
-        public byte? BusinessType { get; set; }
+        public string? ServiceSector { get; set; }
+        public string? BusinessType { get; set; }
         public string? OrganizationName { get; set; }
         public string? OrganizationAddress { get; set; }
         public string? Designation { get; set; }

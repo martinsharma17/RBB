@@ -85,24 +85,53 @@ namespace AUTHApi.Controllers
                     FatherName = detail.FatherName,
                     MotherName = detail.MotherName,
                     GrandFatherName = detail.GrandFatherName,
-                    SpouseName = detail.SpouseName
+                    SpouseName = detail.SpouseName,
+                    SonName = detail.SonName,
+                    DaughterName = detail.DaughterName
                 },
                 Bank = new BankDto
                 {
                     BankName = detail.BankName ?? string.Empty,
                     BankAccountNo = detail.BankAccountNumber ?? string.Empty,
-                    BankAddress = detail.BankBranch
+                    BankAddress = detail.BankBranch,
+                    AccountType =
+                        byte.TryParse(detail.BankAccountType, out var accType)
+                            ? accType
+                            : (byte?)null // Attempt to parse back if needed or use logic
                 },
                 Occupation = new OccupationDto
                 {
                     OccupationType = detail.Occupation,
+                    OtherOccupation = detail.OtherOccupation,
+                    ServiceSector = detail.ServiceSector,
+                    BusinessType = detail.BusinessType,
                     OrganizationName = detail.OrganizationName,
-                    Designation = detail.Designation
+                    OrganizationAddress = detail.OrganizationAddress,
+                    Designation = detail.Designation,
+                    EmployeeIdNo = detail.EmployeeIdNo,
+                    AnnualIncomeRange = detail.AnnualIncome
                 },
                 FinancialDetails = new FinancialDetailsDto
                 {
                     EstimatedAnnualIncome = detail.AnnualIncome,
                     AnnualIncomeRange = detail.AnnualIncome
+                },
+                Guardian = new GuardianDto
+                {
+                    FullName = detail.GuardianName ?? string.Empty,
+                    Relationship = detail.GuardianRelationship ?? string.Empty,
+                    Address = detail.GuardianAddress,
+                    ContactNo = detail.GuardianContactNo,
+                    EmailId = detail.GuardianEmail,
+                    PermanentAccountNo = detail.GuardianPanNumber
+                },
+                AmlCompliance = new AmlComplianceDto
+                {
+                    IsPoliticallyExposedPerson = detail.IsPep,
+                    PepRelationName = detail.PepRelation,
+                    HasBeneficialOwner = detail.HasBeneficialOwner,
+                    HasCriminalRecord = detail.HasCriminalRecord,
+                    CriminalRecordDetails = detail.CriminalRecordDetails
                 },
                 Attachments = detail.Documents.Select(d => new KycAttachmentDto
                 {
@@ -114,7 +143,27 @@ namespace AUTHApi.Controllers
                     FilePath = $"/api/KycData/document/{d.Id}", // URL for the frontend to fetch the image
                     MimeType = d.ContentType,
                     FileSize = d.FileSize
-                }).ToList()
+                }).ToList(),
+                LocationMap = new LocationMapDto
+                {
+                    Landmark = detail.LocationLandmark,
+                    DistanceFromMainRoad = detail.LocationDistance,
+                    Latitude = detail.LocationLatitude,
+                    Longitude = detail.LocationLongitude,
+                    CanvasDataJson = detail.LocationSketchJson
+                },
+                Declarations = new DeclarationsDto
+                {
+                    AgreeToTerms = detail.AgreeToTerms,
+                    NoOtherFinancialLiability = detail.NoOtherFinancialLiability,
+                    AllInformationTrue = detail.AllInformationTrue
+                },
+                Agreement = new AgreementDto
+                {
+                    AgreementDate = detail.AgreementDate ?? DateTime.Now,
+                    TradingLimit = detail.TradingLimit,
+                    MarginTradingFacility = detail.MarginTradingFacility
+                }
             };
 
             return Success(response);
@@ -276,8 +325,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 11, model.Data);
-            await UpdateStepProgress(model.SessionId, 11, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 12, model.Data);
+            await UpdateStepProgress(model.SessionId, 12, recordId);
             return Success(new { recordId });
         }
 
@@ -290,8 +339,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 12, model.Data);
-            await UpdateStepProgress(model.SessionId, 12, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 13, model.Data);
+            await UpdateStepProgress(model.SessionId, 13, recordId);
             return Success(new { recordId });
         }
 
@@ -304,8 +353,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 13, model.Data);
-            await UpdateStepProgress(model.SessionId, 13, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 14, model.Data);
+            await UpdateStepProgress(model.SessionId, 14, recordId);
             return Success(new { recordId });
         }
 
@@ -361,6 +410,7 @@ namespace AUTHApi.Controllers
             }
         }
 
+
         /// <summary>
         /// Retrieve a document's binary data from the database.
         /// </summary>
@@ -397,6 +447,8 @@ namespace AUTHApi.Controllers
                 progress.SavedDate = DateTime.UtcNow;
                 progress.RecordId = recordId;
                 progress.ModifiedDate = DateTime.UtcNow;
+                progress.IsCompleted = true;
+                progress.CompletedDate = DateTime.UtcNow;
             }
 
             var session = await _context.KycFormSessions.FindAsync(sessionId);

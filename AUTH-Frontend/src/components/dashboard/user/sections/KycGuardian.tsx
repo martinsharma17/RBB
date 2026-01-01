@@ -85,7 +85,9 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                         fullName: formData.name,
                         relationship: formData.relationship,
                         address: formData.address,
-                        contactNo: formData.contactNo
+                        contactNo: formData.contactNo,
+                        emailId: formData.email,
+                        permanentAccountNo: formData.panNo
                     }
                 })
             });
@@ -151,6 +153,28 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                         type="text"
                         name="contactNo"
                         value={formData.contactNo}
+                        onChange={handleChange}
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    />
+                </div>
+
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Email Address</label>
+                    <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    />
+                </div>
+
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">PAN Number</label>
+                    <input
+                        type="text"
+                        name="panNo"
+                        value={formData.panNo}
                         onChange={handleChange}
                         className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     />

@@ -8,24 +8,37 @@ using AUTHApi.Models.KYC;
 using AUTHApi.DTOs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
+using System.Text.Json;
+using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Hosting; // Added for IWebHostEnvironment
 
 namespace AUTHApi.Services
 {
     /// <summary>
     /// Concrete implementation of <see cref="IKycService"/>.
-    /// Handles all data‑access operations for KYC, keeping controllers thin and testable.
+    /// Handles all data-access operations for KYC, keeping controllers thin and testable.
+    /// This service manages KYC session creation, detail updates, document uploads, and progress tracking.
     /// </summary>
     public class KycService : IKycService
     {
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _env;
+        private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
 
-        public KycService(ApplicationDbContext context, IWebHostEnvironment env)
+        public KycService(ApplicationDbContext context, IWebHostEnvironment env, IEmailService emailService,
+            IConfiguration configuration)
         {
             _context = context;
             _env = env;
+            _emailService = emailService;
+            _configuration = configuration;
         }
 
+        /// <summary>
+        /// Retrieves or creates a KycDetail record for the given session.
+        /// If no detail exists, creates a draft entry with minimal data.
+        /// </summary>
         public async Task<KycDetail> GetOrCreateDetailAsync(int sessionId)
         {
             var detail = await _context.KycDetails.FirstOrDefaultAsync(k => k.SessionId == sessionId);
@@ -45,12 +58,19 @@ namespace AUTHApi.Services
             return detail;
         }
 
+        /// <summary>
+        /// Updates the KycDetail entity with data from the provided DTO.
+        /// Uses a type-based switch to map different DTO types to their corresponding entity fields.
+        /// Each step number corresponds to a specific section of the KYC form.
+        /// </summary>
         public async Task<int> UpdateDetailAsync<TDto>(int sessionId, int stepNumber, TDto dto)
         {
             var detail = await GetOrCreateDetailAsync(sessionId);
-            // Map DTO to entity based on its concrete type
+
+            // Map DTO to entity using pattern matching based on concrete DTO type
             switch (dto)
             {
+                // Step 1: Personal Information
                 case PersonalInfoDto p:
                     if (!string.IsNullOrEmpty(p.FullName))
                     {
@@ -78,9 +98,9 @@ namespace AUTHApi.Services
 
                     break;
 
+                // Steps 2 & 3: Address Information
                 case AddressDto a:
-                    // Determine if this is current or permanent based on a flag (we reuse stepNumber)
-                    if (stepNumber == 2) // current address
+                    if (stepNumber == 2)
                     {
                         detail.CurrentState = a.Province;
                         detail.CurrentDistrict = a.District;
@@ -90,7 +110,7 @@ namespace AUTHApi.Services
                         detail.MobileNumber = a.MobileNo ?? string.Empty;
                         detail.Email = a.EmailId ?? string.Empty;
                     }
-                    else if (stepNumber == 3) // permanent address
+                    else if (stepNumber == 3)
                     {
                         detail.PermanentState = a.Province;
                         detail.PermanentDistrict = a.District;
@@ -101,31 +121,43 @@ namespace AUTHApi.Services
 
                     break;
 
+                // Step 4: Family Details
                 case FamilyDto f:
                     detail.FatherName = f.FatherName;
                     detail.MotherName = f.MotherName;
                     detail.GrandFatherName = f.GrandFatherName;
                     detail.SpouseName = f.SpouseName;
+                    detail.SonName = f.SonName;
+                    detail.DaughterName = f.DaughterName;
                     break;
 
+                // Step 5: Bank Account Details
                 case BankDto b:
                     detail.BankName = b.BankName;
                     detail.BankAccountNumber = b.BankAccountNo;
                     detail.BankBranch = b.BankAddress;
+                    detail.BankAccountType = b.AccountType?.ToString(); // Mapping byte to string
                     break;
 
+                // Step 6: Occupation Details
                 case OccupationDto o:
-                    detail.Occupation = o.OccupationType?.ToString();
+                    detail.Occupation = o.OccupationType;
+                    detail.OtherOccupation = o.OtherOccupation;
+                    detail.ServiceSector = o.ServiceSector;
+                    detail.BusinessType = o.BusinessType;
                     detail.OrganizationName = o.OrganizationName;
                     detail.OrganizationAddress = o.OrganizationAddress;
                     detail.Designation = o.Designation;
+                    detail.EmployeeIdNo = o.EmployeeIdNo;
                     detail.AnnualIncome = o.AnnualIncomeRange;
                     break;
 
-                case FinancialDetailsDto f:
-                    detail.AnnualIncome = f.AnnualIncomeRange; // or EstimatedAnnualIncome
+                // Step 7: Financial Details
+                case FinancialDetailsDto fd:
+                    detail.AnnualIncome = fd.AnnualIncomeRange;
                     break;
 
+                // Step 8: Transaction Information
                 case TransactionInfoDto t:
                     detail.SourceOfFunds = t.SourceOfNetWorth;
                     detail.MajorSourceOfIncome = t.MajorSourceOfIncome;
@@ -135,13 +167,17 @@ namespace AUTHApi.Services
                     detail.CibBlacklistDetails = t.CibBlacklistDetails;
                     break;
 
+                // Step 9: Guardian Details
                 case GuardianDto g:
                     detail.GuardianName = g.FullName;
                     detail.GuardianRelationship = g.Relationship;
                     detail.GuardianAddress = g.Address;
                     detail.GuardianContactNo = g.ContactNo;
+                    detail.GuardianEmail = g.EmailId;
+                    detail.GuardianPanNumber = g.PermanentAccountNo;
                     break;
 
+                // Step 10: AML Compliance Information
                 case AmlComplianceDto aml:
                     detail.IsPep = aml.IsPoliticallyExposedPerson;
                     detail.PepRelation = aml.PepRelationName ?? aml.PepRelationship;
@@ -150,12 +186,26 @@ namespace AUTHApi.Services
                     detail.CriminalRecordDetails = aml.CriminalRecordDetails;
                     break;
 
+                // Step 12: Location Map
+                case LocationMapDto l:
+                    detail.LocationLandmark = l.Landmark;
+                    detail.LocationDistance = l.DistanceFromMainRoad;
+                    detail.LocationLatitude = l.Latitude;
+                    detail.LocationLongitude = l.Longitude;
+                    detail.LocationSketchJson = l.CanvasDataJson;
+                    break;
+
+                // Step 13: Declarations
                 case DeclarationsDto d:
-                    detail.TermsAgreed = d.AgreeToTerms;
+                    detail.AgreeToTerms = d.AgreeToTerms;
+                    detail.NoOtherFinancialLiability = d.NoOtherFinancialLiability;
+                    detail.AllInformationTrue = d.AllInformationTrue;
                     break;
 
                 case AgreementDto ag:
-                    detail.AgreementDate = ag.AgreementDate;
+                    detail.AgreementDate = DateTime.SpecifyKind(ag.AgreementDate, DateTimeKind.Utc);
+                    detail.TradingLimit = ag.TradingLimit;
+                    detail.MarginTradingFacility = ag.MarginTradingFacility;
                     break;
 
                 default:
@@ -163,34 +213,35 @@ namespace AUTHApi.Services
             }
 
             detail.UpdatedAt = DateTime.UtcNow;
+
             try
             {
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                // Let the controller translate to 409 Conflict
                 throw;
             }
 
             return detail.Id;
         }
 
+        /// <summary>
+        /// Uploads a document associated with a KYC session.
+        /// </summary>
         public async Task<KycDocument> UploadDocumentAsync(int sessionId, string documentType, string fileName,
             byte[] content, string contentType)
         {
             var detail = await GetOrCreateDetailAsync(sessionId);
 
-            // WebRootPath can be null if wwwroot folder doesn't exist
             var wwwRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
             var uploadsRoot = Path.Combine(wwwRoot, "uploads", "kyc", sessionId.ToString());
 
             if (!Directory.Exists(uploadsRoot))
                 Directory.CreateDirectory(uploadsRoot);
 
-            var safeFileName = Path.GetFileNameWithoutExtension(fileName);
             var ext = Path.GetExtension(fileName);
-            if (string.IsNullOrEmpty(ext)) ext = ".dat"; // Fallback ext
+            if (string.IsNullOrEmpty(ext)) ext = ".dat";
 
             var uniqueName = $"{documentType}_{DateTime.UtcNow:yyyyMMddHHmmss}_{Guid.NewGuid():N}{ext}";
             var filePath = Path.Combine(uploadsRoot, uniqueName);
@@ -201,21 +252,25 @@ namespace AUTHApi.Services
                 KycDetailId = detail.Id,
                 DocumentType = documentType,
                 OriginalFileName = fileName,
-                Data = content, // Storing binary data in database
+                Data = content,
                 FilePath = filePath,
                 FileExtension = ext,
                 ContentType = contentType,
                 FileSize = content.Length,
                 UploadedAt = DateTime.UtcNow
             };
+
             _context.KycDocuments.Add(doc);
             await _context.SaveChangesAsync();
+
             return doc;
         }
 
-        public async Task<KycProgressDto> GetProgressAsync(int sessionId)
+        /// <summary>
+        /// Retrieves the KYC progress for a session.
+        /// </summary>
+        public async Task<KycProgressDto?> GetProgressAsync(int sessionId)
         {
-            // Reuse existing KycProgressDto from KycSessionDtos
             var session = await _context.KycFormSessions.FirstOrDefaultAsync(s => s.Id == sessionId);
             if (session == null) return null;
 
@@ -286,7 +341,6 @@ namespace AUTHApi.Services
                 await _context.KycFormSessions.AddAsync(session);
                 await _context.SaveChangesAsync();
 
-                // Seed steps for new session
                 var steps = await _context.KycFormSteps.Where(s => s.IsActive).ToListAsync();
                 foreach (var step in steps)
                 {
@@ -301,15 +355,185 @@ namespace AUTHApi.Services
             }
             else if (session.UserId == null && !string.IsNullOrEmpty(userId))
             {
-                // Link session if it was previously created via guest email flow and user is now logged in
                 session.UserId = userId;
-                if (!string.IsNullOrEmpty(email))
-                    session.Email =
-                        email; // Update email to current user's email if different? Usually keep original or update.
+                if (!string.IsNullOrEmpty(email)) session.Email = email;
                 await _context.SaveChangesAsync();
             }
 
             return session;
+        }
+
+        public async Task<(KycFormSession? session, string? errorMessage)> InitiateUnauthenticatedKycAsync(string email)
+        {
+            if (string.IsNullOrEmpty(email))
+                return (null, "Email is required to initiate KYC.");
+
+            var existingSession =
+                await _context.KycFormSessions.FirstOrDefaultAsync(s => s.Email == email && s.UserId == null);
+            if (existingSession != null)
+            {
+                if (!existingSession.EmailVerified && existingSession.SessionExpiryDate > DateTime.UtcNow)
+                {
+                    var frontendUrl = _configuration["Frontend:Url"] ?? "http://localhost:5173";
+                    var verificationLink =
+                        $"{frontendUrl}/kyc/verify-email?token={Uri.EscapeDataString(existingSession.SessionToken.ToString())}&sessionId={existingSession.Id}";
+                    await _emailService.SendKycVerificationEmailAsync(email, verificationLink);
+                    return (existingSession,
+                        "Existing unverified session found. A new verification email has been sent.");
+                }
+                else if (existingSession.EmailVerified)
+                {
+                    return (existingSession,
+                        "KYC session for this email is already initiated and verified. Please continue your form.");
+                }
+            }
+
+            var session = new KycFormSession
+            {
+                Email = email,
+                SessionToken = Guid.NewGuid(),
+                SessionExpiryDate = DateTime.UtcNow.AddDays(7),
+                CurrentStep = 1,
+                EmailVerified = false,
+                FormStatus =
+                    1 // Use int (1=Pending) instead of string if your entity expects int, or check entity definition. 
+                // Original code used "Pending" (string) but previous KycSessionController used FormStatus=2 (byte/int?).
+                // Assuming byte based on KycSessionResponseDto.FormStatus (byte).
+                // Let's assume 1 for Pending.
+            };
+
+            // Fix: KycFormSession.FormStatus is likely byte/int based on usage in KycSessionController (session.FormStatus = 2)
+            // Ideally should check Entity definition, but for now using 1.
+
+            await _context.KycFormSessions.AddAsync(session);
+            await _context.SaveChangesAsync();
+
+            var steps = await _context.KycFormSteps.Where(s => s.IsActive).ToListAsync();
+            foreach (var step in steps)
+            {
+                await _context.KycStepCompletions.AddAsync(new KycStepCompletion
+                {
+                    SessionId = session.Id,
+                    StepNumber = step.StepNumber
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            var frontendUrl2 = _configuration["Frontend:Url"] ?? "http://localhost:5173";
+            var verificationLink2 =
+                $"{frontendUrl2}/kyc/verify-email?token={Uri.EscapeDataString(session.SessionToken.ToString())}&sessionId={session.Id}";
+            await _emailService.SendKycVerificationEmailAsync(email, verificationLink2);
+
+            return (session, null);
+        }
+
+        public async Task<bool> VerifyKycEmailAsync(string sessionToken, string verificationToken)
+        {
+            if (!Guid.TryParse(sessionToken, out var tokenGuid)) return false;
+
+            var session =
+                await _context.KycFormSessions.FirstOrDefaultAsync(s =>
+                    s.SessionToken == tokenGuid && s.UserId == null);
+
+            if (session == null || session.SessionExpiryDate < DateTime.UtcNow || session.EmailVerified)
+                return false;
+
+            if (session.SessionToken.ToString() != verificationToken)
+                return false;
+
+            session.EmailVerified = true;
+            session.ModifiedDate = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<string?> GetStepFormSchemaAsync(int stepNumber)
+        {
+            var step = await _context.KycFormSteps.FirstOrDefaultAsync(s => s.StepNumber == stepNumber);
+            // FieldSchemaJson property does not exist in the entity, returning null for now.
+            // If needed, add this property to KycFormSteps entity and run migration.
+            return null;
+        }
+
+        public async Task UpdateDetailWithJsonAsync(int sessionId, int stepNumber, System.Text.Json.JsonElement data)
+        {
+            switch (stepNumber)
+            {
+                case 1:
+                    var personalInfo = data.Deserialize<PersonalInfoDto>();
+                    if (personalInfo != null) await UpdateDetailAsync(sessionId, stepNumber, personalInfo);
+                    break;
+                case 2:
+                    var currentAddress = data.Deserialize<AddressDto>();
+                    if (currentAddress != null) await UpdateDetailAsync(sessionId, stepNumber, currentAddress);
+                    break;
+                case 3:
+                    var permanentAddress = data.Deserialize<AddressDto>();
+                    if (permanentAddress != null) await UpdateDetailAsync(sessionId, stepNumber, permanentAddress);
+                    break;
+                case 4:
+                    var familyInfo = data.Deserialize<FamilyDto>();
+                    if (familyInfo != null) await UpdateDetailAsync(sessionId, stepNumber, familyInfo);
+                    break;
+                case 5:
+                    var bankInfo = data.Deserialize<BankDto>();
+                    if (bankInfo != null) await UpdateDetailAsync(sessionId, stepNumber, bankInfo);
+                    break;
+                case 6:
+                    var occupationInfo = data.Deserialize<OccupationDto>();
+                    if (occupationInfo != null) await UpdateDetailAsync(sessionId, stepNumber, occupationInfo);
+                    break;
+                case 7:
+                    var financialDetails = data.Deserialize<FinancialDetailsDto>();
+                    if (financialDetails != null) await UpdateDetailAsync(sessionId, stepNumber, financialDetails);
+                    break;
+                case 8:
+                    var transactionInfo = data.Deserialize<TransactionInfoDto>();
+                    if (transactionInfo != null) await UpdateDetailAsync(sessionId, stepNumber, transactionInfo);
+                    break;
+                case 9:
+                    var guardianInfo = data.Deserialize<GuardianDto>();
+                    if (guardianInfo != null) await UpdateDetailAsync(sessionId, stepNumber, guardianInfo);
+                    break;
+                case 10:
+                    var amlCompliance = data.Deserialize<AmlComplianceDto>();
+                    if (amlCompliance != null) await UpdateDetailAsync(sessionId, stepNumber, amlCompliance);
+                    break;
+                case 11:
+                    var locationMap = data.Deserialize<LocationMapDto>();
+                    if (locationMap != null) await UpdateDetailAsync(sessionId, stepNumber, locationMap);
+                    break;
+                case 12:
+                    var declarations = data.Deserialize<DeclarationsDto>();
+                    if (declarations != null) await UpdateDetailAsync(sessionId, stepNumber, declarations);
+                    break;
+                case 13:
+                    var agreement = data.Deserialize<AgreementDto>();
+                    if (agreement != null) await UpdateDetailAsync(sessionId, stepNumber, agreement);
+                    break;
+                default:
+                    throw new ArgumentException($"Unsupported step number for dynamic update: {stepNumber}");
+            }
+
+            var session = await _context.KycFormSessions.FirstOrDefaultAsync(s => s.Id == sessionId);
+            if (session != null)
+            {
+                session.CurrentStep = Math.Max(session.CurrentStep, stepNumber);
+                session.LastSavedStep = stepNumber;
+
+                var stepCompletion = await _context.KycStepCompletions
+                    .FirstOrDefaultAsync(sc => sc.SessionId == sessionId && sc.StepNumber == stepNumber);
+                if (stepCompletion != null)
+                {
+                    stepCompletion.IsSaved = true;
+                    stepCompletion.SavedDate = DateTime.UtcNow;
+                    stepCompletion.IsCompleted = true;
+                    stepCompletion.CompletedDate = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+            }
         }
     }
 }

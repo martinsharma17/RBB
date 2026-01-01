@@ -10,6 +10,10 @@ import KycLegal from './sections/KycLegal';
 import KycInvestment from './sections/KycInvestment';
 import KycAttachment from './sections/KycAttachment';
 import KycVerification from './sections/KycVerification';
+import KycTransaction from './sections/KycTransaction';
+import KycAml from './sections/KycAml';
+import KycLocation from './sections/KycLocation';
+import KycAgreement from './sections/KycAgreement';
 
 /**
  * KycFormMaster - The central container for the multi-step KYC process.
@@ -93,9 +97,13 @@ const KycFormMaster = () => {
         "Family",
         "Bank",
         "Occupation",
+        "Financial",
+        "Transaction",
         "Guardian",
-        "Legal",
-        "Investment",
+        "AML",
+        "Location",
+        "Declarations",
+        "Agreement",
         "Attachments"
     ];
 
@@ -104,7 +112,7 @@ const KycFormMaster = () => {
             {/* Header / Progress Bar */}
             <div className="mb-8">
                 <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Know Your Customer (KYC)</h1>
-                <p className="text-gray-500">Please complete all 9 sections to verify your identity.</p>
+                <p className="text-gray-500">Please complete all {steps.length} sections to verify your identity.</p>
 
                 <div className="mt-6 flex items-center justify-between relative">
                     <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-200 -z-10 -translate-y-1/2"></div>
@@ -147,16 +155,20 @@ const KycFormMaster = () => {
                 ) : (
                     <>
                         {currentStep === 1 && <KycPersonalInfo sessionId={sessionId} initialData={kycData?.personalInfo} onNext={handleNext} />}
-                        {currentStep === 2 && <KycAddress sessionId={sessionId} initialData={kycData?.address} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 2 && <KycAddress sessionId={sessionId} initialData={kycData} onNext={handleNext} onBack={handlePrev} />}
                         {currentStep === 3 && <KycFamily sessionId={sessionId} initialData={kycData?.family} onNext={handleNext} onBack={handlePrev} />}
                         {currentStep === 4 && <KycBank sessionId={sessionId} initialData={kycData?.bank} onNext={handleNext} onBack={handlePrev} />}
                         {currentStep === 5 && <KycOccupation sessionId={sessionId} initialData={kycData?.occupation} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 6 && <KycGuardian sessionId={sessionId} initialData={kycData?.guardian} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 7 && <KycLegal sessionId={sessionId} initialData={kycData?.legal} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 8 && <KycInvestment sessionId={sessionId} initialData={kycData?.investment} onNext={handleNext} onBack={handlePrev} />}
-                        {currentStep === 9 && <KycAttachment sessionId={sessionId} onBack={handlePrev} onComplete={() => setCurrentStep(10)} />}
+                        {currentStep === 6 && <KycInvestment sessionId={sessionId} initialData={kycData?.financialDetails} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 7 && <KycTransaction sessionId={sessionId} initialData={kycData?.transactionInfo} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 8 && <KycGuardian sessionId={sessionId} initialData={kycData?.guardian} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 9 && <KycAml sessionId={sessionId} initialData={kycData?.amlCompliance} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 10 && <KycLocation sessionId={sessionId} initialData={kycData?.locationMap} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 11 && <KycLegal sessionId={sessionId} initialData={kycData?.declarations} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 12 && <KycAgreement sessionId={sessionId} initialData={kycData?.agreement} onNext={handleNext} onBack={handlePrev} />}
+                        {currentStep === 13 && <KycAttachment sessionId={sessionId} onBack={handlePrev} onComplete={() => setCurrentStep(14)} />}
 
-                        {currentStep === 10 && (
+                        {currentStep === 14 && (
                             <div className="text-center py-16">
                                 <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
                                     <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -13,7 +13,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import Dashboard from './pages/Dashboard';
-
 // Password reset pages
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';

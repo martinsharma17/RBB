@@ -68,12 +68,30 @@ namespace AUTHApi.Controllers
             });
         }
 
+        /// <summary>
+        /// Sends an OTP (One-Time Password) for email verification.
+        /// If a new email is provided in the model, it updates the session email before sending.
+        /// </summary>
+        /// <param name="model">DTO containing session ID and OTP type (1=Email).</param>
+        /// <returns>Success message with OTP code (for dev/test) and expiry.</returns>
         [HttpPost("send-otp")]
         public async Task<IActionResult> SendOtp([FromBody] VerifyOtpDto model)
         {
             var session = await _context.KycFormSessions.FindAsync(model.SessionId);
             if (session == null) return Failure("Session not found", 404);
 
+            // Update session email if a new one is provided and different from existing
+            // This handles cases where user entered a typo initially or wants to change email
+            if (model.OtpType == 1 && !string.IsNullOrWhiteSpace(model.Email) &&
+                !session.Email.Equals(model.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                session.Email = model.Email;
+                // Reset verification status if email changes
+                session.EmailVerified = false;
+                await _context.SaveChangesAsync();
+            }
+
+            // Invalidate any existing active OTPs of the same type for this session
             var oldOtps = await _context.KycOtpVerifications
                 .Where(o => o.SessionId == model.SessionId && o.OtpType == model.OtpType && !o.IsExpired)
                 .ToListAsync();
@@ -82,13 +100,17 @@ namespace AUTHApi.Controllers
 
             string otpCode = new Random().Next(100000, 999999).ToString();
 
+            // Determine target for OTP based on type
+            string? sentToEmail = model.OtpType == 1 ? session.Email : null;
+            string? sentToMobile = model.OtpType == 2 ? session.MobileNo : null;
+
             var otp = new KycOtpVerification
             {
                 SessionId = session.Id,
                 OtpType = (byte)model.OtpType,
                 OtpCode = otpCode,
-                SentToEmail = model.OtpType == 1 ? session.Email : null,
-                SentToMobile = model.OtpType == 2 ? session.MobileNo : null,
+                SentToEmail = sentToEmail,
+                SentToMobile = sentToMobile,
                 ExpiryDate = DateTime.UtcNow.AddMinutes(10)
             };
 
@@ -96,14 +118,14 @@ namespace AUTHApi.Controllers
             await _context.SaveChangesAsync();
 
             // Send actual email if type is email
-            if (model.OtpType == 1)
+            if (model.OtpType == 1 && !string.IsNullOrEmpty(sentToEmail))
             {
                 string subject = "Your KYC Verification OTP";
                 string body = $@"
                     <h3>KYC Verification</h3>
                     <p>Your OTP code for email verification is: <strong>{otpCode}</strong></p>
                     <p>This code will expire in 10 minutes.</p>";
-                await _emailService.SendEmailAsync(session.Email, subject, body);
+                await _emailService.SendEmailAsync(sentToEmail, subject, body);
             }
 
             return Success(new { otpCode, expiry = otp.ExpiryDate }, "OTP sent successfully");

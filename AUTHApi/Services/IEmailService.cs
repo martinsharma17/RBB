@@ -16,5 +16,10 @@ namespace AUTHApi.Services
         Task SendPasswordResetEmailAsync(string email, string resetLink);
 
         Task SendEmailAsync(string toEmail, string subject, string body);
+
+        /// <summary>
+        /// Sends a KYC email verification link.
+        /// </summary>
+        Task SendKycVerificationEmailAsync(string email, string verificationLink);
     }
 }

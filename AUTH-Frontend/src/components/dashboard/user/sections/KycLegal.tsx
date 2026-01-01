@@ -11,6 +11,8 @@ interface KycLegalProps {
 interface KycLegalData {
     declarationText: string;
     isAgreed: boolean;
+    noOtherLiability: boolean;
+    allTrue: boolean;
     consentDate: string;
     [key: string]: any;
 }
@@ -21,6 +23,8 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
     const [formData, setFormData] = useState<KycLegalData>({
         declarationText: initialData?.declarationText || "I hereby declare that the information provided above is true and correct to the best of my knowledge.",
         isAgreed: initialData?.agreeToTerms || initialData?.isAgreed || false,
+        noOtherLiability: initialData?.noOtherFinancialLiability || false,
+        allTrue: initialData?.allInformationTrue || false,
         consentDate: initialData?.consentDate || new Date().toISOString()
     });
 
@@ -29,6 +33,8 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
             setFormData({
                 declarationText: initialData?.declarationText || "I hereby declare that the information provided above is true and correct to the best of my knowledge.",
                 isAgreed: initialData?.agreeToTerms || initialData?.isAgreed || false,
+                noOtherLiability: initialData?.noOtherFinancialLiability || false,
+                allTrue: initialData?.allInformationTrue || false,
                 consentDate: initialData?.consentDate || new Date().toISOString()
             });
         }
@@ -58,11 +64,11 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({
                     sessionId: sessionId,
-                    stepNumber: 12, // Declarations is step 12 in backend
+                    stepNumber: 13, // Declarations is step 13 in backend
                     data: {
                         agreeToTerms: formData.isAgreed,
-                        isPep: false, // Defaulting to false, typically handled in a separate AML section
-                        isBlacklisted: false
+                        noOtherFinancialLiability: formData.noOtherLiability,
+                        allInformationTrue: formData.allTrue
                     }
                 })
             });
@@ -104,6 +110,34 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
                     />
                     <label htmlFor="isAgreed" className="text-sm font-medium text-gray-700 cursor-pointer">
                         I confirm that the above declaration is true and I am responsible for any discrepancies found later. *
+                    </label>
+                </div>
+
+                <div className="flex items-start space-x-3 mt-4">
+                    <input
+                        type="checkbox"
+                        id="noOtherLiability"
+                        name="noOtherLiability"
+                        checked={formData.noOtherLiability}
+                        onChange={(e) => setFormData(prev => ({ ...prev, noOtherLiability: e.target.checked }))}
+                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                    />
+                    <label htmlFor="noOtherLiability" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        I declare that I have no other financial liability. *
+                    </label>
+                </div>
+
+                <div className="flex items-start space-x-3 mt-4">
+                    <input
+                        type="checkbox"
+                        id="allTrue"
+                        name="allTrue"
+                        checked={formData.allTrue}
+                        onChange={(e) => setFormData(prev => ({ ...prev, allTrue: e.target.checked }))}
+                        className="mt-1 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded cursor-pointer"
+                    />
+                    <label htmlFor="allTrue" className="text-sm font-medium text-gray-700 cursor-pointer">
+                        All information provided is true to my knowledge. *
                     </label>
                 </div>
             </div>

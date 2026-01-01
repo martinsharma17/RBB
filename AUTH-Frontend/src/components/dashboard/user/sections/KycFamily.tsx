@@ -13,8 +13,8 @@ interface KycFamilyData {
     motherName: string;
     grandfatherName: string;
     spouseName: string;
-    childrenNames: string;
-    inlawsNames: string;
+    sonName: string;
+    daughterName: string;
     [key: string]: any;
 }
 
@@ -26,8 +26,8 @@ const KycFamily: React.FC<KycFamilyProps> = ({ sessionId, initialData, onNext, o
         motherName: initialData?.motherName || initialData?.MotherName || '',
         grandfatherName: initialData?.grandFatherName || initialData?.GrandFatherName || initialData?.grandfatherName || '',
         spouseName: initialData?.spouseName || initialData?.SpouseName || '',
-        childrenNames: initialData?.childrenNames || '',
-        inlawsNames: initialData?.inlawsNames || ''
+        sonName: initialData?.sonName || initialData?.SonName || '',
+        daughterName: initialData?.daughterName || initialData?.DaughterName || ''
     });
 
     useEffect(() => {
@@ -37,8 +37,8 @@ const KycFamily: React.FC<KycFamilyProps> = ({ sessionId, initialData, onNext, o
                 motherName: initialData?.motherName || initialData?.MotherName || '',
                 grandfatherName: initialData?.grandFatherName || initialData?.GrandFatherName || initialData?.grandfatherName || '',
                 spouseName: initialData?.spouseName || initialData?.SpouseName || '',
-                childrenNames: initialData?.childrenNames || '',
-                inlawsNames: initialData?.inlawsNames || ''
+                sonName: initialData?.sonName || initialData?.SonName || '',
+                daughterName: initialData?.daughterName || initialData?.DaughterName || ''
             });
         }
     }, [initialData]);
@@ -71,7 +71,9 @@ const KycFamily: React.FC<KycFamilyProps> = ({ sessionId, initialData, onNext, o
                         fatherName: formData.fatherName,
                         motherName: formData.motherName,
                         grandFatherName: formData.grandfatherName,
-                        spouseName: formData.spouseName
+                        spouseName: formData.spouseName,
+                        sonName: formData.sonName,
+                        daughterName: formData.daughterName
                     }
                 })
             });
@@ -140,6 +142,28 @@ const KycFamily: React.FC<KycFamilyProps> = ({ sessionId, initialData, onNext, o
                         type="text"
                         name="spouseName"
                         value={formData.spouseName}
+                        onChange={handleChange}
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    />
+                </div>
+
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Son's Name</label>
+                    <input
+                        type="text"
+                        name="sonName"
+                        value={formData.sonName}
+                        onChange={handleChange}
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    />
+                </div>
+
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Daughter's Name</label>
+                    <input
+                        type="text"
+                        name="daughterName"
+                        value={formData.daughterName}
                         onChange={handleChange}
                         className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     />

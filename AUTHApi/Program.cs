@@ -90,28 +90,11 @@ internal class Program
             // --- JWT Bearer Configuration ---
             .AddJwtBearer(options =>
             {
-                options.Events = new JwtBearerEvents
-                {
-                    OnAuthenticationFailed = context =>
-                    {
-                        Console.WriteLine($"[JWT DEBUG] Authentication failed: {context.Exception.Message}");
-                        return Task.CompletedTask;
-                    },
-                    OnTokenValidated = context =>
-                    {
-                        Console.WriteLine($"[JWT DEBUG] Token validated for: {context.Principal.Identity?.Name}");
-                        return Task.CompletedTask;
-                    },
-                    OnChallenge = context =>
-                    {
-                        Console.WriteLine(
-                            $"[JWT DEBUG] Challenge triggered: {context.Error}, {context.ErrorDescription}");
-                        return Task.CompletedTask;
-                    }
-                };
+                // JWT Bearer events are handled silently in production.
+                // In development, structured logging captures authentication issues.
+                // Note: Logging is configured at the application level, not here.
 
-                options.IncludeErrorDetails = true;
-                options.IncludeErrorDetails = true;
+                options.IncludeErrorDetails = builder.Environment.IsDevelopment();
 
                 // Get key from configuration
                 var jwtKey = builder.Configuration["Jwt:Key"];

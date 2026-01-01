@@ -10,6 +10,9 @@ interface KycOccupationProps {
 
 interface KycOccupationData {
     occupation: string;
+    otherOccupation: string;
+    serviceSector: string;
+    businessType: string;
     orgName: string;
     orgAddress: string;
     designation: string;
@@ -23,6 +26,9 @@ const KycOccupation: React.FC<KycOccupationProps> = ({ sessionId, initialData, o
 
     const [formData, setFormData] = useState<KycOccupationData>({
         occupation: initialData?.occupationType || initialData?.occupation || '',
+        otherOccupation: initialData?.otherOccupation || '',
+        serviceSector: initialData?.serviceSector || '',
+        businessType: initialData?.businessType || '',
         orgName: initialData?.organizationName || initialData?.orgName || '',
         orgAddress: initialData?.organizationAddress || initialData?.orgAddress || '',
         designation: initialData?.designation || '',
@@ -34,6 +40,9 @@ const KycOccupation: React.FC<KycOccupationProps> = ({ sessionId, initialData, o
         if (initialData) {
             setFormData({
                 occupation: initialData?.occupationType || initialData?.occupation || '',
+                otherOccupation: initialData?.otherOccupation || '',
+                serviceSector: initialData?.serviceSector || '',
+                businessType: initialData?.businessType || '',
                 orgName: initialData?.organizationName || initialData?.orgName || '',
                 orgAddress: initialData?.organizationAddress || initialData?.orgAddress || '',
                 designation: initialData?.designation || '',
@@ -69,6 +78,9 @@ const KycOccupation: React.FC<KycOccupationProps> = ({ sessionId, initialData, o
                     stepNumber: 6, // Adjusted to match backend if necessary, assuming 6 for occupation
                     data: {
                         occupationType: formData.occupation,
+                        otherOccupation: formData.otherOccupation,
+                        serviceSector: formData.serviceSector,
+                        businessType: formData.businessType,
                         organizationName: formData.orgName,
                         organizationAddress: formData.orgAddress,
                         designation: formData.designation,
@@ -141,6 +153,51 @@ const KycOccupation: React.FC<KycOccupationProps> = ({ sessionId, initialData, o
                         onChange={handleChange}
                         className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     />
+                </div>
+
+                {formData.occupation === 'Others' && (
+                    <div className="flex flex-col">
+                        <label className="text-sm font-semibold text-gray-700 mb-1">Other Occupation</label>
+                        <input
+                            type="text"
+                            name="otherOccupation"
+                            value={formData.otherOccupation}
+                            onChange={handleChange}
+                            className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                        />
+                    </div>
+                )}
+
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Service Sector</label>
+                    <select
+                        name="serviceSector"
+                        value={formData.serviceSector}
+                        onChange={handleChange}
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    >
+                        <option value="">Select Service Sector</option>
+                        <option value="Government">Government</option>
+                        <option value="Private">Private</option>
+                        <option value="NGO">NGO/INGO</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Business Type</label>
+                    <select
+                        name="businessType"
+                        value={formData.businessType}
+                        onChange={handleChange}
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    >
+                        <option value="">Select Business Type</option>
+                        <option value="Manufacturing">Manufacturing</option>
+                        <option value="Trading">Trading</option>
+                        <option value="Service">Service</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
 
                 <div className="flex flex-col">

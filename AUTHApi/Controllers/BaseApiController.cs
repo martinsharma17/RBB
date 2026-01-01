@@ -94,6 +94,20 @@ namespace AUTHApi.Controllers
                 TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
             });
         }
+
+        /// <summary>
+        /// Returns a standardized internal server error response.
+        /// </summary>
+        /// <param name="message">Error message</param>
+        protected IActionResult InternalServerError(string message)
+        {
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = message,
+                Errors = null
+            });
+        }
     }
 
     // --- Response Wrappers ---

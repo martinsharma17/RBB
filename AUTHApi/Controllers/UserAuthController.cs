@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using AUTHApi.Services;
+using Microsoft.Extensions.Logging;
 
 namespace AUTHApi.Controllers
 {
@@ -24,35 +25,36 @@ namespace AUTHApi.Controllers
         // ==========================================
         // These services are provided by ASP.NET Core Identity and Configuration system.
 
-        private readonly UserManager<ApplicationUser>
-            _userManager; // API for managing users (create, delete, find, etc.)
-
-        private readonly SignInManager<ApplicationUser> _signinManager; // API for handling sign-in/sign-out logic
-        private readonly RoleManager<IdentityRole> _roleManager; // API for managing roles
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signinManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly ILogger<UserAuthController> _logger;
 
         // JWT Configuration values read from appsettings.json
-        private readonly string? _jwtKey; // Secret key for signing tokens
-        private readonly string? _JwtIssuer; // Issuer of the token (this server)
-        private readonly string? _JwtAudience; // Audience of the token (who can use it)
-        private readonly int _JwtExpiry; // Expiration time in minutes
-        private readonly IConfiguration _configuration; // Configuration interface
+        private readonly string? _jwtKey;
+        private readonly string? _JwtIssuer;
+        private readonly string? _JwtAudience;
+        private readonly int _JwtExpiry;
+        private readonly IConfiguration _configuration;
 
         public UserAuthController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             RoleManager<IdentityRole> roleManager,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<UserAuthController> logger)
         {
             _userManager = userManager;
             _signinManager = signInManager;
             _roleManager = roleManager;
             _configuration = configuration;
+            _logger = logger;
 
-            // Read JWT settings from configuration
-            _jwtKey = "vS2B9#kL8@pQ5$zN1*rT4&mJ9!wX3^hG7_bV0)fD2";
+            // Read JWT settings from configuration (never hardcode secrets!)
+            _jwtKey = configuration["Jwt:Key"];
             _JwtIssuer = configuration["Jwt:Issuer"];
             _JwtAudience = configuration["Jwt:Audience"];
-            _JwtExpiry = int.Parse(configuration["Jwt:ExpireMinutes"] ?? "1440"); // 1 day for easier debugging
+            _JwtExpiry = int.Parse(configuration["Jwt:ExpireMinutes"] ?? "1440");
         }
 
 
@@ -185,12 +187,18 @@ namespace AUTHApi.Controllers
         /// </summary>
         /// <param name="user">The user to generate the token for</param>
         /// <returns>A signed JWT token string</returns>
-        [NonAction] // Tells Swagger this is NOT an API endpoint
+        /// <summary>
+        /// Generates a JWT token for the authenticated user.
+        /// The token contains user claims including roles and custom claims.
+        /// </summary>
+        /// <param name="user">The user to generate the token for</param>
+        /// <returns>A signed JWT token string</returns>
+        [NonAction]
         public async Task<string> GenerateJWTToken(ApplicationUser user)
         {
-            // --- Step 1: Gather Claims (User Data) ---
-            Console.WriteLine($"[JWT DEBUG] Generating token with Key Length: {_jwtKey?.Length ?? 0}");
-            Console.WriteLine($"[JWT DEBUG] Using Issuer: {_JwtIssuer}, Audience: {_JwtAudience}");
+            // Log token generation only in debug mode
+            _logger.LogDebug("Generating JWT token for user {UserId}", user.Id);
+
 
             // Get user roles (e.g., "Admin", "User")
             // These are critical for [Authorize(Roles = "...")] checks
@@ -280,7 +288,7 @@ namespace AUTHApi.Controllers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error sending email: {ex.Message}");
+                _logger.LogError(ex, "Failed to send password reset email to {Email}", model.Email);
                 return Failure("Failed to send email. Please try again later.", 500);
             }
         }

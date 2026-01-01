@@ -29,12 +29,35 @@ namespace AUTHApi.Services
         /// <summary>
         /// Retrieves the progress information for a KYC session.
         /// </summary>
-        Task<KycProgressDto> GetProgressAsync(int sessionId);
+        /// <returns>Progress DTO or null if session not found.</returns>
+        Task<KycProgressDto?> GetProgressAsync(int sessionId);
 
         /// <summary>
         /// Retrieves an existing KYC session or creates a new one for the user/email.
         /// Handles initial step seeding if creating a new session.
         /// </summary>
         Task<KycFormSession> GetOrCreateSessionAsync(string? userId, string? email);
+
+        /// <summary>
+        /// Initiates an unauthenticated KYC session for a given email.
+        /// Returns a session token and sends an email verification.
+        /// </summary>
+        Task<(KycFormSession? session, string? errorMessage)> InitiateUnauthenticatedKycAsync(string email);
+
+        /// <summary>
+        /// Verifies the email for an unauthenticated KYC session.
+        /// </summary>
+        Task<bool> VerifyKycEmailAsync(string sessionToken, string verificationToken);
+
+        /// <summary>
+        /// Retrieves the dynamic form structure for a specific KYC step.
+        /// </summary>
+        Task<string?> GetStepFormSchemaAsync(int stepNumber);
+
+        /// <summary>
+        /// Updates the KycDetail with a dynamic JSON payload for a given step.
+        /// The service will handle deserialization to the appropriate DTO based on the step number.
+        /// </summary>
+        Task UpdateDetailWithJsonAsync(int sessionId, int stepNumber, System.Text.Json.JsonElement data);
     }
 }

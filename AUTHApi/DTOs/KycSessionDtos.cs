@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AUTHApi.DTOs
 {
     public class KycInitializeDto
@@ -7,6 +9,11 @@ namespace AUTHApi.DTOs
         public string? IpAddress { get; set; }
         public string? UserAgent { get; set; }
         public string? DeviceFingerprint { get; set; }
+    }
+
+    public class InitiateKycDto
+    {
+        [Required] [EmailAddress] public string Email { get; set; } = string.Empty;
     }
 
     public class VerifyOtpDto

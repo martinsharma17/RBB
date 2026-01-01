@@ -10,9 +10,14 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Text.Json;
 using System.Net.Http;
+using Microsoft.Extensions.Logging;
 
 namespace AUTHApi.Controllers
 {
+    /// <summary>
+    /// Controller for handling external authentication providers (e.g., Google OAuth).
+    /// Enables users to sign in using their Google accounts.
+    /// </summary>
     [Route("api/auth")]
     [ApiController]
     public class ExternalAuthController : BaseApiController
@@ -20,18 +25,26 @@ namespace AUTHApi.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<ExternalAuthController> _logger;
+        private readonly string _frontendUrl;
 
         public ExternalAuthController(
             UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<ExternalAuthController> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _configuration = configuration;
+            _logger = logger;
+            _frontendUrl = configuration["Frontend:Url"] ?? "http://localhost:5173";
         }
 
-        // Start Google OAuth flow
+        /// <summary>
+        /// Initiates the Google OAuth login flow.
+        /// Redirects the user to Google's authentication page.
+        /// </summary>
         [HttpGet("google-login")]
         public IActionResult GoogleLogin()
         {
@@ -40,7 +53,10 @@ namespace AUTHApi.Controllers
             return Challenge(properties, GoogleDefaults.AuthenticationScheme);
         }
 
-        // Callback after Google auth successful
+        /// <summary>
+        /// Callback endpoint for Google OAuth authentication.
+        /// Creates or retrieves user account and issues JWT token.
+        /// </summary>
         [HttpGet("google-response")]
         public async Task<IActionResult> GoogleResponse()
         {
@@ -48,7 +64,8 @@ namespace AUTHApi.Controllers
 
             if (!authenticateResult.Succeeded)
             {
-                return Redirect("http://localhost:5173/login?error=Google+login+failed");
+                _logger.LogWarning("Google authentication failed");
+                return Redirect($"{_frontendUrl}/login?error=Google+login+failed");
             }
 
             var email = authenticateResult.Principal.FindFirst(ClaimTypes.Email)?.Value;
@@ -57,9 +74,8 @@ namespace AUTHApi.Controllers
             // Get Google profile picture - try multiple claim types
             var picture = authenticateResult.Principal.FindFirst("picture")?.Value;
 
-            // Debug: Log all claims to see what Google provides
-            var allClaims = authenticateResult.Principal.Claims.Select(c => $"{c.Type}: {c.Value}").ToList();
-            Console.WriteLine("Google OAuth Claims: " + string.Join(", ", allClaims));
+            // Log for debugging in development
+            _logger.LogDebug("Processing Google OAuth callback for email: {Email}", email);
 
             // If picture not found, try alternative claim types
             if (string.IsNullOrEmpty(picture))
@@ -78,7 +94,7 @@ namespace AUTHApi.Controllers
                             claim.Type.Contains("photo", StringComparison.OrdinalIgnoreCase))
                         {
                             picture = claim.Value;
-                            Console.WriteLine($"Found picture claim: {claim.Type} = {claim.Value}");
+                            _logger.LogDebug("Found picture claim: {ClaimType}", claim.Type);
                             break;
                         }
                     }
@@ -106,7 +122,7 @@ namespace AUTHApi.Controllers
                                 if (userInfo.TryGetProperty("picture", out var pictureElement))
                                 {
                                     picture = pictureElement.GetString();
-                                    Console.WriteLine($"Fetched picture from Google UserInfo: {picture}");
+                                    _logger.LogDebug("Retrieved picture from Google UserInfo API");
                                 }
 
                                 // Also update name if not already set
@@ -120,15 +136,16 @@ namespace AUTHApi.Controllers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error fetching Google UserInfo: {ex.Message}");
+                    _logger.LogWarning(ex, "Failed to fetch user info from Google API");
                 }
             }
 
-            Console.WriteLine($"Extracted Google data - Email: {email}, Name: {name}, Picture: {picture}");
+            _logger.LogDebug("Google OAuth data extracted - Email: {Email}, Name: {Name}", email, name);
 
             if (string.IsNullOrEmpty(email))
             {
-                return Redirect("http://localhost:5173/login?error=No+email+from+Google");
+                _logger.LogWarning("No email received from Google OAuth");
+                return Redirect($"{_frontendUrl}/login?error=No+email+from+Google");
             }
 
             // Find or create user
@@ -144,9 +161,12 @@ namespace AUTHApi.Controllers
                 var createResult = await _userManager.CreateAsync(user);
                 if (!createResult.Succeeded)
                 {
-                    return Redirect(
-                        $"http://localhost:5173/login?error={Uri.EscapeDataString(string.Join(", ", createResult.Errors.Select(e => e.Description)))}");
+                    var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                    _logger.LogWarning("Failed to create user from Google OAuth: {Errors}", errors);
+                    return Redirect($"{_frontendUrl}/login?error={Uri.EscapeDataString(errors)}");
                 }
+
+                _logger.LogInformation("Created new user from Google OAuth: {Email}", email);
 
                 // Assign default role
                 if (await _roleManager.RoleExistsAsync("User"))
@@ -171,9 +191,15 @@ namespace AUTHApi.Controllers
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
             // Redirect with JWT to frontend
-            return Redirect($"http://localhost:5173/?token={Uri.EscapeDataString(token)}");
+            return Redirect($"{_frontendUrl}/?token={Uri.EscapeDataString(token)}");
         }
 
+        /// <summary>
+        /// Generates a JWT token for the authenticated user with optional picture claim.
+        /// </summary>
+        /// <param name="user">The authenticated user</param>
+        /// <param name="picture">Optional profile picture URL from OAuth provider</param>
+        /// <returns>Signed JWT token string</returns>
         private async Task<string> GenerateJwtToken(ApplicationUser user, string? picture = null)
         {
             var roles = await _userManager.GetRolesAsync(user);

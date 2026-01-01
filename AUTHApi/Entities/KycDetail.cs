@@ -48,6 +48,8 @@ namespace AUTHApi.Entities
         [MaxLength(100)] public string? MotherName { get; set; }
         [MaxLength(100)] public string? GrandFatherName { get; set; }
         [MaxLength(100)] public string? SpouseName { get; set; }
+        [MaxLength(100)] public string? SonName { get; set; }
+        [MaxLength(100)] public string? DaughterName { get; set; }
 
         // --- 4. Identification & Financial ---
         [MaxLength(50)] public string? CitizenshipNumber { get; set; }
@@ -56,15 +58,20 @@ namespace AUTHApi.Entities
 
         [MaxLength(50)] public string? PanNumber { get; set; }
         [MaxLength(100)] public string? Occupation { get; set; }
+        [MaxLength(100)] public string? OtherOccupation { get; set; }
+        [MaxLength(50)] public string? ServiceSector { get; set; }
+        [MaxLength(50)] public string? BusinessType { get; set; }
         [MaxLength(100)] public string? OrganizationName { get; set; }
         [MaxLength(200)] public string? OrganizationAddress { get; set; }
         [MaxLength(100)] public string? Designation { get; set; }
+        [MaxLength(50)] public string? EmployeeIdNo { get; set; }
         [MaxLength(50)] public string? AnnualIncome { get; set; }
 
         // --- 5. Bank Info (If needed) ---
         [MaxLength(100)] public string? BankName { get; set; }
         [MaxLength(50)] public string? BankAccountNumber { get; set; }
         [MaxLength(100)] public string? BankBranch { get; set; }
+        [MaxLength(50)] public string? BankAccountType { get; set; }
 
         // --- Meta ---
         public bool IsVerified { get; set; } = false;
@@ -84,6 +91,8 @@ namespace AUTHApi.Entities
         [MaxLength(50)] public string? GuardianRelationship { get; set; }
         [MaxLength(200)] public string? GuardianAddress { get; set; }
         [MaxLength(20)] public string? GuardianContactNo { get; set; }
+        [MaxLength(100)] public string? GuardianEmail { get; set; }
+        [MaxLength(50)] public string? GuardianPanNumber { get; set; }
 
         // --- 8. AML & Compliance ---
         public bool IsPep { get; set; } // Politically Exposed Person
@@ -92,11 +101,24 @@ namespace AUTHApi.Entities
         public bool HasCriminalRecord { get; set; }
         [MaxLength(500)] public string? CriminalRecordDetails { get; set; }
 
-        // --- 9. Agreements ---
-        public bool TermsAgreed { get; set; }
-        public DateTime? AgreementDate { get; set; }
+        // --- 11. Location Map ---
+        [MaxLength(200)] public string? LocationLandmark { get; set; }
+        [MaxLength(50)] public string? LocationDistance { get; set; }
+        [MaxLength(50)] public string? LocationLatitude { get; set; }
+        [MaxLength(50)] public string? LocationLongitude { get; set; }
+        public string? LocationSketchJson { get; set; }
 
-        [Timestamp] public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+        // --- 12. Declarations ---
+        public bool AgreeToTerms { get; set; }
+        public bool NoOtherFinancialLiability { get; set; }
+        public bool AllInformationTrue { get; set; }
+
+        // --- 13. Agreements ---
+        public DateTime? AgreementDate { get; set; }
+        [MaxLength(50)] public string? TradingLimit { get; set; }
+        public bool MarginTradingFacility { get; set; }
+
+        // [Timestamp] public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 
         public DateTime? UpdatedAt { get; set; }
 
