@@ -16,6 +16,7 @@ import Dashboard from './pages/Dashboard';
 // Password reset pages
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import PublicKyc from './pages/PublicKyc';
 
 import { jwtDecode } from "jwt-decode";
 import Navbar from './components/layout/Navbar';
@@ -87,6 +88,7 @@ function AppContent() {
           {/* Password Reset Routes: Public (no auth required) */}
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/public-kyc" element={<PublicKyc />} />
 
           {/* 
              ==============================================================================

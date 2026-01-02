@@ -13,6 +13,7 @@ import TaskListView from './tasks/TaskListView';
 import TaskKanbanView from './tasks/TaskKanbanView';
 import KycFormMaster from './user/KycFormMaster';
 import MenuManagementView from './admin/MenuManagementView';
+import KycWorkflowView from './admin/KycWorkflowView';
 
 
 // Placeholder for missing component
@@ -32,6 +33,9 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
 
         case 'kyc':
             return <KycFormMaster {...props} />;
+
+        case 'kyc_workflow':
+            return <KycWorkflowView {...props} />;
 
         case 'support_view':  // This ID must match the 'ViewId' in the backend
             return <SupportComponent />;

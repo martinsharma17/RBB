@@ -84,17 +84,18 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({ sessionId, initialDat
             panNo: formData.panNo || null
         };
 
+        const headers: any = {
+            'Content-Type': 'application/json'
+        };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         try {
-            // Updated to use KycDataController and SaveStepDto wrapper
             const response = await fetch(`${apiBase}/api/KycData/save-personal-info`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers,
                 body: JSON.stringify({
                     sessionId: sessionId,
-                    stepNumber: 1, // Explicitly required by SaveStepDto
+                    stepNumber: 1,
                     data: mappedData
                 })
             });
@@ -103,7 +104,6 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({ sessionId, initialDat
                 onNext({ personalInfo: formData });
             } else {
                 const data = await response.json();
-                // Handle structured error from API
                 if (data.errors) {
                     const firstErr = Object.values(data.errors)[0];
                     setError(Array.isArray(firstErr) ? (firstErr[0] as string) : "Validation error");

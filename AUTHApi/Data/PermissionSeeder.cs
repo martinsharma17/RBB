@@ -1,12 +1,6 @@
 using AUTHApi.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using AUTHApi.Core.Security;
 
 namespace AUTHApi.Data
@@ -73,7 +67,23 @@ namespace AUTHApi.Data
                     Permissions.Tasks.View, Permissions.Tasks.Sidebar,
                     Permissions.Tasks.ViewList, Permissions.Tasks.SidebarList,
                     Permissions.Tasks.ViewKanban, Permissions.Tasks.SidebarKanban,
-                    Permissions.Notifications.View, Permissions.Notifications.Sidebar
+                    Permissions.Notifications.View, Permissions.Notifications.Sidebar,
+                    Permissions.Kyc.Sidebar // Users can fill their own KYC
+                },
+
+                ["Maker"] = new List<string>
+                {
+                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow, Permissions.Kyc.Verify
+                },
+
+                ["Checker"] = new List<string>
+                {
+                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow, Permissions.Kyc.Approve
+                },
+
+                ["RBBSec"] = new List<string>
+                {
+                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow, Permissions.Kyc.Approve
                 }
             };
 

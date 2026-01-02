@@ -19,6 +19,11 @@ namespace AUTHApi.Data
         public DbSet<KycDetail> KycDetails { get; set; }
         public DbSet<KycDocument> KycDocuments { get; set; }
 
+        // --- KYC Workflow Tables ---
+        public DbSet<KycApprovalConfig> KycApprovalConfigs { get; set; }
+        public DbSet<KycWorkflowMaster> KycWorkflowMasters { get; set; }
+        public DbSet<KycApprovalLog> KycApprovalLogs { get; set; }
+
         // --- Permission & Policy System ---
         public DbSet<SystemPolicy> SystemPolicies { get; set; }
         public DbSet<RolePolicy> RolePolicies { get; set; }
@@ -66,6 +71,20 @@ namespace AUTHApi.Data
             // Configure Permission System
             builder.Entity<SystemPolicy>().HasIndex(p => p.PolicyKey).IsUnique();
             builder.Entity<RolePolicy>().HasIndex(rp => new { rp.RoleId, rp.PolicyId }).IsUnique();
+
+            // Configure KYC Workflow
+            builder.Entity<KycApprovalConfig>().HasIndex(c => c.RoleId).IsUnique();
+            builder.Entity<KycWorkflowMaster>()
+                .HasOne(m => m.KycSession)
+                .WithMany()
+                .HasForeignKey(m => m.KycSessionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<KycApprovalLog>()
+                .HasOne(l => l.KycWorkflow)
+                .WithMany()
+                .HasForeignKey(l => l.KycWorkflowId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

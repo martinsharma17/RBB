@@ -1,7 +1,6 @@
 using AUTHApi.DTOs;
 using AUTHApi.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -17,12 +16,15 @@ namespace AUTHApi.Controllers
         private readonly IKycService _kycService;
         private readonly ILogger<KycController> _logger;
         private readonly ApplicationDbContext _context;
+        private readonly IKycWorkflowService _workflowService;
 
-        public KycController(IKycService kycService, ILogger<KycController> logger, ApplicationDbContext context)
+        public KycController(IKycService kycService, ILogger<KycController> logger, ApplicationDbContext context,
+            IKycWorkflowService workflowService)
         {
             _kycService = kycService;
             _logger = logger;
             _context = context;
+            _workflowService = workflowService;
         }
 
         // --- Authenticated Flows (Restored) ---
@@ -66,11 +68,13 @@ namespace AUTHApi.Controllers
         /// Submits the KYC session for verification (Maker action).
         /// </summary>
         [HttpPost("submit/{sessionId}")]
-        [Authorize]
         public async Task<IActionResult> SubmitKyc(int sessionId)
         {
             var session = await _context.KycFormSessions.FindAsync(sessionId);
             if (session == null) return Failure("Session not found", 404);
+
+            if (!session.EmailVerified)
+                return Failure("Email verification is required before submission.");
 
             // Verify all required steps are completed
             var requiredSteps = await _context.KycFormSteps.Where(s => s.IsRequired).Select(s => s.StepNumber)
@@ -82,15 +86,37 @@ namespace AUTHApi.Controllers
 
             if (!requiredSteps.All(rs => completedSteps.Contains(rs)))
             {
-                var missingSteps = requiredSteps.Except(completedSteps).ToList();
+                var missingStepNumbers = requiredSteps.Except(completedSteps).ToList();
+                var missingStepNames = await _context.KycFormSteps
+                    .Where(s => missingStepNumbers.Contains(s.StepNumber))
+                    .Select(s => s.StepName)
+                    .ToListAsync();
+
                 return Failure(
-                    $"Please complete all required steps before submission. Missing steps: {string.Join(", ", missingSteps)}");
+                    $"Please complete all required sections before submission. Missing: {string.Join(", ", missingStepNames)}");
             }
 
             session.FormStatus = 3; // Submitted
             session.ModifiedDate = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Dynamic Workflow Initiation
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var (wfSuccess, wfMessage) = await _workflowService.InitiateWorkflowAsync(sessionId, userId ?? "System");
+
+            if (!wfSuccess)
+            {
+                _logger.LogError("KYC {SessionId} submitted but workflow failed: {Message}", sessionId, wfMessage);
+
+                // If workflow fails, we don't want to leave the session as "Submitted" if it won't be reviewed
+                // session.FormStatus = 1; // Rollback to InProgress? No, maybe keep it and warn.
+
+                return Success(
+                    "KYC submitted successfully, but the internal approval workflow could not be started. Error: " +
+                    wfMessage);
+            }
+
             return Success("KYC submitted successfully for review.");
         }
 

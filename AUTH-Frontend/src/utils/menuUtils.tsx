@@ -55,19 +55,38 @@ export const filterDynamicMenus = (items: SidebarItem[], permissions: Permission
         if (!item.permission || item.permission === 'dashboard') {
             isPermitted = true;
         } else {
-            // Check flat key first (e.g. permissions.view_projects)
+            // 1. Check if the permission string itself exists as a key (Legacy/Flat)
             const permValue = (permissions as any)[item.permission];
+
+            // 2. Map backend strings to frontend granular keys
+            const kycSidebarKey = 'Permissions.Kyc.Sidebar';
+            const kycWorkflowKey = 'Permissions.Kyc.Workflow';
+            const usersSidebarKey = 'Permissions.Users.Sidebar';
+
             if (permValue === true) {
                 isPermitted = true;
             } else if (typeof permValue === 'object' && permValue !== null) {
-                // If the permission maps to an object (e.g. permissions.users), check its 'sidebar' or 'read' property
                 if (permValue.sidebar === true || permValue.read === true) {
                     isPermitted = true;
                 }
-            } else if (item.permission === 'Permissions.Kyc.Sidebar') {
-                // SPECIAL CASE: DB returns the raw string key for KYC, but mapper converts it to 'kyc' object
-                if ((permissions as any).kyc?.sidebar === true) {
-                    isPermitted = true;
+            } else if (item.permission === kycSidebarKey && (permissions as any).kyc?.sidebar) {
+                isPermitted = true;
+            } else if (item.permission === kycWorkflowKey && (permissions as any).kyc_workflow?.sidebar) {
+                isPermitted = true;
+            } else if (item.permission === usersSidebarKey && (permissions as any).users?.sidebar) {
+                isPermitted = true;
+            } else {
+                // Fallback: search for any key starting with 'view_' that might match
+                // Most items follow the pattern: Permissions.Modules.Sidebar -> view_modules
+                const parts = item.permission.split('.');
+                if (parts && parts.length >= 3 && parts[1]) {
+                    const moduleName = parts[1].toLowerCase();
+                    const viewKey = `view_${moduleName}`;
+                    if ((permissions as any)[viewKey] === true) {
+                        isPermitted = true;
+                    } else if ((permissions as any)[moduleName]?.sidebar === true) {
+                        isPermitted = true;
+                    }
                 }
             }
         }

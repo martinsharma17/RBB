@@ -15,58 +15,61 @@ import KycAml from './sections/KycAml';
 import KycLocation from './sections/KycLocation';
 import KycAgreement from './sections/KycAgreement';
 
-/**
- * KycFormMaster - The central container for the multi-step KYC process.
- * It manages:
- * 1. Global KYC state (fetched from backend)
- * 2. Current step navigation
- * 3. Section rendering
- */
-const KycFormMaster = () => {
+interface KycFormMasterProps {
+    initialSessionId?: number | null;
+    initialEmailVerified?: boolean;
+}
+
+const KycFormMaster: React.FC<KycFormMasterProps> = ({ initialSessionId = null, initialEmailVerified = false }) => {
     const { token, apiBase, user } = useAuth();
     const [kycData, setKycData] = useState<any>(null);
     const [currentStep, setCurrentStep] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isEmailVerified, setIsEmailVerified] = useState(false);
-    const [sessionId, setSessionId] = useState<number | null>(null);
+    const [isEmailVerified, setIsEmailVerified] = useState(initialEmailVerified);
+    const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
 
     // Fetch existing KYC data on load
     useEffect(() => {
         const fetchKyc = async () => {
             try {
-                // Step 1: Get/Create Session Metadata
-                const sessionResponse = await fetch(`${apiBase}/api/Kyc/my-session`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                let currentSessionId = sessionId;
+                let emailVerified = isEmailVerified;
 
-                if (sessionResponse.ok) {
-                    const sessionRes = await sessionResponse.json();
+                // Step 1: Get/Create Session Metadata if not already provided (e.g. for logged in users)
+                if (token && !currentSessionId) {
+                    const sessionResponse = await fetch(`${apiBase}/api/Kyc/my-session`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
 
-                    if (sessionRes.success && sessionRes.data) {
-                        const sess = sessionRes.data;
-                        setSessionId(sess.sessionId);
-                        setIsEmailVerified(sess.isEmailVerified);
-                        setCurrentStep(sess.currentStep || 1);
-
-                        // Step 2: Fetch all consolidated details if session is active
-                        if (sess.sessionId) {
-                            const detailsResponse = await fetch(`${apiBase}/api/KycData/all-details/${sess.sessionId}`, {
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            });
-
-                            if (detailsResponse.ok) {
-                                const detailsRes = await detailsResponse.json();
-                                if (detailsRes.success && detailsRes.data) {
-                                    setKycData(detailsRes.data);
-                                }
-                            }
+                    if (sessionResponse.ok) {
+                        const sessionRes = await sessionResponse.json();
+                        if (sessionRes.success && sessionRes.data) {
+                            const sess = sessionRes.data;
+                            currentSessionId = sess.sessionId;
+                            setSessionId(sess.sessionId);
+                            setIsEmailVerified(sess.isEmailVerified);
+                            emailVerified = sess.isEmailVerified;
+                            setCurrentStep(sess.currentStep || 1);
                         }
-                    } else {
-                        setError(sessionRes.message || "Failed to initialize KYC session");
                     }
-                } else {
-                    setError("Failed to load KYC session (HTTP " + sessionResponse.status + ")");
+                }
+
+                // Step 2: Fetch all consolidated details if session is active
+                if (currentSessionId && emailVerified) {
+                    const headers: any = { 'Content-Type': 'application/json' };
+                    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                    const detailsResponse = await fetch(`${apiBase}/api/KycData/all-details/${currentSessionId}`, {
+                        headers
+                    });
+
+                    if (detailsResponse.ok) {
+                        const detailsRes = await detailsResponse.json();
+                        if (detailsRes.success && detailsRes.data) {
+                            setKycData(detailsRes.data);
+                        }
+                    }
                 }
             } catch (err) {
                 console.error("KYC Fetch error:", err);
@@ -76,8 +79,13 @@ const KycFormMaster = () => {
             }
         };
 
-        if (token) fetchKyc();
-    }, [token, apiBase]);
+        // If logged in, fetch session. If not logged in but have sessionId, we can also proceed (Public mode)
+        if (token || sessionId) {
+            fetchKyc();
+        } else {
+            setLoading(false);
+        }
+    }, [token, apiBase, sessionId, isEmailVerified]);
 
     const handleNext = (nextStepData: any) => {
         setKycData((prev: any) => ({ ...prev, ...nextStepData }));

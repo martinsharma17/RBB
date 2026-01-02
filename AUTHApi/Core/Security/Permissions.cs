@@ -15,7 +15,7 @@ namespace AUTHApi.Core.Security
         {
             public const string View = "Permissions.Tasks.View"; // Generic parent view
             public const string Sidebar = "Permissions.Tasks.Sidebar";
-            
+
             // Task List
             public const string ViewList = "Permissions.Tasks.List.View";
             public const string CreateList = "Permissions.Tasks.List.Create";
@@ -67,13 +67,13 @@ namespace AUTHApi.Core.Security
             public const string DeleteSettings = "Permissions.Projects.Settings.Delete";
             public const string SidebarSettings = "Permissions.Projects.Settings.Sidebar";
         }
-        
+
         public static class Analytics
         {
             public const string View = "Permissions.Analytics.View";
             public const string Sidebar = "Permissions.Analytics.Sidebar";
         }
-        
+
         public static class Reports
         {
             public const string View = "Permissions.Reports.View";
@@ -128,8 +128,9 @@ namespace AUTHApi.Core.Security
             public const string Create = "Permissions.Kyc.Create";
             public const string Edit = "Permissions.Kyc.Edit";
             public const string Delete = "Permissions.Kyc.Delete";
-            public const string Verify = "Permissions.Kyc.Verify";   // Maker verification
+            public const string Verify = "Permissions.Kyc.Verify"; // Maker verification
             public const string Approve = "Permissions.Kyc.Approve"; // Checker approval
+            public const string Workflow = "Permissions.Kyc.Workflow"; // Staff Queue
             public const string Sidebar = "Permissions.Kyc.Sidebar";
         }
 
@@ -143,10 +144,13 @@ namespace AUTHApi.Core.Security
                 Tasks.ViewList, Tasks.CreateList, Tasks.EditList, Tasks.DeleteList, Tasks.SidebarList,
                 Tasks.ViewKanban, Tasks.CreateKanban, Tasks.EditKanban, Tasks.DeleteKanban, Tasks.SidebarKanban,
                 Projects.View, Projects.Create, Projects.Edit, Projects.Delete, Projects.Sidebar,
-                Projects.ViewMyProjects, Projects.CreateMyProjects, Projects.EditMyProjects, Projects.DeleteMyProjects, Projects.SidebarMyProjects,
-                Projects.ViewContent, Projects.CreateContent, Projects.EditContent, Projects.DeleteContent, Projects.SidebarContent,
+                Projects.ViewMyProjects, Projects.CreateMyProjects, Projects.EditMyProjects, Projects.DeleteMyProjects,
+                Projects.SidebarMyProjects,
+                Projects.ViewContent, Projects.CreateContent, Projects.EditContent, Projects.DeleteContent,
+                Projects.SidebarContent,
                 Projects.ViewTeam, Projects.CreateTeam, Projects.EditTeam, Projects.DeleteTeam, Projects.SidebarTeam,
-                Projects.ViewSettings, Projects.CreateSettings, Projects.EditSettings, Projects.DeleteSettings, Projects.SidebarSettings,
+                Projects.ViewSettings, Projects.CreateSettings, Projects.EditSettings, Projects.DeleteSettings,
+                Projects.SidebarSettings,
                 Analytics.View, Analytics.Sidebar,
                 Reports.View, Reports.Sidebar,
                 Audit.View, Audit.Sidebar,
@@ -156,7 +160,7 @@ namespace AUTHApi.Core.Security
                 Notifications.View, Notifications.Sidebar,
                 Security.View, Security.Sidebar,
                 Backup.View, Backup.Sidebar,
-                Kyc.View, Kyc.Create, Kyc.Edit, Kyc.Delete, Kyc.Verify, Kyc.Approve, Kyc.Sidebar
+                Kyc.View, Kyc.Create, Kyc.Edit, Kyc.Delete, Kyc.Verify, Kyc.Approve, Kyc.Workflow, Kyc.Sidebar
             };
         }
     }

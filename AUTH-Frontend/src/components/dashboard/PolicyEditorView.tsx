@@ -58,6 +58,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'audit', name: 'Audit Logs' },
         { id: 'notifications', name: 'Notifications' },
         { id: 'kyc', name: 'KYC Verification' },
+        { id: 'kyc_workflow', name: 'KYC Approval Queue' },
         { id: 'security', name: 'Security' },
         { id: 'backup', name: 'Backup & Restore' }
     ];

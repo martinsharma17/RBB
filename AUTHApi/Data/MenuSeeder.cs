@@ -69,6 +69,15 @@ namespace AUTHApi.Data
                 Order = 6
             };
 
+            var kycWorkflowItem = new MenuItem
+            {
+                Title = "KYC Approval Queue", ViewId = "kyc_workflow", Icon = "AuditIcon",
+                Url = "/kyc-approval",
+                Permission = Permissions.Kyc.Workflow,
+                RequiredPolicyId = GetPolicyId(Permissions.Kyc.Workflow),
+                Order = 7
+            };
+
             // Menu Management - SuperAdmin only (no permission required, role-based)
             var menuManagementItem = new MenuItem
             {
@@ -116,6 +125,7 @@ namespace AUTHApi.Data
                 rolesItem,
                 policyItem,
                 kycItem,
+                kycWorkflowItem,
                 menuManagementItem, // Menu Management for SuperAdmin
                 chartsItem,
                 projectsItem,

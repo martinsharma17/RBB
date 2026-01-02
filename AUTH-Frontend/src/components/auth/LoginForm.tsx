@@ -237,6 +237,15 @@ const LoginForm = () => {
                                 Create a new account
                             </Link>
                         </div>
+
+                        <div className="text-center mt-2">
+                            <Link
+                                to="/public-kyc"
+                                className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 underline"
+                            >
+                                Fill KYC without Login
+                            </Link>
+                        </div>
                     </form>
                 </div>
 

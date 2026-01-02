@@ -24,9 +24,12 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({ sessionId, onBack, onComp
         formData.append('documentType', type.toString());
         formData.append('file', file);
 
+        const headers: any = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const response = await fetch(`${apiBase}/api/KycData/upload-document`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
+            headers,
             body: formData
         });
 
@@ -60,9 +63,12 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({ sessionId, onBack, onComp
             await uploadFile(citBack, 3); // Cit Back
 
             // 2. Finally submit the whole KYC
+            const submitHeaders: any = {};
+            if (token) submitHeaders['Authorization'] = `Bearer ${token}`;
+
             const submitResponse = await fetch(`${apiBase}/api/Kyc/submit/${sessionId}`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: submitHeaders
             });
 
             if (submitResponse.ok) {

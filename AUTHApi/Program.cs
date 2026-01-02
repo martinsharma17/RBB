@@ -169,6 +169,9 @@ internal class Program
         // Register the KYC service for document and data handling
         builder.Services.AddScoped<AUTHApi.Services.IKycService, AUTHApi.Services.KycService>();
 
+        // Register the Dynamic KYC Workflow Service
+        builder.Services.AddScoped<AUTHApi.Services.IKycWorkflowService, AUTHApi.Services.KycWorkflowService>();
+
 
         var app = builder.Build();
 
@@ -190,14 +193,20 @@ internal class Program
                 await RoleSeeder.SeedRolesAsync(services);
                 await RoleSeeder.SeedSuperAdminAsync(services);
 
-                // Seed Menu Items
-                await MenuSeeder.SeedMenuItemsAsync(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>());
-
                 // Seed default permissions for each role
                 await PermissionSeeder.SeedDefaultPermissionsAsync(services);
 
+                // Seed Menu Items
+                await MenuSeeder.SeedMenuItemsAsync(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>());
+
                 // Seed KYC steps
                 await KycStepSeeder.SeedStepsAsync(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>());
+
+                // Seed Dynamic KYC Workflow Configuration
+                await KycWorkflowSeeder.SeedWorkflowConfigAsync(
+                    scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(),
+                    scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>()
+                );
             }
             catch (Exception ex)
             {

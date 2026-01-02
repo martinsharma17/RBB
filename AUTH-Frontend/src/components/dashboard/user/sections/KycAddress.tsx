@@ -77,10 +77,13 @@ const KycAddress: React.FC<KycAddressProps> = ({ sessionId, initialData, onNext,
         setError(null);
 
         try {
+            const headers: any = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
             // Step 2: Save Current Address
             const currentRes = await fetch(`${apiBase}/api/KycData/save-current-address`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers,
                 body: JSON.stringify({
                     sessionId: sessionId,
                     stepNumber: 2,
@@ -101,7 +104,7 @@ const KycAddress: React.FC<KycAddressProps> = ({ sessionId, initialData, onNext,
             // Step 3: Save Permanent Address
             const permanentRes = await fetch(`${apiBase}/api/KycData/save-permanent-address`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                headers,
                 body: JSON.stringify({
                     sessionId: sessionId,
                     stepNumber: 3,

@@ -31,8 +31,8 @@ namespace AUTHApi.Controllers
         [HttpGet("all-details/{sessionId}")]
         public async Task<IActionResult> GetAllDetails(int sessionId)
         {
-            var session = await _context.KycFormSessions.FindAsync(sessionId);
-            if (session == null) return Failure("Session not found", 404);
+            var (isValid, msg, session) = await ValidateSessionAsync(sessionId);
+            if (!isValid) return Failure(msg);
 
             // Fetch the Single consolidated record
             var detail = await _context.KycDetails
@@ -42,14 +42,14 @@ namespace AUTHApi.Controllers
             if (detail == null)
             {
                 // Return empty structure if not created yet
-                return Success(new KycFullDetailsDto { SessionId = sessionId, Email = session.Email });
+                return Success(new KycFullDetailsDto { SessionId = sessionId, Email = session!.Email });
             }
 
             // Map Entity -> DTO
             var response = new KycFullDetailsDto
             {
                 SessionId = sessionId,
-                Email = session.Email,
+                Email = session!.Email,
                 PersonalInfo = new PersonalInfoDto
                 {
                     FullName = detail.FirstName + " " +
@@ -431,9 +431,14 @@ namespace AUTHApi.Controllers
         {
             var session = await _context.KycFormSessions.FindAsync(sessionId);
             if (session == null) return (false, "KYC session not found.", null);
+
             if (session.IsExpired ||
                 (session.SessionExpiryDate.HasValue && session.SessionExpiryDate < DateTime.UtcNow))
                 return (false, "Your session has expired.", null);
+
+            if (!session.EmailVerified)
+                return (false, "Please verify your email address before proceeding with the KYC form.", null);
+
             return (true, string.Empty, session);
         }
 
