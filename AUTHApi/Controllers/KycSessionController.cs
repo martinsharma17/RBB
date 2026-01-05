@@ -24,7 +24,7 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> InitializeSession([FromBody] KycInitializeDto model)
         {
             var session = await _context.KycFormSessions
-                .FirstOrDefaultAsync(s => s.Email == model.Email && !s.IsExpired);
+                .FirstOrDefaultAsync(s => s.Email == model.Email && !s.IsExpired && s.FormStatus < 3);
 
             if (session == null)
             {

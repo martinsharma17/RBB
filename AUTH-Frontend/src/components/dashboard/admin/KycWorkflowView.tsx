@@ -6,8 +6,11 @@ interface PendingKyc {
     kycSessionId: number;
     customerEmail: string;
     pendingLevel: number;
+    totalLevels: number;
     createdAt: string;
     lastRemarks: string;
+    currentRoleName: string;
+    chain: string[];
 }
 
 const KycWorkflowView: React.FC = () => {
@@ -140,8 +143,9 @@ const KycWorkflowView: React.FC = () => {
                             <thead className="bg-gray-50/50">
                                 <tr>
                                     <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Applicant</th>
+                                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Current Location</th>
                                     <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Submission Date</th>
-                                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Complexity</th>
+                                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Progress</th>
                                     <th className="px-8 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Action</th>
                                 </tr>
                             </thead>
@@ -159,6 +163,24 @@ const KycWorkflowView: React.FC = () => {
                                                 </div>
                                             </div>
                                         </td>
+                                        <td className="px-8 py-5">
+                                            <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-lg border border-indigo-100">
+                                                {kyc.currentRoleName || 'N/A'}
+                                            </span>
+                                            {kyc.chain && kyc.chain.length > 0 && (
+                                                <div className="mt-2 flex items-center gap-1.5 opacity-50">
+                                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Path:</span>
+                                                    <div className="flex items-center gap-1 text-[9px] font-bold text-gray-500 uppercase tracking-tighter overflow-hidden whitespace-nowrap mask-fade-right">
+                                                        {kyc.chain.map((role, i) => (
+                                                            <React.Fragment key={i}>
+                                                                <span className={role === kyc.currentRoleName ? 'text-indigo-600 font-extrabold ring-1 ring-indigo-100 px-1 rounded' : ''}>{role}</span>
+                                                                {i < kyc.chain.length - 1 && <span>›</span>}
+                                                            </React.Fragment>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-8 py-5 text-sm text-gray-500">
                                             {new Date(kyc.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
                                         </td>
@@ -167,10 +189,12 @@ const KycWorkflowView: React.FC = () => {
                                                 <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full bg-indigo-500 rounded-full"
-                                                        style={{ width: `${(1 - (kyc.pendingLevel / 3)) * 100}%` }}
+                                                        style={{ width: `${((kyc.totalLevels - kyc.pendingLevel) / kyc.totalLevels) * 100}%` }}
                                                     ></div>
                                                 </div>
-                                                <span className="text-[10px] font-bold text-indigo-600 uppercase italic">Level {kyc.pendingLevel}</span>
+                                                <span className="text-[10px] font-bold text-indigo-600 uppercase italic">
+                                                    Step {kyc.totalLevels - kyc.pendingLevel + 1} of {kyc.totalLevels}
+                                                </span>
                                             </div>
                                         </td>
                                         <td className="px-8 py-5 text-right">
@@ -235,6 +259,55 @@ const KycWorkflowView: React.FC = () => {
                             ) : (
                                 <div className="space-y-8 max-w-4xl mx-auto">
 
+                                    {/* Workflow Roadmap */}
+                                    <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm overflow-hidden relative">
+                                        <div className="flex items-center justify-between mb-8 px-2">
+                                            <div>
+                                                <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Approval Pipeline</h4>
+                                                <h2 className="text-xl font-black text-gray-900">Current Progress</h2>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Step: {detailData.workflow.currentRoleId ? (detailData.approvalChain?.find((c: any) => c.roleId === detailData.workflow.currentRoleId)?.roleName || 'Unknown') : 'Finalized'}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between relative px-10 mb-4">
+                                            {/* Connecting Line */}
+                                            <div className="absolute top-1/2 left-10 right-10 h-1 bg-gray-100 -translate-y-1/2"></div>
+                                            <div
+                                                className="absolute top-1/2 left-10 h-1 bg-indigo-500 -translate-y-1/2 transition-all duration-1000 ease-in-out"
+                                                style={{ width: `${(detailData.approvalChain?.findIndex((c: any) => c.isCurrent) / (detailData.approvalChain?.length - 1)) * 100}%` }}
+                                            ></div>
+
+                                            {detailData.approvalChain?.map((step: any, idx: number) => (
+                                                <div key={idx} className="relative flex flex-col items-center z-10">
+                                                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border-4 border-white shadow-lg ${step.isCompleted ? 'bg-green-500 text-white' :
+                                                        step.isCurrent ? 'bg-indigo-600 text-white scale-125 ring-8 ring-indigo-50' :
+                                                            'bg-white text-gray-300'
+                                                        }`}>
+                                                        {step.isCompleted ? (
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        ) : (
+                                                            <span className="font-black text-sm">{idx + 1}</span>
+                                                        )}
+                                                    </div>
+                                                    <span className={`absolute -bottom-8 whitespace-nowrap text-[9px] font-black uppercase tracking-widest ${step.isCurrent ? 'text-indigo-600' : 'text-gray-400'
+                                                        }`}>
+                                                        {step.roleName}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="pt-10 px-2">
+                                            <p className="text-[10px] text-gray-400 font-medium">
+                                                * This application requires <span className="text-gray-900 font-bold">{detailData.approvalChain?.length} levels</span> of verification for final approval.
+                                            </p>
+                                        </div>
+                                    </div>
+
                                     {activeTab === 'overview' && (
                                         <div className="grid md:grid-cols-2 gap-6">
                                             <SectionCard title="Personal Summary">
@@ -285,21 +358,35 @@ const KycWorkflowView: React.FC = () => {
                                         <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
                                             <div className="space-y-8 relative">
                                                 <div className="absolute top-0 bottom-0 left-[15px] w-0.5 bg-gray-100"></div>
-                                                {detailData.history.map((h: any) => (
+                                                {detailData.logs?.map((h: any) => (
                                                     <div key={h.id} className="flex gap-6 relative">
                                                         <div className={`w-8 h-8 rounded-full flex-shrink-0 z-10 flex items-center justify-center border-4 border-white shadow-sm ${h.action === 'Approved' ? 'bg-green-500' : h.action === 'Rejected' ? 'bg-red-500' : 'bg-indigo-500'
                                                             }`}>
                                                             <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
                                                         </div>
-                                                        <div>
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="font-black text-gray-900 uppercase tracking-tight text-sm">{h.action}</span>
-                                                                <span className="text-[10px] text-gray-400 font-bold">{new Date(h.createdAt).toLocaleString()}</span>
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest text-white ${h.action === 'Approved' ? 'bg-green-500' : h.action === 'Rejected' ? 'bg-red-500' : 'bg-indigo-500'
+                                                                        }`}>
+                                                                        {h.action}
+                                                                    </span>
+                                                                    <span className="text-[10px] text-gray-400 font-bold">{new Date(h.createdAt).toLocaleString()}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                                                                    <span className="text-[10px] font-black text-indigo-600 uppercase">{h.actionedByRoleName || 'System'}</span>
+                                                                    <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                                    </svg>
+                                                                    <span className="text-[10px] font-black text-gray-400 uppercase">{h.forwardedToRoleName || 'Finalized'}</span>
+                                                                </div>
                                                             </div>
-                                                            <p className="text-gray-600 text-sm mt-1 leading-relaxed bg-gray-50 p-3 rounded-xl border border-gray-100">{h.remarks || "No remarks provided."}</p>
-                                                            <p className="text-[9px] text-gray-400 font-mono mt-2 flex items-center gap-1 italic">
-                                                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"></path></svg>
-                                                                Actor ID: {h.userId}
+                                                            <p className="text-gray-600 text-sm mt-2 leading-relaxed bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">{h.remarks || "No remarks provided."}</p>
+                                                            <p className="text-[10px] text-gray-400 font-medium mt-2 flex items-center gap-2">
+                                                                <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
+                                                                    {h.userFullName?.charAt(0) || 'S'}
+                                                                </div>
+                                                                Action by: <span className="text-gray-600 font-bold">{h.userFullName || 'System'}</span> (ID: {h.userId || 'N/A'})
                                                             </p>
                                                         </div>
                                                     </div>

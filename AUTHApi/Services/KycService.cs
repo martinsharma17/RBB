@@ -369,7 +369,8 @@ namespace AUTHApi.Services
                 return (null, "Email is required to initiate KYC.");
 
             var existingSession =
-                await _context.KycFormSessions.FirstOrDefaultAsync(s => s.Email == email && s.UserId == null);
+                await _context.KycFormSessions.FirstOrDefaultAsync(s =>
+                    s.Email == email && s.UserId == null && s.FormStatus < 3);
             if (existingSession != null)
             {
                 if (!existingSession.EmailVerified && existingSession.SessionExpiryDate > DateTime.UtcNow)

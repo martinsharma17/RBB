@@ -9,13 +9,10 @@ namespace AUTHApi.Entities
     /// </summary>
     public class KycApprovalLog
     {
-        [Key]
-        public int Id { get; set; }
+        [Key] public int Id { get; set; }
 
-        [Required]
-        public int KycWorkflowId { get; set; }
-        [ForeignKey("KycWorkflowId")]
-        public virtual KycWorkflowMaster? KycWorkflow { get; set; }
+        [Required] public int KycWorkflowId { get; set; }
+        [ForeignKey("KycWorkflowId")] public virtual KycWorkflowMaster? KycWorkflow { get; set; }
 
         /// <summary>
         /// The role of the user who performed the action.
@@ -26,8 +23,8 @@ namespace AUTHApi.Entities
         /// The user who performed the action.
         /// </summary>
         public string? UserId { get; set; }
-        [ForeignKey("UserId")]
-        public virtual ApplicationUser? User { get; set; }
+
+        [ForeignKey("UserId")] public virtual ApplicationUser? User { get; set; }
 
         /// <summary>
         /// Action taken: approved, rejected, resubmitted, etc.
@@ -39,14 +36,14 @@ namespace AUTHApi.Entities
         public string? Remarks { get; set; }
 
         /// <summary>
-        /// Workflow moved from this role.
+        /// The role that performed the action (e.g., Maker, Checker).
         /// </summary>
-        public string? FromRoleId { get; set; }
+        public string? ActionedByRoleId { get; set; }
 
         /// <summary>
-        /// Workflow moved to this role.
+        /// The role that the KYC was moved to after this action.
         /// </summary>
-        public string? ToRoleId { get; set; }
+        public string? ForwardedToRoleId { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

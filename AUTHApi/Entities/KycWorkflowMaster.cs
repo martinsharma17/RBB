@@ -18,16 +18,15 @@ namespace AUTHApi.Entities
     /// </summary>
     public class KycWorkflowMaster
     {
-        [Key]
-        public int Id { get; set; }
+        [Key] public int Id { get; set; }
 
         /// <summary>
         /// FK to the KYC Session.
         /// </summary>
         [Required]
         public int KycSessionId { get; set; }
-        [ForeignKey("KycSessionId")]
-        public virtual KycFormSession? KycSession { get; set; }
+
+        [ForeignKey("KycSessionId")] public virtual KycFormSession? KycSession { get; set; }
 
         /// <summary>
         /// The role that originally submitted the form (e.g., Maker).
@@ -51,6 +50,21 @@ namespace AUTHApi.Entities
         public KycWorkflowStatus Status { get; set; } = KycWorkflowStatus.InReview;
 
         public string? LastRemarks { get; set; }
+
+        /// <summary>
+        /// Numeric representation of the Role (0: User, 1: Maker, 2: Checker, 3: RBBSec)
+        /// </summary>
+        public int CurrentOrderLevel { get; set; }
+
+        /// <summary>
+        /// Numeric representation of the Submitter's Role (0: User, 1: Maker, 2: Checker, 3: RBBSec)
+        /// </summary>
+        public int SubmittedOrderLevel { get; set; }
+
+        /// <summary>
+        /// The full sequence of roles for this workflow (e.g., "Maker -> Checker -> RBBSec").
+        /// </summary>
+        public string? FullChain { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }

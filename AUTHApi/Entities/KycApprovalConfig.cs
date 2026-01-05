@@ -17,11 +17,9 @@ namespace AUTHApi.Entities
         public string RoleId { get; set; } = string.Empty;
 
         /// <summary>
-        /// Ordered list of roles for approval stored as JSON array.
-        /// Example: ["Checker", "RBBSec"] 
+        /// The approval chain steps for this configuration.
         /// </summary>
-        [Required]
-        public string ApprovalChain { get; set; } = "[]";
+        public virtual ICollection<KycApprovalStep> Steps { get; set; } = new List<KycApprovalStep>();
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }

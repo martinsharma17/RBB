@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using AUTHApi.Core.Security;
 
 namespace AUTHApi.Controllers
 {
@@ -29,7 +30,7 @@ namespace AUTHApi.Controllers
         /// Staff action to approve a KYC.
         /// </summary>
         [HttpPost("approve")]
-        [Authorize(Roles = "Maker,Checker,RBBSec,Admin,SuperAdmin")]
+        [Authorize(Policy = Permissions.Kyc.Approve)]
         public async Task<IActionResult> ApproveKyc([FromBody] ApprovalModel model)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -45,7 +46,7 @@ namespace AUTHApi.Controllers
         /// Staff action to reject a KYC.
         /// </summary>
         [HttpPost("reject")]
-        [Authorize(Roles = "Maker,Checker,RBBSec,Admin,SuperAdmin")]
+        [Authorize(Policy = Permissions.Kyc.Reject)]
         public async Task<IActionResult> RejectKyc([FromBody] ApprovalModel model)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -62,7 +63,7 @@ namespace AUTHApi.Controllers
         /// Gets the list of KYCs pending for the current user's role.
         /// </summary>
         [HttpGet("pending")]
-        [Authorize(Roles = "Maker,Checker,RBBSec,Admin,SuperAdmin")]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
         public async Task<IActionResult> GetPendingKycs()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -101,7 +102,12 @@ namespace AUTHApi.Controllers
                     CustomerEmail = w.KycSession != null ? w.KycSession.Email : "Unknown",
                     w.PendingLevel,
                     w.CreatedAt,
-                    w.LastRemarks
+                    w.LastRemarks,
+                    CurrentRoleName = _context.Roles.Where(r => r.Id == w.CurrentRoleId).Select(r => r.Name)
+                        .FirstOrDefault(),
+                    TotalLevels = _context.KycApprovalSteps.Count(s =>
+                        _context.KycApprovalConfigs.Any(c => c.Id == s.ConfigId && c.RoleId == w.SubmittedRoleId)),
+                    Chain = (w.FullChain ?? "").Split(" -> ", StringSplitOptions.RemoveEmptyEntries).ToList()
                 })
                 .ToListAsync();
 
@@ -112,7 +118,7 @@ namespace AUTHApi.Controllers
         /// Gets the full KYC details for a specific workflow item.
         /// </summary>
         [HttpGet("details/{workflowId}")]
-        [Authorize(Roles = "Maker,Checker,RBBSec,Admin,SuperAdmin")]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
         public async Task<IActionResult> GetKycDetails(int workflowId)
         {
             var workflow = await _context.KycWorkflowMasters
@@ -124,15 +130,46 @@ namespace AUTHApi.Controllers
             if (workflow == null) return Failure("Workflow item not found.", 404);
 
             var logs = await _context.KycApprovalLogs
+                .Include(l => l.User)
                 .Where(l => l.KycWorkflowId == workflowId)
                 .OrderByDescending(l => l.CreatedAt)
+                .Select(log => new
+                {
+                    log.Id,
+                    log.Action,
+                    log.Remarks,
+                    log.UserId,
+                    log.CreatedAt,
+                    ActionedByRoleName = _context.Roles.Where(r => r.Id == log.ActionedByRoleId).Select(r => r.Name)
+                        .FirstOrDefault(),
+                    ForwardedToRoleName = _context.Roles.Where(r => r.Id == log.ForwardedToRoleId).Select(r => r.Name)
+                        .FirstOrDefault(),
+                    UserFullName = log.UserId != null ? log.User.Name : "System/Public"
+                })
+                .ToListAsync();
+
+            var approvalChain = await _context.KycApprovalSteps
+                .Where(s => _context.KycApprovalConfigs.Any(c =>
+                    c.Id == s.ConfigId && c.RoleId == workflow.SubmittedRoleId))
+                .OrderBy(s => s.StepOrder)
+                .Select(s => new
+                {
+                    s.StepOrder,
+                    RoleName = _context.Roles.Where(r => r.Id == s.RoleId).Select(r => r.Name).FirstOrDefault(),
+                    s.RoleId,
+                    IsCurrent = s.RoleId == workflow.CurrentRoleId,
+                    IsCompleted = _context.KycApprovalLogs.Any(l =>
+                        l.KycWorkflowId == workflowId && l.ActionedByRoleId == s.RoleId && l.Action == "Approved")
+                })
                 .ToListAsync();
 
             return Success(new
             {
                 workflow,
                 details = workflow.KycSession?.KycDetail,
-                history = logs
+                documents = workflow.KycSession?.KycDetail?.Documents,
+                logs,
+                approvalChain
             });
         }
 

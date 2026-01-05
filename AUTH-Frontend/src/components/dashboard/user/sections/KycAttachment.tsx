@@ -72,6 +72,10 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({ sessionId, onBack, onComp
             });
 
             if (submitResponse.ok) {
+                // Clear local storage for public sessions
+                localStorage.removeItem('kyc_session_id');
+                localStorage.removeItem('kyc_email_verified');
+
                 setSuccess("KYC submitted successfully!");
                 setTimeout(() => onComplete(), 1500);
             } else {

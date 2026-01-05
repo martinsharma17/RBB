@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using AUTHApi.Core.Security;
+using AUTHApi.Services;
 
 
 /// <summary>
@@ -144,25 +145,18 @@ internal class Program
             });
 
         // --- Authorization Policies ---
-        // Define policies based on Roles. These are used in [Authorize(Policy="...")] attributes.
-        builder.Services.AddAuthorization(options =>
-        {
-            options.AddPolicy("AdminOnly", policy =>
-                policy.RequireRole("Admin"));
+        // We use a dynamic PermissionPolicyProvider for granular permission-based logic.
+        // Legacy role-based policies (AdminOnly, etc.) are removed in favor of [Authorize(Policy = Permissions.X.Y)].
+        builder.Services.AddAuthorization();
 
-            options.AddPolicy("UserOnly", policy =>
-                policy.RequireRole("User"));
-
-            options.AddPolicy("AdminOrUser", policy =>
-                policy.RequireRole("Admin", "User"));
-        });
-
-        // --- Custom Permission-Based Authorization ---
-        // Register our dynamic policy provider and handler
+        // --- Custom Permission-Based Authorization Infrastructure ---
+        // Register our dynamic policy provider and handler which enables [Authorize(Policy = Permissions.Kyc.Approve)]
         builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
         builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
-        // --- Email Service Registration ---
+        // --- Core Services Registration ---
+        builder.Services.AddScoped<ITokenService, TokenService>();
+
         // Register the email service for password reset and other email functionality
         builder.Services.AddScoped<AUTHApi.Services.IEmailService, AUTHApi.Services.EmailService>();
 

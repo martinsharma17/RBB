@@ -108,13 +108,7 @@ namespace AUTHApi.Controllers
             if (!wfSuccess)
             {
                 _logger.LogError("KYC {SessionId} submitted but workflow failed: {Message}", sessionId, wfMessage);
-
-                // If workflow fails, we don't want to leave the session as "Submitted" if it won't be reviewed
-                // session.FormStatus = 1; // Rollback to InProgress? No, maybe keep it and warn.
-
-                return Success(
-                    "KYC submitted successfully, but the internal approval workflow could not be started. Error: " +
-                    wfMessage);
+                return Failure("Submission partially failed: " + wfMessage, 500);
             }
 
             return Success("KYC submitted successfully for review.");

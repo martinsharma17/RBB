@@ -10,6 +10,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Text.Json;
 using System.Net.Http;
+using AUTHApi.Services;
 using Microsoft.Extensions.Logging;
 
 namespace AUTHApi.Controllers
@@ -26,18 +27,21 @@ namespace AUTHApi.Controllers
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IConfiguration _configuration;
         private readonly ILogger<ExternalAuthController> _logger;
+        private readonly ITokenService _tokenService;
         private readonly string _frontendUrl;
 
         public ExternalAuthController(
             UserManager<ApplicationUser> userManager,
             RoleManager<IdentityRole> roleManager,
             IConfiguration configuration,
-            ILogger<ExternalAuthController> logger)
+            ILogger<ExternalAuthController> logger,
+            ITokenService tokenService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _configuration = configuration;
             _logger = logger;
+            _tokenService = tokenService;
             _frontendUrl = configuration["Frontend:Url"] ?? "http://localhost:5173";
         }
 
@@ -184,66 +188,15 @@ namespace AUTHApi.Controllers
                 }
             }
 
-            // Generate JWT token with Google picture
-            var token = await GenerateJwtToken(user, picture);
+            // 5. Generate JWT token with Google picture
+            // This now uses the centralized TokenService to inject Permission claims.
+            var token = await _tokenService.GenerateJwtToken(user, picture);
 
             // Sign out the cookie auth to clean up
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
             // Redirect with JWT to frontend
             return Redirect($"{_frontendUrl}/?token={Uri.EscapeDataString(token)}");
-        }
-
-        /// <summary>
-        /// Generates a JWT token for the authenticated user with optional picture claim.
-        /// </summary>
-        /// <param name="user">The authenticated user</param>
-        /// <param name="picture">Optional profile picture URL from OAuth provider</param>
-        /// <returns>Signed JWT token string</returns>
-        private async Task<string> GenerateJwtToken(ApplicationUser user, string? picture = null)
-        {
-            var roles = await _userManager.GetRolesAsync(user);
-            var userClaims = await _userManager.GetClaimsAsync(user);
-
-            var claims = new List<Claim>
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.Name, user.Name ?? string.Empty),
-                new Claim(ClaimTypes.NameIdentifier, user.Id)
-            };
-
-            // Add Google profile picture if available
-            if (!string.IsNullOrEmpty(picture))
-            {
-                claims.Add(new Claim("picture", picture));
-            }
-
-            foreach (var role in roles)
-            {
-                claims.Add(new Claim(ClaimTypes.Role, role));
-            }
-
-            foreach (var claim in userClaims)
-            {
-                claims.Add(claim);
-            }
-
-            var key = new SymmetricSecurityKey(
-                System.Text.Encoding.UTF8.GetBytes(
-                    _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is not configured")));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(int.Parse(_configuration["Jwt:ExpireMinutes"] ?? "60")),
-                signingCredentials: creds
-            );
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

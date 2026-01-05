@@ -5,7 +5,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore; // Added this using directive
-using System.Security.Claims; // Added this using directive
+using System.Security.Claims;
+using AUTHApi.Core.Security;
 
 namespace AUTHApi.Controllers
 {
@@ -20,7 +21,7 @@ namespace AUTHApi.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Policy = "AdminOnly")] // CLASS-LEVEL SECURITY: Applies to ALL methods unless overridden
+    [Authorize(Policy = Permissions.Roles.View)] // CLASS-LEVEL SECURITY: Applies to ALL methods unless overridden
     public class RolesController : BaseApiController
     {
         private readonly RoleManager<IdentityRole> _roleManager; // API to create/delete roles
@@ -52,7 +53,7 @@ namespace AUTHApi.Controllers
         /// Access: SuperAdmin Only (Higher privilege than normal Admin)
         /// </summary>
         [HttpPost("CreateRole")]
-        [Authorize(Roles = "SuperAdmin")] // METHOD-LEVEL SECURITY: Only SuperAdmin can create roles
+        [Authorize(Policy = Permissions.Roles.Create)] // Only users with Role Create permission
         public async Task<IActionResult> CreateRole([FromBody] CreateRoleModel model)
         {
             // 1. Validation
@@ -87,7 +88,7 @@ namespace AUTHApi.Controllers
         /// Access: SuperAdmin Only
         /// </summary>
         [HttpDelete("DeleteRole/{roleName}")]
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Policy = Permissions.Roles.Delete)]
         public async Task<IActionResult> DeleteRole(string roleName)
         {
             // 1. Protect Critical Roles
@@ -120,7 +121,7 @@ namespace AUTHApi.Controllers
         /// Access: SuperAdmin Only
         /// </summary>
         [HttpGet("AllUsers")]
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Policy = Permissions.Users.View)]
         public async Task<IActionResult> GetAllUsers()
         {
             var users = await _userManager.Users.ToListAsync();
@@ -144,7 +145,7 @@ namespace AUTHApi.Controllers
         /// Access: SuperAdmin Only
         /// </summary>
         [HttpGet("AllAdmins")]
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Policy = Permissions.Users.View)]
         public async Task<IActionResult> GetAllAdmins()
         {
             // Helper method from UserManager to find users by role
@@ -166,7 +167,7 @@ namespace AUTHApi.Controllers
         /// Access: Admin Only
         /// </summary>
         [HttpGet("Admin/users")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Policy = Permissions.Users.View)]
         public async Task<IActionResult> GetUsersForAdmin()
         {
             // 1. Identify valid Admin
@@ -200,6 +201,7 @@ namespace AUTHApi.Controllers
         /// Access: Admin Only (implicitly via class-level attribute)
         /// </summary>
         [HttpPost("AssignRole")]
+        [Authorize(Policy = Permissions.Roles.Assign)]
         public async Task<IActionResult> AssignRoleToUser([FromBody] AssignRoleModel model)
         {
             // Input Validation
@@ -245,6 +247,7 @@ namespace AUTHApi.Controllers
         /// Endpoint: POST /api/Roles/RemoveRole
         /// </summary>
         [HttpPost("RemoveRole")]
+        [Authorize(Policy = Permissions.Roles.Assign)]
         public async Task<IActionResult> RemoveRoleFromUser([FromBody] AssignRoleModel model)
         {
             if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.RoleName))

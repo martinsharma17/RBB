@@ -1,6 +1,7 @@
 using AUTHApi.Data;
 using AUTHApi.Entities;
 using Microsoft.AspNetCore.Authorization;
+using AUTHApi.Core.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,7 @@ namespace AUTHApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Policy = Permissions.Users.View)]
 public class UserController : BaseApiController
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -176,7 +177,7 @@ public class UserController : BaseApiController
     /// <param name="model">User creation data including username, email, password, and optional role.</param>
     /// <returns>Created user's basic information.</returns>
     [HttpPost]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize(Policy = Permissions.Users.Create)]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserModel model)
     {
         var user = new ApplicationUser { UserName = model.UserName, Email = model.Email };
@@ -196,7 +197,7 @@ public class UserController : BaseApiController
     /// <param name="id">User ID to delete.</param>
     /// <returns>Success or failure message.</returns>
     [HttpDelete("{id}")]
-    [Authorize(Roles = "SuperAdmin,Admin")]
+    [Authorize(Policy = Permissions.Users.Delete)]
     public async Task<IActionResult> DeleteUser(string id)
     {
         var user = await _userManager.FindByIdAsync(id);

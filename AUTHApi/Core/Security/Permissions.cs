@@ -89,6 +89,10 @@ namespace AUTHApi.Core.Security
         public static class Roles
         {
             public const string View = "Permissions.Roles.View";
+            public const string Create = "Permissions.Roles.Create";
+            public const string Edit = "Permissions.Roles.Edit";
+            public const string Delete = "Permissions.Roles.Delete";
+            public const string Assign = "Permissions.Roles.Assign"; // Assign roles to users
             public const string Sidebar = "Permissions.Roles.Sidebar";
         }
 
@@ -130,7 +134,8 @@ namespace AUTHApi.Core.Security
             public const string Delete = "Permissions.Kyc.Delete";
             public const string Verify = "Permissions.Kyc.Verify"; // Maker verification
             public const string Approve = "Permissions.Kyc.Approve"; // Checker approval
-            public const string Workflow = "Permissions.Kyc.Workflow"; // Staff Queue
+            public const string Reject = "Permissions.Kyc.Reject";
+            public const string Workflow = "Permissions.Kyc.Workflow"; // Staff Queue access
             public const string Sidebar = "Permissions.Kyc.Sidebar";
         }
 
@@ -154,13 +159,14 @@ namespace AUTHApi.Core.Security
                 Analytics.View, Analytics.Sidebar,
                 Reports.View, Reports.Sidebar,
                 Audit.View, Audit.Sidebar,
-                Roles.View, Roles.Sidebar,
+                Roles.View, Roles.Create, Roles.Edit, Roles.Delete, Roles.Assign, Roles.Sidebar,
                 Policies.View, Policies.Sidebar,
                 Settings.View, Settings.Sidebar,
                 Notifications.View, Notifications.Sidebar,
                 Security.View, Security.Sidebar,
                 Backup.View, Backup.Sidebar,
-                Kyc.View, Kyc.Create, Kyc.Edit, Kyc.Delete, Kyc.Verify, Kyc.Approve, Kyc.Workflow, Kyc.Sidebar
+                Kyc.View, Kyc.Create, Kyc.Edit, Kyc.Delete, Kyc.Verify, Kyc.Approve, Kyc.Reject, Kyc.Workflow,
+                Kyc.Sidebar
             };
         }
     }

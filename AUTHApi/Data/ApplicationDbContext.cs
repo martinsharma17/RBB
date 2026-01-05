@@ -21,6 +21,7 @@ namespace AUTHApi.Data
 
         // --- KYC Workflow Tables ---
         public DbSet<KycApprovalConfig> KycApprovalConfigs { get; set; }
+        public DbSet<KycApprovalStep> KycApprovalSteps { get; set; }
         public DbSet<KycWorkflowMaster> KycWorkflowMasters { get; set; }
         public DbSet<KycApprovalLog> KycApprovalLogs { get; set; }
 
@@ -73,6 +74,12 @@ namespace AUTHApi.Data
             builder.Entity<RolePolicy>().HasIndex(rp => new { rp.RoleId, rp.PolicyId }).IsUnique();
 
             // Configure KYC Workflow
+            builder.Entity<KycApprovalConfig>()
+                .HasMany(c => c.Steps)
+                .WithOne(s => s.Config)
+                .HasForeignKey(s => s.ConfigId)
+                .OnDelete(DeleteBehavior.Cascade);
+
             builder.Entity<KycApprovalConfig>().HasIndex(c => c.RoleId).IsUnique();
             builder.Entity<KycWorkflowMaster>()
                 .HasOne(m => m.KycSession)

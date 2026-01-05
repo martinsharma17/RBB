@@ -13,7 +13,7 @@ namespace AUTHApi.Controllers
     /// </summary>
     [ApiController]
     [Route("api/menu-management")]
-    [Authorize(Roles = "SuperAdmin")] // Only SuperAdmin can manage menus
+    [Authorize(Policy = Permissions.Settings.Sidebar)] // Use granular policy instead of hardcoded role
     public class MenuManagementController : BaseApiController
     {
         private readonly ApplicationDbContext _context;

@@ -2,7 +2,6 @@ using AUTHApi.Data;
 using AUTHApi.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace AUTHApi.Services
 {
@@ -15,6 +14,21 @@ namespace AUTHApi.Services
         {
             _context = context;
             _userManager = userManager;
+        }
+
+        private async Task<int> GetRoleOrderLevel(string? roleId)
+        {
+            if (string.IsNullOrEmpty(roleId)) return 0;
+            var role = await _context.Roles.FindAsync(roleId);
+            if (role == null) return 0;
+            return role.Name switch
+            {
+                "User" => 0,
+                "Maker" => 1,
+                "Checker" => 2,
+                "RBBSec" => 3,
+                _ => 0
+            };
         }
 
         public async Task<(bool success, string message)> InitiateWorkflowAsync(int kycSessionId, string userId)
@@ -54,7 +68,10 @@ namespace AUTHApi.Services
                 submittedRoleId = defaultRole.Id;
             }
 
-            var config = await _context.KycApprovalConfigs.FirstOrDefaultAsync(c => c.RoleId == submittedRoleId);
+            // Load config with pre-ordered steps
+            var config = await _context.KycApprovalConfigs
+                .Include(c => c.Steps.OrderBy(s => s.StepOrder))
+                .FirstOrDefaultAsync(c => c.RoleId == submittedRoleId);
 
             // Fallback: If no config for the specific role, try to get the "User" role's config
             if (config == null)
@@ -62,40 +79,92 @@ namespace AUTHApi.Services
                 var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
                 if (userRole != null)
                 {
-                    config = await _context.KycApprovalConfigs.FirstOrDefaultAsync(c => c.RoleId == userRole.Id);
+                    config = await _context.KycApprovalConfigs
+                        .Include(c => c.Steps.OrderBy(s => s.StepOrder))
+                        .FirstOrDefaultAsync(c => c.RoleId == userRole.Id);
                 }
             }
 
             // Ultimate Fallback: Get the first available config
             if (config == null)
             {
-                config = await _context.KycApprovalConfigs.FirstOrDefaultAsync();
+                config = await _context.KycApprovalConfigs
+                    .Include(c => c.Steps.OrderBy(s => s.StepOrder))
+                    .FirstOrDefaultAsync();
             }
 
             if (config == null)
             {
-                return (false,
-                    "No KYC approval workflow configurations found in the system. Please seed configurations.");
+                return (false, "No valid KYC approval workflow configurations found. Please seed steps.");
             }
 
-            var chain = JsonSerializer.Deserialize<List<string>>(config.ApprovalChain) ?? new List<string>();
-            if (chain.Count == 0)
+            var steps = config.Steps.OrderBy(s => s.StepOrder).ToList();
+
+            // Build visual chain string
+            var chainNames = new List<string>();
+            foreach (var s in steps)
             {
-                return (false, "Approval chain is empty.");
+                var r = await _context.Roles.FindAsync(s.RoleId);
+                if (r != null) chainNames.Add(r.Name);
             }
 
-            // Get the first role in the chain
-            var firstRoleName = chain[0];
-            var firstRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == firstRoleName);
-            if (firstRole == null) return (false, $"Next role '{firstRoleName}' in chain not found.");
+            string fullChain = string.Join(" -> ", chainNames);
+
+            // Get Order Levels
+            int submittedLevel = await GetRoleOrderLevel(submittedRoleId);
+
+            // Case: Direct Approval (for Roles like RBBSec)
+            if (steps.Count == 0)
+            {
+                var directWorkflow = new KycWorkflowMaster
+                {
+                    KycSessionId = kycSessionId,
+                    SubmittedRoleId = submittedRoleId,
+                    CurrentRoleId = null, // No current active role
+                    PendingLevel = 0,
+                    Status = KycWorkflowStatus.Approved,
+                    SubmittedOrderLevel = submittedLevel,
+                    CurrentOrderLevel = submittedLevel, // Finalized
+                    FullChain = "Direct Approval",
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.KycWorkflowMasters.Add(directWorkflow);
+
+                if (session != null)
+                {
+                    session.FormStatus = 4; // Fully Approved
+                }
+
+                await _context.SaveChangesAsync();
+
+                var directLog = new KycApprovalLog
+                {
+                    KycWorkflowId = directWorkflow.Id,
+                    Action = "Auto-Approved",
+                    Remarks = "KYC submitted by authoritative role. Direct approval granted.",
+                    UserId = initiatorId == "Public-User" || initiatorId == "System" ? null : initiatorId,
+                    ActionedByRoleId = submittedRoleId,
+                    ForwardedToRoleId = null,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.KycApprovalLogs.Add(directLog);
+                await _context.SaveChangesAsync();
+
+                return (true, "KYC submitted and auto-approved directly.");
+            }
+
+            var firstStep = steps[0];
 
             var workflow = new KycWorkflowMaster
             {
                 KycSessionId = kycSessionId,
                 SubmittedRoleId = submittedRoleId,
-                CurrentRoleId = firstRole.Id,
-                PendingLevel = chain.Count,
+                CurrentRoleId = firstStep.RoleId,
+                PendingLevel = steps.Count,
                 Status = KycWorkflowStatus.InReview,
+                SubmittedOrderLevel = submittedLevel,
+                CurrentOrderLevel = await GetRoleOrderLevel(firstStep.RoleId),
+                FullChain = fullChain,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -108,10 +177,9 @@ namespace AUTHApi.Services
                 KycWorkflowId = workflow.Id,
                 Action = "Submitted",
                 Remarks = "KYC submitted for approval.",
-                // Only set UserId if it's a real user ID (not "Public-User" or "System")
-                UserId = (initiatorId == "Public-User" || initiatorId == "System") ? null : initiatorId,
-                FromRoleId = submittedRoleId,
-                ToRoleId = firstRole.Id,
+                UserId = initiatorId == "Public-User" || initiatorId == "System" ? null : initiatorId,
+                ActionedByRoleId = submittedRoleId,
+                ForwardedToRoleId = firstStep.RoleId,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -129,39 +197,36 @@ namespace AUTHApi.Services
 
             if (workflow == null) return (false, "Workflow not found.");
 
-            // Get original submitter's config to find the chain
-            var config =
-                await _context.KycApprovalConfigs.FirstOrDefaultAsync(c => c.RoleId == workflow.SubmittedRoleId);
+            // Get original submitter's config and its steps
+            var config = await _context.KycApprovalConfigs
+                .Include(c => c.Steps.OrderBy(s => s.StepOrder))
+                .FirstOrDefaultAsync(c => c.RoleId == workflow.SubmittedRoleId);
+
             if (config == null) return (false, "Workflow configuration lost.");
 
-            var chain = JsonSerializer.Deserialize<List<string>>(config.ApprovalChain) ?? new List<string>();
+            var steps = config.Steps.OrderBy(s => s.StepOrder).ToList();
+            var currentStep = steps.FirstOrDefault(s => s.RoleId == workflow.CurrentRoleId);
 
-            // Find current role name
-            var currentRole = await _context.Roles.FindAsync(workflow.CurrentRoleId);
-            if (currentRole == null) return (false, "Current role invalid.");
+            if (currentStep == null) return (false, "Current level not found in the chain.");
 
-            int currentIndex = chain.IndexOf(currentRole.Name);
-            string? nextRoleName =
-                (currentIndex >= 0 && currentIndex < chain.Count - 1) ? chain[currentIndex + 1] : null;
-
-            string? nextRoleId = null;
-            if (nextRoleName != null)
-            {
-                var nextRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == nextRoleName);
-                if (nextRole == null) return (false, $"Next role '{nextRoleName}' in chain not found.");
-                nextRoleId = nextRole.Id;
-            }
+            var nextStep = steps.FirstOrDefault(s => s.StepOrder == currentStep.StepOrder + 1);
 
             // Update workflow state
             var oldRoleId = workflow.CurrentRoleId;
-            workflow.CurrentRoleId = nextRoleId;
-            workflow.PendingLevel = nextRoleName == null ? 0 : workflow.PendingLevel - 1;
-            workflow.Status = nextRoleName == null ? KycWorkflowStatus.Approved : KycWorkflowStatus.InReview;
+            workflow.CurrentRoleId = nextStep?.RoleId;
+            workflow.PendingLevel = nextStep == null ? 0 : steps.Count - (nextStep.StepOrder);
+            workflow.Status = nextStep == null ? KycWorkflowStatus.Approved : KycWorkflowStatus.InReview;
             workflow.LastRemarks = remarks;
             workflow.UpdatedAt = DateTime.UtcNow;
 
+            // Update Order Level
+            if (nextStep != null)
+            {
+                workflow.CurrentOrderLevel = await GetRoleOrderLevel(nextStep.RoleId);
+            }
+
             // Sync with session if finalized
-            if (nextRoleName == null && workflow.KycSession != null)
+            if (nextStep == null && workflow.KycSession != null)
             {
                 workflow.KycSession.FormStatus = 4; // 4 = Fully Approved
                 workflow.KycSession.ModifiedDate = DateTime.UtcNow;
@@ -174,16 +239,19 @@ namespace AUTHApi.Services
                 Action = "Approved",
                 Remarks = remarks,
                 UserId = userId,
-                FromRoleId = oldRoleId,
-                ToRoleId = nextRoleId,
+                ActionedByRoleId = oldRoleId,
+                ForwardedToRoleId = nextStep?.RoleId,
                 CreatedAt = DateTime.UtcNow
             };
 
             _context.KycApprovalLogs.Add(log);
             await _context.SaveChangesAsync();
 
-            return (true,
-                nextRoleName == null ? "KYC finalized and approved." : $"Approved and moved to {nextRoleName}.");
+            if (nextStep == null) return (true, "KYC finalized and approved.");
+
+            // Try to find the role name for the message
+            var nextRole = await _context.Roles.FindAsync(nextStep.RoleId);
+            return (true, $"Approved and moved to {nextRole?.Name ?? "next level"}.");
         }
 
         public async Task<(bool success, string message)> RejectAsync(int workflowId, string userId, string remarks,
@@ -196,30 +264,28 @@ namespace AUTHApi.Services
             if (workflow == null) return (false, "Workflow not found.");
 
             var oldRoleId = workflow.CurrentRoleId;
-            string? targetRoleId = workflow.SubmittedRoleId; // Default: Back to Maker
+            string? targetRoleId = workflow.SubmittedRoleId; // Default: Back to Submitter
             string targetMessage = "KYC rejected and sent back to submitter (Maker).";
 
             if (returnToPrevious)
             {
-                // Find previous role in chain
-                var config =
-                    await _context.KycApprovalConfigs.FirstOrDefaultAsync(c => c.RoleId == workflow.SubmittedRoleId);
+                var config = await _context.KycApprovalConfigs
+                    .Include(c => c.Steps.OrderBy(s => s.StepOrder))
+                    .FirstOrDefaultAsync(c => c.RoleId == workflow.SubmittedRoleId);
+
                 if (config != null)
                 {
-                    var chain = JsonSerializer.Deserialize<List<string>>(config.ApprovalChain) ?? new List<string>();
-                    var currentRole = await _context.Roles.FindAsync(workflow.CurrentRoleId);
-                    if (currentRole != null)
+                    var steps = config.Steps.OrderBy(s => s.StepOrder).ToList();
+                    var currentStep = steps.FirstOrDefault(s => s.RoleId == workflow.CurrentRoleId);
+
+                    if (currentStep != null && currentStep.StepOrder > 0)
                     {
-                        int currentIndex = chain.IndexOf(currentRole.Name);
-                        if (currentIndex > 0)
+                        var prevStep = steps.FirstOrDefault(s => s.StepOrder == currentStep.StepOrder - 1);
+                        if (prevStep != null)
                         {
-                            var prevRoleName = chain[currentIndex - 1];
-                            var prevRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == prevRoleName);
-                            if (prevRole != null)
-                            {
-                                targetRoleId = prevRole.Id;
-                                targetMessage = $"KYC returned to previous level: {prevRoleName}.";
-                            }
+                            targetRoleId = prevStep.RoleId;
+                            var prevRole = await _context.Roles.FindAsync(prevStep.RoleId);
+                            targetMessage = $"KYC returned to previous level: {prevRole?.Name ?? "Previous"}.";
                         }
                     }
                 }
@@ -230,6 +296,7 @@ namespace AUTHApi.Services
             workflow.Status = KycWorkflowStatus.Rejected;
             workflow.LastRemarks = remarks;
             workflow.UpdatedAt = DateTime.UtcNow;
+            workflow.CurrentOrderLevel = await GetRoleOrderLevel(targetRoleId);
 
             // If rejected back to Maker, re-open session for corrections
             if (targetRoleId == workflow.SubmittedRoleId && workflow.KycSession != null)
@@ -244,8 +311,8 @@ namespace AUTHApi.Services
                 Action = returnToPrevious ? "Returned" : "Rejected",
                 Remarks = remarks,
                 UserId = userId,
-                FromRoleId = oldRoleId,
-                ToRoleId = targetRoleId,
+                ActionedByRoleId = oldRoleId,
+                ForwardedToRoleId = targetRoleId,
                 CreatedAt = DateTime.UtcNow
             };
 
