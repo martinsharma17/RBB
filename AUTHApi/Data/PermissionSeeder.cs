@@ -59,7 +59,7 @@ namespace AUTHApi.Data
                     Permissions.Projects.View, Permissions.Projects.Sidebar,
                     Permissions.Analytics.View, Permissions.Analytics.Sidebar,
                     Permissions.Reports.View, Permissions.Reports.Sidebar,
-                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Verify
+                    Permissions.Kyc.View, Permissions.Kyc.Sidebar
                 },
 
                 ["User"] = new List<string>
@@ -73,18 +73,17 @@ namespace AUTHApi.Data
 
                 ["Maker"] = new List<string>
                 {
-                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow, Permissions.Kyc.Verify,
-                    Permissions.Kyc.Approve, Permissions.Kyc.Reject
+                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow
                 },
 
                 ["Checker"] = new List<string>
                 {
-                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow, Permissions.Kyc.Approve
+                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow
                 },
 
                 ["RBBSec"] = new List<string>
                 {
-                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow, Permissions.Kyc.Approve
+                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow
                 }
             };
 

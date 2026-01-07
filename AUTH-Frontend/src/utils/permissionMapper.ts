@@ -120,9 +120,6 @@ export const PERMISSION_CONSTANTS = {
     KYC_UPDATE: 'Permissions.Kyc.Edit',
     KYC_DELETE: 'Permissions.Kyc.Delete',
     KYC_SIDEBAR: 'Permissions.Kyc.Sidebar',
-    KYC_VERIFY: 'Permissions.Kyc.Verify',
-    KYC_APPROVE: 'Permissions.Kyc.Approve',
-    KYC_REJECT: 'Permissions.Kyc.Reject',
     KYC_WORKFLOW: 'Permissions.Kyc.Workflow',
 } as const;
 
@@ -259,9 +256,6 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             update: permSet.has(PERMISSION_CONSTANTS.KYC_UPDATE),
             delete: permSet.has(PERMISSION_CONSTANTS.KYC_DELETE),
             sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_SIDEBAR),
-            verify: permSet.has(PERMISSION_CONSTANTS.KYC_VERIFY),
-            approve: permSet.has(PERMISSION_CONSTANTS.KYC_APPROVE),
-            reject: permSet.has(PERMISSION_CONSTANTS.KYC_REJECT),
         },
         kyc_workflow: {
             read: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
@@ -446,9 +440,6 @@ export function mapFrontendPermissionsToBackend(frontendPermissions: Permissions
     pushIfTrue(frontendPermissions.kyc?.update, PERMISSION_CONSTANTS.KYC_UPDATE);
     pushIfTrue(frontendPermissions.kyc?.delete, PERMISSION_CONSTANTS.KYC_DELETE);
     pushIfTrue(frontendPermissions.kyc?.sidebar, PERMISSION_CONSTANTS.KYC_SIDEBAR);
-    pushIfTrue(frontendPermissions.kyc?.verify, PERMISSION_CONSTANTS.KYC_VERIFY);
-    pushIfTrue(frontendPermissions.kyc?.approve, PERMISSION_CONSTANTS.KYC_APPROVE);
-    pushIfTrue(frontendPermissions.kyc?.reject, PERMISSION_CONSTANTS.KYC_REJECT);
 
     // KYC Workflow
     if (frontendPermissions.kyc_workflow?.read || frontendPermissions.kyc_workflow?.sidebar ||

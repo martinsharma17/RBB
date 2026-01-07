@@ -73,10 +73,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'read', name: 'Read', color: 'bg-blue-100 text-blue-700' },
         { id: 'update', name: 'Update', color: 'bg-orange-100 text-orange-700' },
         { id: 'delete', name: 'Delete', color: 'bg-red-100 text-red-700' },
-        { id: 'sidebar', name: 'Sidebar', color: 'bg-green-100 text-green-700' },
-        { id: 'verify', name: 'Verify', color: 'bg-cyan-100 text-cyan-700' },
-        { id: 'approve', name: 'Approve', color: 'bg-emerald-100 text-emerald-700' },
-        { id: 'reject', name: 'Reject', color: 'bg-rose-100 text-rose-700' }
+        { id: 'sidebar', name: 'Sidebar', color: 'bg-green-100 text-green-700' }
     ];
 
     const [policies, setPolicies] = useState<Record<string, Record<string, any>>>({});
@@ -163,10 +160,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                 read: nestedPerms.read || frontendPermissions[`read_${res.id}`] || frontendPermissions[`view_${res.id}`] || false,
                 update: nestedPerms.update || frontendPermissions[`update_${res.id}`] || false,
                 delete: nestedPerms.delete || frontendPermissions[`delete_${res.id}`] || false,
-                sidebar: nestedPerms.sidebar || frontendPermissions[`sidebar_${res.id}`] || frontendPermissions[`view_${res.id}`] || false,
-                verify: nestedPerms.verify || false,
-                approve: nestedPerms.approve || false,
-                reject: nestedPerms.reject || false
+                sidebar: nestedPerms.sidebar || frontendPermissions[`sidebar_${res.id}`] || frontendPermissions[`view_${res.id}`] || false
             };
         });
 
@@ -294,10 +288,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                 read: perms.read || false,
                 update: perms.update || false,
                 delete: perms.delete || false,
-                sidebar: perms.sidebar || false,
-                verify: perms.verify || false,
-                approve: perms.approve || false,
-                reject: perms.reject || false
+                sidebar: perms.sidebar || false
             };
         });
 
@@ -443,8 +434,8 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                                                         // -----------------------------------------------------------------------
                                                         // SPECIAL CASE: 'Tasks' and 'Projects' parents only need Sidebar toggle
                                                         // -----------------------------------------------------------------------
-                                                        if ((resource.id === 'tasks' || resource.id === 'projects' || resource.id === 'my_projects')
-                                                            && action.id !== 'sidebar') {
+                                                        const isParentOnly = (resource.id === 'tasks' || resource.id === 'projects' || resource.id === 'my_projects');
+                                                        if (isParentOnly && action.id !== 'sidebar') {
                                                             return (
                                                                 <td key={action.id} className="py-4 px-4 text-center align-middle">
                                                                     <span className="text-gray-300 select-none">-</span>
@@ -504,7 +495,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                                                                             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white
                                                                             ${isChecked ? gradientClass + ' ' + shadowClass : 'bg-gray-200 hover:bg-gray-300'}
                                                                         `}
-                                                                        title={isChecked ? `Wait for it...` : `Enable ${action.name}`}
+                                                                        title={isChecked ? `Enabled` : `Enable ${action.name}`}
                                                                     >
                                                                         {/* The Thumb */}
                                                                         <span

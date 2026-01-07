@@ -24,5 +24,15 @@ namespace AUTHApi.Services
         /// Gets the pending KYC list for a specific role.
         /// </summary>
         Task<object> GetPendingKycsAsync(string roleId);
+
+        /// <summary>
+        /// Resubmits a rejected KYC, moving it back to the first level of approval.
+        /// </summary>
+        Task<(bool success, string message)> ResubmitAsync(int workflowId, string userId, string remarks);
+
+        /// <summary>
+        /// Pulls back a KYC sent for review, moving it to ResubmissionRequired state.
+        /// </summary>
+        Task<(bool success, string message)> PullBackAsync(int workflowId, string userId);
     }
 }

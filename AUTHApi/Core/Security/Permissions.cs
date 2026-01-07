@@ -132,9 +132,6 @@ namespace AUTHApi.Core.Security
             public const string Create = "Permissions.Kyc.Create";
             public const string Edit = "Permissions.Kyc.Edit";
             public const string Delete = "Permissions.Kyc.Delete";
-            public const string Verify = "Permissions.Kyc.Verify"; // Maker verification
-            public const string Approve = "Permissions.Kyc.Approve"; // Checker approval
-            public const string Reject = "Permissions.Kyc.Reject";
             public const string Workflow = "Permissions.Kyc.Workflow"; // Staff Queue access
             public const string Sidebar = "Permissions.Kyc.Sidebar";
         }
@@ -165,7 +162,7 @@ namespace AUTHApi.Core.Security
                 Notifications.View, Notifications.Sidebar,
                 Security.View, Security.Sidebar,
                 Backup.View, Backup.Sidebar,
-                Kyc.View, Kyc.Create, Kyc.Edit, Kyc.Delete, Kyc.Verify, Kyc.Approve, Kyc.Reject, Kyc.Workflow,
+                Kyc.View, Kyc.Create, Kyc.Edit, Kyc.Delete, Kyc.Workflow,
                 Kyc.Sidebar
             };
         }

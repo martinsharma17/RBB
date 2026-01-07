@@ -14,6 +14,9 @@ namespace AUTHApi.Entities
         [Required] public int KycWorkflowId { get; set; }
         [ForeignKey("KycWorkflowId")] public virtual KycWorkflowMaster? KycWorkflow { get; set; }
 
+        [Required] public int KycSessionId { get; set; }
+        [ForeignKey("KycSessionId")] public virtual KycFormSession? KycSession { get; set; }
+
         /// <summary>
         /// The role of the user who performed the action.
         /// </summary>

@@ -2,6 +2,7 @@ using AUTHApi.Data;
 using AUTHApi.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace AUTHApi.Services
 {
@@ -140,6 +141,7 @@ namespace AUTHApi.Services
                 var directLog = new KycApprovalLog
                 {
                     KycWorkflowId = directWorkflow.Id,
+                    KycSessionId = kycSessionId,
                     Action = "Auto-Approved",
                     Remarks = "KYC submitted by authoritative role. Direct approval granted.",
                     UserId = initiatorId == "Public-User" || initiatorId == "System" ? null : initiatorId,
@@ -175,6 +177,7 @@ namespace AUTHApi.Services
             var log = new KycApprovalLog
             {
                 KycWorkflowId = workflow.Id,
+                KycSessionId = kycSessionId,
                 Action = "Submitted",
                 Remarks = "KYC submitted for approval.",
                 UserId = initiatorId == "Public-User" || initiatorId == "System" ? null : initiatorId,
@@ -236,6 +239,7 @@ namespace AUTHApi.Services
             var log = new KycApprovalLog
             {
                 KycWorkflowId = workflow.Id,
+                KycSessionId = workflow.KycSessionId,
                 Action = "Approved",
                 Remarks = remarks,
                 UserId = userId,
@@ -293,7 +297,9 @@ namespace AUTHApi.Services
 
             // Update workflow state
             workflow.CurrentRoleId = targetRoleId;
-            workflow.Status = KycWorkflowStatus.Rejected;
+            workflow.Status = (targetRoleId == workflow.SubmittedRoleId)
+                ? KycWorkflowStatus.ResubmissionRequired
+                : KycWorkflowStatus.InReview;
             workflow.LastRemarks = remarks;
             workflow.UpdatedAt = DateTime.UtcNow;
             workflow.CurrentOrderLevel = await GetRoleOrderLevel(targetRoleId);
@@ -308,6 +314,7 @@ namespace AUTHApi.Services
             var log = new KycApprovalLog
             {
                 KycWorkflowId = workflow.Id,
+                KycSessionId = workflow.KycSessionId,
                 Action = returnToPrevious ? "Returned" : "Rejected",
                 Remarks = remarks,
                 UserId = userId,
@@ -336,6 +343,119 @@ namespace AUTHApi.Services
                     w.LastRemarks
                 })
                 .ToListAsync();
+        }
+
+        public async Task<(bool success, string message)> ResubmitAsync(int workflowId, string userId, string remarks)
+        {
+            var workflow = await _context.KycWorkflowMasters
+                .Include(w => w.KycSession)
+                .FirstOrDefaultAsync(w => w.Id == workflowId);
+
+            if (workflow == null) return (false, "Workflow not found.");
+
+            if (workflow.Status != KycWorkflowStatus.ResubmissionRequired &&
+                workflow.Status != KycWorkflowStatus.Rejected)
+            {
+                return (false, "Only rejected or resubmission items can be resubmitted.");
+            }
+
+            // Get original submitter's config and its steps
+            var config = await _context.KycApprovalConfigs
+                .Include(c => c.Steps.OrderBy(s => s.StepOrder))
+                .FirstOrDefaultAsync(c => c.RoleId == workflow.SubmittedRoleId);
+
+            if (config == null) return (false, "Workflow configuration lost.");
+
+            var steps = config.Steps.OrderBy(s => s.StepOrder).ToList();
+            if (steps.Count == 0) return (false, "No approval steps defined for this workflow.");
+
+            var firstStep = steps[0];
+
+            // Update workflow state
+            var oldRoleId = workflow.CurrentRoleId;
+            workflow.CurrentRoleId = firstStep.RoleId;
+            workflow.PendingLevel = steps.Count;
+            workflow.Status = KycWorkflowStatus.InReview;
+            workflow.LastRemarks = remarks;
+            workflow.UpdatedAt = DateTime.UtcNow;
+            workflow.CurrentOrderLevel = await GetRoleOrderLevel(firstStep.RoleId);
+
+            // Log action
+            var log = new KycApprovalLog
+            {
+                KycWorkflowId = workflow.Id,
+                KycSessionId = workflow.KycSessionId,
+                Action = "Resubmitted",
+                Remarks = remarks,
+                UserId = userId,
+                ActionedByRoleId = oldRoleId,
+                ForwardedToRoleId = firstStep.RoleId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.KycApprovalLogs.Add(log);
+            await _context.SaveChangesAsync();
+
+            var nextRole = await _context.Roles.FindAsync(firstStep.RoleId);
+            return (true, $"KYC resubmitted and moved to {nextRole?.Name ?? "first level"}.");
+        }
+
+        public async Task<(bool success, string message)> PullBackAsync(int workflowId, string userId)
+        {
+            var workflow = await _context.KycWorkflowMasters
+                .Include(w => w.KycSession)
+                .FirstOrDefaultAsync(w => w.Id == workflowId);
+
+            if (workflow == null) return (false, "Workflow not found.");
+
+            if (workflow.Status != KycWorkflowStatus.InReview)
+            {
+                return (false, "Only items currently in review can be pulled back.");
+            }
+
+            // Authorization: The user must have the SubmittedRoleId OR be an Admin
+            var user = await _userManager.FindByIdAsync(userId);
+            var roles = await _userManager.GetRolesAsync(user!);
+            var isGlobalAdmin = roles.Any(r => r == "SuperAdmin" || r == "Admin");
+
+            if (!isGlobalAdmin)
+            {
+                var roleIds = await _context.Roles
+                    .Where(r => roles.Contains(r.Name))
+                    .Select(r => r.Id)
+                    .ToListAsync();
+
+                if (!roleIds.Contains(workflow.SubmittedRoleId!))
+                {
+                    return (false, "Only the initiator or an admin can pull back this application.");
+                }
+            }
+
+            // Update workflow state
+            var oldRoleId = workflow.CurrentRoleId;
+            workflow.CurrentRoleId = workflow.SubmittedRoleId;
+            workflow.Status = KycWorkflowStatus.ResubmissionRequired;
+            workflow.LastRemarks = "Application pulled back by initiator.";
+            workflow.UpdatedAt = DateTime.UtcNow;
+            workflow.CurrentOrderLevel = await GetRoleOrderLevel(workflow.SubmittedRoleId);
+
+            // Log action
+            var log = new KycApprovalLog
+            {
+                KycWorkflowId = workflow.Id,
+                KycSessionId = workflow.KycSessionId,
+                Action = "Pulled Back",
+                Remarks = "Initiator pulled back the application for editing.",
+                UserId = userId,
+                ActionedByRoleId = oldRoleId,
+                ForwardedToRoleId = workflow.SubmittedRoleId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.KycApprovalLogs.Add(log);
+            await _context.SaveChangesAsync();
+
+            return (true, "KYC pulled back successfully for editing.");
         }
     }
 }

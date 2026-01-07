@@ -11,6 +11,7 @@ interface PendingKyc {
     lastRemarks: string;
     currentRoleName: string;
     chain: string[];
+    status: number;
 }
 
 const KycWorkflowView: React.FC = () => {
@@ -22,6 +23,8 @@ const KycWorkflowView: React.FC = () => {
     const [remarks, setRemarks] = useState('');
     const [actionLoading, setActionLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedData, setEditedData] = useState<any>({});
 
     useEffect(() => {
         fetchPending();
@@ -48,6 +51,7 @@ const KycWorkflowView: React.FC = () => {
         setSelectedKyc(workflowId);
         setDetailData(null);
         setActiveTab('overview');
+        setIsEditing(false);
         try {
             const res = await fetch(`${apiBase}/api/KycApproval/details/${workflowId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -55,15 +59,45 @@ const KycWorkflowView: React.FC = () => {
             const data = await res.json();
             if (data.success) {
                 setDetailData(data.data);
+                setEditedData(data.data.details || {});
             }
         } catch (err) {
             console.error("Failed to fetch details", err);
         }
     };
 
-    const handleAction = async (action: 'approve' | 'reject', returnToPrevious: boolean = false) => {
+    const handleSaveEdit = async () => {
         if (!selectedKyc) return;
-        if ((action === 'reject' || returnToPrevious) && !remarks) {
+        setActionLoading(true);
+        try {
+            const res = await fetch(`${apiBase}/api/KycApproval/update-details`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    workflowId: selectedKyc,
+                    ...editedData
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setIsEditing(false);
+                viewDetails(selectedKyc); // Refresh
+            } else {
+                alert(data.message || "Failed to save changes.");
+            }
+        } catch (err) {
+            console.error("Error saving edits", err);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleAction = async (action: 'approve' | 'reject' | 'resubmit' | 'pull-back', returnToPrevious: boolean = false) => {
+        if (!selectedKyc) return;
+        if (action === 'reject' && !remarks) {
             alert("Remarks are required for rejection or returning.");
             return;
         }
@@ -180,6 +214,16 @@ const KycWorkflowView: React.FC = () => {
                                             <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-lg border border-indigo-100">
                                                 {kyc.currentRoleName || 'N/A'}
                                             </span>
+                                            {kyc.status === 4 && (
+                                                <span className="block mt-1 text-[9px] font-black text-red-500 uppercase tracking-tighter ring-1 ring-red-100 w-fit px-1.5 rounded bg-red-50">
+                                                    RESUBMISSION REQ.
+                                                </span>
+                                            )}
+                                            {kyc.status === 3 && (
+                                                <span className="block mt-1 text-[9px] font-black text-orange-500 uppercase tracking-tighter ring-1 ring-orange-100 w-fit px-1.5 rounded bg-orange-50">
+                                                    RETURNED / REJECTED
+                                                </span>
+                                            )}
                                             {kyc.chain && kyc.chain.length > 0 && (
                                                 <div className="mt-2 flex items-center gap-1.5 opacity-50">
                                                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Path:</span>
@@ -245,14 +289,35 @@ const KycWorkflowView: React.FC = () => {
                                     <p className="text-xs text-gray-500 font-medium">{detailData?.workflow?.kycSession?.email || 'Loading...'}</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => !actionLoading && setSelectedKyc(null)}
-                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
+                            <div className="flex items-center gap-3">
+                                {(detailData?.workflow?.status === 4 || detailData?.workflow?.status === "ResubmissionRequired" || detailData?.workflow?.status === 3 || detailData?.workflow?.status === "Rejected") && (
+                                    <button
+                                        onClick={() => isEditing ? handleSaveEdit() : setIsEditing(true)}
+                                        disabled={actionLoading}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}
+                                    >
+                                        {isEditing ? (
+                                            <>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                                Save Changes
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                Edit Info
+                                            </>
+                                        )}
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => !actionLoading && setSelectedKyc(null)}
+                                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
 
                         {/* Modal Tabs */}
@@ -324,16 +389,17 @@ const KycWorkflowView: React.FC = () => {
                                     {activeTab === 'overview' && (
                                         <div className="grid md:grid-cols-2 gap-6">
                                             <SectionCard title="Personal Summary">
-                                                <InfoRow label="Full Name" value={`${detailData.details?.FirstName} ${detailData.details?.LastName}`} />
-                                                <InfoRow label="Gender" value={detailData.details?.Gender} />
-                                                <InfoRow label="Citizenship" value={detailData.details?.CitizenshipNumber} />
-                                                <InfoRow label="Mobile" value={detailData.details?.MobileNumber} />
+                                                <InfoRow label="First Name" value={editedData.FirstName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, FirstName: v })} />
+                                                <InfoRow label="Last Name" value={editedData.LastName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, LastName: v })} />
+                                                <InfoRow label="Gender" value={editedData.Gender} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, Gender: v })} />
+                                                <InfoRow label="Citizenship" value={editedData.CitizenshipNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, CitizenshipNumber: v })} />
+                                                <InfoRow label="Mobile" value={editedData.MobileNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, MobileNumber: v })} />
                                             </SectionCard>
                                             <SectionCard title="Address & Financial">
-                                                <InfoRow label="Permanent" value={detailData.details?.PermanentDistrict} />
-                                                <InfoRow label="Annual Income" value={detailData.details?.AnnualIncome} />
-                                                <InfoRow label="Occupation" value={detailData.details?.Occupation} />
-                                                <InfoRow label="PEP Status" value={detailData.details?.IsPep ? '🔴 HIGH RISK' : '🟢 NO'} />
+                                                <InfoRow label="District" value={editedData.PermanentDistrict} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, PermanentDistrict: v })} />
+                                                <InfoRow label="Annual Income" value={editedData.AnnualIncome} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, AnnualIncome: v })} />
+                                                <InfoRow label="Occupation" value={editedData.Occupation} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, Occupation: v })} />
+                                                <InfoRow label="PEP Status" value={editedData.IsPep ? 'YES' : 'NO'} isEditing={isEditing} type="checkbox" onChange={(v) => setEditedData({ ...editedData, IsPep: v })} />
                                             </SectionCard>
                                         </div>
                                     )}
@@ -439,45 +505,79 @@ const KycWorkflowView: React.FC = () => {
 
                         {/* Modal Footer Actions */}
                         <div className="px-8 py-6 border-t flex flex-wrap justify-between items-center gap-4 bg-white">
-                            <button
-                                onClick={() => !actionLoading && setSelectedKyc(null)}
-                                className="px-6 py-3 text-gray-500 font-black uppercase text-xs tracking-widest hover:bg-gray-100 rounded-2xl transition-all"
-                                disabled={actionLoading}
-                            >
-                                Cancel Review
-                            </button>
-
                             <div className="flex gap-4">
                                 <button
-                                    onClick={() => handleAction('reject', true)}
-                                    disabled={actionLoading || !remarks}
-                                    className="px-6 py-3 bg-white text-orange-600 font-bold text-xs uppercase tracking-widest border-2 border-orange-100 rounded-2xl hover:bg-orange-50 disabled:opacity-30 transition-all"
-                                    title="Send back to the previous reviewer in the chain"
-                                >
-                                    Return to Previous
-                                </button>
-                                <button
-                                    onClick={() => handleAction('reject', false)}
-                                    disabled={actionLoading || !remarks}
-                                    className="px-6 py-3 bg-red-50 text-red-600 font-bold text-xs uppercase tracking-widest border-2 border-red-100 rounded-2xl hover:bg-red-100 disabled:opacity-30 transition-all shadow-lg shadow-red-200/50"
-                                    title="Completely reject back to the customer (Maker)"
-                                >
-                                    Reject to Maker
-                                </button>
-                                <button
-                                    onClick={() => handleAction('approve')}
+                                    onClick={() => !actionLoading && setSelectedKyc(null)}
+                                    className="px-6 py-3 text-gray-500 font-black uppercase text-xs tracking-widest hover:bg-gray-100 rounded-2xl transition-all"
                                     disabled={actionLoading}
-                                    className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-indigo-300 disabled:opacity-50 transition-all flex items-center gap-3 active:scale-95"
                                 >
-                                    {actionLoading ? (
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    ) : (
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    )}
-                                    <span>{detailData?.workflow?.pendingLevel === 1 ? 'Final Approval' : 'Approve & Pass'}</span>
+                                    Cancel Review
                                 </button>
+
+                                {/* Pull Back option for initiators */}
+                                {(detailData?.workflow?.status === 5 || detailData?.workflow?.status === "InReview" || detailData?.workflow?.status === 3 || detailData?.workflow?.status === "Rejected") && !isEditing && (
+                                    <button
+                                        onClick={() => handleAction('pull-back')}
+                                        disabled={actionLoading}
+                                        className="px-6 py-3 bg-gray-50 text-gray-600 font-bold text-xs uppercase tracking-widest border-2 border-gray-100 rounded-2xl hover:bg-gray-100 transition-all"
+                                        title="Retract this application for corrections before it is reviewed"
+                                    >
+                                        Pull Back Application
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex gap-4">
+                                {detailData?.workflow?.status === 4 || detailData?.workflow?.status === "ResubmissionRequired" ? (
+                                    <button
+                                        onClick={() => handleAction('resubmit')}
+                                        disabled={actionLoading || isEditing}
+                                        className="px-8 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-orange-300 disabled:opacity-50 transition-all flex items-center gap-3 active:scale-95"
+                                        title={isEditing ? "Save changes before resubmitting" : "Resubmit this application for review"}
+                                    >
+                                        {actionLoading ? (
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        ) : (
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                            </svg>
+                                        )}
+                                        <span>Resubmit Application</span>
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => handleAction('reject', true)}
+                                            disabled={actionLoading || !remarks}
+                                            className="px-6 py-3 bg-white text-orange-600 font-bold text-xs uppercase tracking-widest border-2 border-orange-100 rounded-2xl hover:bg-orange-50 disabled:opacity-30 transition-all"
+                                            title="Send back to the previous reviewer in the chain"
+                                        >
+                                            Return to Previous
+                                        </button>
+                                        <button
+                                            onClick={() => handleAction('reject', false)}
+                                            disabled={actionLoading || !remarks}
+                                            className="px-6 py-3 bg-red-50 text-red-600 font-bold text-xs uppercase tracking-widest border-2 border-red-100 rounded-2xl hover:bg-red-100 disabled:opacity-30 transition-all shadow-lg shadow-red-200/50"
+                                            title="Completely reject back to the customer (Maker)"
+                                        >
+                                            Reject to Maker
+                                        </button>
+                                        <button
+                                            onClick={() => handleAction('approve')}
+                                            disabled={actionLoading}
+                                            className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-indigo-300 disabled:opacity-50 transition-all flex items-center gap-3 active:scale-95"
+                                        >
+                                            {actionLoading ? (
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            ) : (
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            )}
+                                            <span>{detailData?.workflow?.pendingLevel === 1 ? 'Final Approval' : 'Approve & Pass'}</span>
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -505,10 +605,30 @@ const SectionCard: React.FC<{ title: string, children: React.ReactNode }> = ({ t
     </div>
 );
 
-const InfoRow: React.FC<{ label: string, value: any }> = ({ label, value }) => (
-    <div className="flex justify-between border-b border-gray-50 pb-2 last:border-0">
+const InfoRow: React.FC<{ label: string, value: any, isEditing?: boolean, type?: string, onChange?: (val: any) => void }> = ({ label, value, isEditing, type = 'text', onChange }) => (
+    <div className="flex justify-between items-center border-b border-gray-50 py-2 last:border-0 min-h-[40px]">
         <span className="text-xs text-gray-400 font-bold uppercase">{label}</span>
-        <span className="text-xs text-gray-900 font-black">{value || 'N/A'}</span>
+        {isEditing ? (
+            type === 'checkbox' ? (
+                <input
+                    type="checkbox"
+                    checked={value === 'YES' || value === true}
+                    onChange={(e) => onChange?.(e.target.checked)}
+                    className="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                />
+            ) : (
+                <input
+                    type={type}
+                    value={value || ''}
+                    onChange={(e) => onChange?.(e.target.value)}
+                    className="text-xs text-right font-black text-indigo-600 bg-indigo-50/50 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 w-1/2"
+                />
+            )
+        ) : (
+            <span className={`text-xs text-gray-900 font-black ${label === 'PEP Status' && value === 'YES' ? 'text-red-600' : ''}`}>
+                {value || 'N/A'}
+            </span>
+        )}
     </div>
 );
 
