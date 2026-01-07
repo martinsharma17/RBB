@@ -1,5 +1,6 @@
 // src/components/dashboard/PolicyEditorView.jsx
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { mapBackendPermissionsToFrontend, mapFrontendPermissionsToBackend } from '../../utils/permissionMapper';
 
 /**
@@ -17,6 +18,8 @@ interface PolicyEditorViewProps {
 }
 
 const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermissionsUpdated }) => {
+    const { token, apiBase } = useAuth();
+
     /**
      * ===================================================================================
      * 🛠️ DEVELOPER GUIDE: POLICY EDITOR RESOURCES
@@ -59,6 +62,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'notifications', name: 'Notifications' },
         { id: 'kyc', name: 'KYC Verification' },
         { id: 'kyc_workflow', name: 'KYC Approval Queue' },
+        { id: 'kyc_unified_queue', name: 'Unified KYC Queue' },
         { id: 'security', name: 'Security' },
         { id: 'backup', name: 'Backup & Restore' }
     ];
@@ -69,11 +73,14 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'read', name: 'Read', color: 'bg-blue-100 text-blue-700' },
         { id: 'update', name: 'Update', color: 'bg-orange-100 text-orange-700' },
         { id: 'delete', name: 'Delete', color: 'bg-red-100 text-red-700' },
-        { id: 'sidebar', name: 'Sidebar', color: 'bg-green-100 text-green-700' } // Explicit Sidebar Visibility
+        { id: 'sidebar', name: 'Sidebar', color: 'bg-green-100 text-green-700' },
+        { id: 'verify', name: 'Verify', color: 'bg-cyan-100 text-cyan-700' },
+        { id: 'approve', name: 'Approve', color: 'bg-emerald-100 text-emerald-700' },
+        { id: 'reject', name: 'Reject', color: 'bg-rose-100 text-rose-700' }
     ];
 
     const [policies, setPolicies] = useState<Record<string, Record<string, any>>>({});
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [saveMessage, setSaveMessage] = useState("");
     const [activeRole, setActiveRole] = useState<string | null>(null);
 
@@ -83,73 +90,66 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         return rName !== 'SuperAdmin';
     });
 
-    // Load policies from backend on mount
+    // EFFECT: Set initial active role ONLY ONCE
     useEffect(() => {
-        const fetchPoliciesFromBackend = async () => {
+        if (editableRoles.length > 0 && !activeRole) {
+            const firstRoleName = editableRoles[0].Name || editableRoles[0].name || editableRoles[0];
+            setActiveRole(firstRoleName);
+        }
+    }, [roles]); // Re-run only if roles list actually changes (e.g. from Dashboard)
+
+    // EFFECT: Lazy load policies for the active role
+    useEffect(() => {
+        if (!activeRole || !token) return;
+
+        // Skip if already loaded in local state
+        if (policies[activeRole]) return;
+
+        const fetchRolePolicies = async () => {
             setLoading(true);
-            const policiesData: Record<string, Record<string, any>> = {};
-            const apiBase = 'http://localhost:3001';
-            const token = localStorage.getItem('authToken');
-
             try {
-                // Fetch permissions for each role from backend
-                for (const role of editableRoles) {
-                    const roleName = role.Name || role.name || role;
-
-                    const response = await fetch(`${apiBase}/api/policies/${roleName}`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (response.ok) {
-                        const res = await response.json();
-                        const data = res.data || {};
-                        // data.Permissions is an array of backend permission strings
-                        const backendPermissions = data.permissions || data.Permissions || [];
-
-                        // Convert to frontend format
-                        const frontendPermissions = mapBackendPermissionsToFrontend(backendPermissions);
-
-                        // Convert to policy editor format (resource-based)
-                        policiesData[roleName] = convertToResourceFormat(frontendPermissions);
-                    } else {
-                        console.error(`Failed to fetch permissions for ${roleName}`);
-                        // Initialize with empty permissions
-                        const emptyPolicy: Record<string, any> = {};
-                        resources.forEach(res => {
-                            (emptyPolicy as any)[res.id] = {
-                                create: false,
-                                read: false,
-                                update: false,
-                                delete: false,
-                                sidebar: false
-                            };
-                        });
-                        (policiesData as any)[roleName] = emptyPolicy;
+                const response = await fetch(`${apiBase}/api/policies/${activeRole}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
                     }
-                }
+                });
 
-                setPolicies(policiesData);
+                if (response.ok) {
+                    const res = await response.json();
+                    const data = res.data || {};
+                    const backendPermissions = data.permissions || data.Permissions || [];
+                    const frontendPermissions = mapBackendPermissionsToFrontend(backendPermissions);
+                    const resourceFormat = convertToResourceFormat(frontendPermissions);
+
+                    setPolicies((prev: Record<string, Record<string, any>>) => ({
+                        ...prev,
+                        [activeRole]: resourceFormat
+                    }));
+                } else {
+                    // Initialize empty for this role
+                    const emptyPolicy: Record<string, any> = {};
+                    resources.forEach(res => {
+                        const actPolicy: Record<string, boolean> = {};
+                        actions.forEach(act => {
+                            actPolicy[act.id] = false;
+                        });
+                        emptyPolicy[res.id] = actPolicy;
+                    });
+                    setPolicies((prev: Record<string, Record<string, any>>) => ({
+                        ...prev,
+                        [activeRole]: emptyPolicy
+                    }));
+                }
             } catch (error) {
-                console.error('Error fetching policies:', error);
-                initializeDefaultPolicies();
+                console.error(`Error fetching policies for ${activeRole}:`, error);
             } finally {
                 setLoading(false);
             }
         };
 
-        if (editableRoles.length > 0) {
-            fetchPoliciesFromBackend();
-
-            // Set initial active role
-            if (!activeRole) {
-                const firstRoleName = editableRoles[0].Name || editableRoles[0].name || editableRoles[0];
-                setActiveRole(firstRoleName);
-            }
-        }
-    }, [roles]);
+        fetchRolePolicies();
+    }, [activeRole, token, apiBase]);
 
     const convertToResourceFormat = (frontendPermissions: any) => {
         const resourceFormat: Record<string, any> = {};
@@ -163,37 +163,18 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                 read: nestedPerms.read || frontendPermissions[`read_${res.id}`] || frontendPermissions[`view_${res.id}`] || false,
                 update: nestedPerms.update || frontendPermissions[`update_${res.id}`] || false,
                 delete: nestedPerms.delete || frontendPermissions[`delete_${res.id}`] || false,
-                sidebar: nestedPerms.sidebar || frontendPermissions[`sidebar_${res.id}`] || frontendPermissions[`view_${res.id}`] || false
+                sidebar: nestedPerms.sidebar || frontendPermissions[`sidebar_${res.id}`] || frontendPermissions[`view_${res.id}`] || false,
+                verify: nestedPerms.verify || false,
+                approve: nestedPerms.approve || false,
+                reject: nestedPerms.reject || false
             };
         });
 
         return resourceFormat;
     };
 
-    const initializeDefaultPolicies = () => {
-        const defaults: Record<string, Record<string, any>> = {};
-        roles.forEach(role => {
-            const roleName = role.Name || role.name || role;
-            defaults[roleName] = {};
-            resources.forEach(res => {
-                const isSuper = roleName === 'SuperAdmin';
-                const resourcePolicy: Record<string, boolean> = {
-                    create: isSuper,
-                    read: isSuper || (roleName === 'User' && res.id === 'projects'),
-                    update: isSuper,
-                    delete: isSuper,
-                    sidebar: isSuper || (roleName === 'User' && res.id === 'projects')
-                };
-                if (defaults[roleName]) {
-                    defaults[roleName][res.id] = resourcePolicy;
-                }
-            });
-        });
-        setPolicies(defaults);
-    };
-
     const handlePermissionChange = (roleName: string, resourceId: string, actionId: string) => {
-        setPolicies(prev => {
+        setPolicies((prev: Record<string, Record<string, any>>) => {
             const rolePolicy = prev[roleName] || {};
 
             // Deep copy specific role policy to avoid mutation issues
@@ -236,10 +217,13 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
 
     const handleSave = async () => {
         setSaveMessage("Saving...");
-        const apiBase = 'http://localhost:3001';
-        const token = localStorage.getItem('authToken');
         let successCount = 0;
         let errorCount = 0;
+
+        if (!token) {
+            setSaveMessage("❌ Error: Not authenticated.");
+            return;
+        }
 
         try {
             // Save each role's permissions to backend
@@ -264,7 +248,12 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
 
                 if (response.ok) {
                     const result = await response.json();
-                    console.log(`✅ ${roleName}: ${result.message || 'Success'}`);
+                    const savedCount = result.data?.count ?? result.data?.Count ?? 0;
+                    console.log(`✅ ${roleName}: ${result.message || 'Success'} (Synced: ${savedCount})`);
+
+                    if (backendPermissions.length > 0 && savedCount === 0) {
+                        console.warn(`⚠ Role ${roleName} sent ${backendPermissions.length} permissions but server saved 0. Key mismatch?`);
+                    }
                     successCount++;
                 } else {
                     errorCount++;
@@ -305,7 +294,10 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                 read: perms.read || false,
                 update: perms.update || false,
                 delete: perms.delete || false,
-                sidebar: perms.sidebar || false
+                sidebar: perms.sidebar || false,
+                verify: perms.verify || false,
+                approve: perms.approve || false,
+                reject: perms.reject || false
             };
         });
 

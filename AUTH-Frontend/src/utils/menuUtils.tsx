@@ -55,38 +55,27 @@ export const filterDynamicMenus = (items: SidebarItem[], permissions: Permission
         if (!item.permission || item.permission === 'dashboard') {
             isPermitted = true;
         } else {
-            // 1. Check if the permission string itself exists as a key (Legacy/Flat)
-            const permValue = (permissions as any)[item.permission];
+            // Priority 1: Direct Match (Raw Backend Key)
+            // This is the most reliable as it matches EXACTLY what the Policy Editor saves.
+            const rawValue = (permissions as any)[item.permission];
 
-            // 2. Map backend strings to frontend granular keys
-            const kycSidebarKey = 'Permissions.Kyc.Sidebar';
-            const kycWorkflowKey = 'Permissions.Kyc.Workflow';
-            const usersSidebarKey = 'Permissions.Users.Sidebar';
+            // Priority 2: Granular Object Match (Structured Frontend State)
+            // Example: item.permission is 'Permissions.Users.Sidebar' -> map to permissions.users.sidebar
+            const moduleName = item.permission.split('.')[1]?.toLowerCase();
+            const granularValue = moduleName ? (permissions as any)[moduleName] : null;
 
-            if (permValue === true) {
+            if (rawValue === true) {
                 isPermitted = true;
-            } else if (typeof permValue === 'object' && permValue !== null) {
-                if (permValue.sidebar === true || permValue.read === true) {
+            } else if (granularValue && typeof granularValue === 'object') {
+                if (granularValue.sidebar === true || granularValue.read === true) {
                     isPermitted = true;
                 }
-            } else if (item.permission === kycSidebarKey && (permissions as any).kyc?.sidebar) {
-                isPermitted = true;
-            } else if (item.permission === kycWorkflowKey && (permissions as any).kyc_workflow?.sidebar) {
-                isPermitted = true;
-            } else if (item.permission === usersSidebarKey && (permissions as any).users?.sidebar) {
-                isPermitted = true;
             } else {
-                // Fallback: search for any key starting with 'view_' that might match
-                // Most items follow the pattern: Permissions.Modules.Sidebar -> view_modules
-                const parts = item.permission.split('.');
-                if (parts && parts.length >= 3 && parts[1]) {
-                    const moduleName = parts[1].toLowerCase();
-                    const viewKey = `view_${moduleName}`;
-                    if ((permissions as any)[viewKey] === true) {
-                        isPermitted = true;
-                    } else if ((permissions as any)[moduleName]?.sidebar === true) {
-                        isPermitted = true;
-                    }
+                // Priority 3: Standardised Alias Fallback (view_*)
+                // Example: 'Permissions.Users.Sidebar' -> 'view_users'
+                const viewKey = moduleName ? `view_${moduleName}` : null;
+                if (viewKey && (permissions as any)[viewKey] === true) {
+                    isPermitted = true;
                 }
             }
         }

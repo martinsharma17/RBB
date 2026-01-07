@@ -5,7 +5,8 @@ namespace AUTHApi.Core.Security
 {
     public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
     {
-        protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
+        protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context,
+            PermissionRequirement requirement)
         {
             if (context.User == null)
             {
@@ -24,14 +25,13 @@ namespace AUTHApi.Core.Security
                 context.Succeed(requirement);
                 return;
             }
-            
+
             // SuperAdmin Bypass: SuperAdmin role generally implies access to everything
             if (context.User.IsInRole("SuperAdmin"))
             {
-                 context.Succeed(requirement);
-                 return;
+                context.Succeed(requirement);
+                return;
             }
-            
         }
     }
 }

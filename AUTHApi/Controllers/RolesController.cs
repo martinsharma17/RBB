@@ -21,7 +21,7 @@ namespace AUTHApi.Controllers
     /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Policy = Permissions.Roles.View)] // CLASS-LEVEL SECURITY: Applies to ALL methods unless overridden
+    [Authorize] // Standardize: allow entry to controller, protect specific methods
     public class RolesController : BaseApiController
     {
         private readonly RoleManager<IdentityRole> _roleManager; // API to create/delete roles
@@ -40,6 +40,7 @@ namespace AUTHApi.Controllers
         /// Access: Admin Only
         /// </summary>
         [HttpGet]
+        [Authorize(Policy = Permissions.Roles.View)] // Protect the full role list
         public IActionResult GetAllRoles()
         {
             // Project to anonymous object to hide internal details if any
@@ -278,6 +279,7 @@ namespace AUTHApi.Controllers
         /// Endpoint: GET /api/Roles/UserRoles/{email}
         /// </summary>
         [HttpGet("UserRoles/{email}")]
+        [Authorize(Policy = Permissions.Roles.View)] // Protect specific user role viewing
         public async Task<IActionResult> GetUserRoles(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);

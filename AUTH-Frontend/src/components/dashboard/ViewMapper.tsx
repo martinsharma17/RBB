@@ -7,13 +7,14 @@ import RolesManagementView from './RolesManagementView';
 import PolicyEditorView from './PolicyEditorView';
 import SettingsView from './SettingsView';
 import NotificationsView from './NotificationsView';
-import ProjectSettingsDummy from './ProjectSettingsDummy';
+import ProjectSettingsView from './ProjectSettingsView';
 import AdminResourceView from './admin/AdminResourceView';
 import TaskListView from './tasks/TaskListView';
 import TaskKanbanView from './tasks/TaskKanbanView';
 import KycFormMaster from './user/KycFormMaster';
 import MenuManagementView from './admin/MenuManagementView';
 import KycWorkflowView from './admin/KycWorkflowView';
+import UnifiedKycQueueView from './admin/UnifiedKycQueueView';
 
 
 // Placeholder for missing component
@@ -36,6 +37,9 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
 
         case 'kyc_workflow':
             return <KycWorkflowView {...props} />;
+
+        case 'kyc_unified_queue':
+            return <UnifiedKycQueueView {...props} />;
 
         case 'support_view':  // This ID must match the 'ViewId' in the backend
             return <SupportComponent />;
@@ -75,7 +79,7 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
         case 'project_team':
             return <AdminResourceView resourceName="Team & Workflow" {...props} />;
         case 'project_settings':
-            return <ProjectSettingsDummy {...props} />;
+            return <ProjectSettingsView {...props} />;
 
         // --- Commons ---
         case 'settings':

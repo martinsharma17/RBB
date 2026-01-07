@@ -8,7 +8,7 @@ import AssignRoleModal from '../components/dashboard/AssignRoleModal';
 
 const Dashboard = () => {
     // 1. Auth & Context
-    const { token, logout, apiBase, user, permissions } = useAuth();
+    const { token, logout, apiBase, user, permissions, fetchPermissions } = useAuth();
     const navigate = useNavigate();
 
     // 2. Local State
@@ -96,7 +96,12 @@ const Dashboard = () => {
                 if (roleRes.ok) {
                     const res = await roleRes.json();
                     const data = res.data || {};
-                    setRoles(data.roles || []);
+                    const newRoles = data.roles || [];
+
+                    // Only update state if data changed to avoid re-renders
+                    if (JSON.stringify(newRoles) !== JSON.stringify(roles)) {
+                        setRoles(newRoles);
+                    }
                 }
             }
 
@@ -216,8 +221,15 @@ const Dashboard = () => {
                         onViewCharts: () => setActiveView('charts'),
 
                         permissions,
+                        user,
                         token,
-                        apiBase
+                        apiBase,
+                        onPermissionsUpdated: () => {
+                            if (token && fetchPermissions) {
+                                console.log("Dashboard: Policy updated, triggering permission refresh...");
+                                fetchPermissions(token);
+                            }
+                        }
                     })}
                 </div>
             </div>

@@ -1,19 +1,46 @@
 import React from 'react';
+import ProjectSettingsView from '../ProjectSettingsView';
 
 interface AdminDashboardViewProps {
     totalUsers: number;
     onViewUsers: () => void;
     onViewCharts: () => void;
     onAddUser: () => void;
+    user: any;
 }
 
-const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ totalUsers, onViewUsers, onViewCharts, onAddUser }) => {
+const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ totalUsers, onViewUsers, onViewCharts, onAddUser, user }) => {
+    const isSuperAdmin = user?.roles?.includes('SuperAdmin');
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-bold text-gray-900">Admin Dashboard</h2>
-                <p className="text-gray-600 mt-2">Manage user accounts assigned to you</p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                        {isSuperAdmin ? 'SuperAdmin Dashboard' : 'Admin Dashboard'}
+                    </h2>
+                    <p className="text-gray-600 mt-2">
+                        {isSuperAdmin ? 'Full system control and configuration' : 'Manage user accounts assigned to you'}
+                    </p>
+                </div>
+                {isSuperAdmin && (
+                    <div className="hidden md:block">
+                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold border border-red-200 shadow-sm">
+                            System Administrator
+                        </span>
+                    </div>
+                )}
             </div>
+
+            {/* Project Settings for SuperAdmin */}
+            {isSuperAdmin && (
+                <div className="mt-8 border-t pt-8">
+                    <div className="mb-4">
+                        <h3 className="text-xl font-bold text-gray-800">System Customization</h3>
+                        <p className="text-sm text-gray-500">Update application brand colors, logo, and name globally.</p>
+                    </div>
+                    <ProjectSettingsView />
+                </div>
+            )}
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

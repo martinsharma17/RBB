@@ -73,7 +73,8 @@ namespace AUTHApi.Data
 
                 ["Maker"] = new List<string>
                 {
-                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow, Permissions.Kyc.Verify
+                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow, Permissions.Kyc.Verify,
+                    Permissions.Kyc.Approve, Permissions.Kyc.Reject
                 },
 
                 ["Checker"] = new List<string>

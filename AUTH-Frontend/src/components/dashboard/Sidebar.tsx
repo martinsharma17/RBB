@@ -1,6 +1,7 @@
 import React from 'react';
 import SidebarUserContext from './SidebarUserContext'; // [NEW]
 import { SidebarItem as SidebarItemType, Permissions } from '../../types';
+import { useProjectSettings } from '../../context/ProjectSettingsContext';
 
 interface SidebarProps {
     sidebarOpen: boolean;
@@ -24,6 +25,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     permissions
 }) => {
     const [expandedMenus, setExpandedMenus] = React.useState<Record<string, boolean>>({});
+    const { settings } = useProjectSettings();
 
     const toggleMenu = (menuId: string) => {
         setExpandedMenus(prev => ({
@@ -35,10 +37,18 @@ const Sidebar: React.FC<SidebarProps> = ({
     return (
         <div className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 text-white transition-all duration-300 flex flex-col`}>
             {/* Sidebar Header */}
-            <div className="p-4 border-b border-gray-700 flex items-center justify-between">
-                {/* {sidebarOpen && <h2 className="text-xl font-bold">{user?.email || "User"}</h2>} */}
+            <div className="p-4 border-b border-gray-700 flex items-center gap-3">
+                <div className="flex-shrink-0">
+                    {settings.logoUrl ? (
+                        <img src={settings.logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded" />
+                    ) : (
+                        <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold">
+                            {settings.applicationName.charAt(0)}
+                        </div>
+                    )}
+                </div>
                 {sidebarOpen && (
-                    <h2 className="text-xl font-bold">
+                    <h2 className="text-xl font-bold truncate">
                         {(() => {
                             const roles = user?.roles || [];
                             if (roles.includes("SuperAdmin")) return "SuperAdmin";
@@ -49,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 )}
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="text-gray-400 hover:text-white"
+                    className="ml-auto text-gray-400 hover:text-white"
                 >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sidebarOpen ? (

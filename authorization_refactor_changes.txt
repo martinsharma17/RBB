@@ -1,0 +1,55 @@
+AUTHORIZATION REFACTOR SUMMARY
+==============================
+
+I have refactored the backend authorization system from Role-based checks to a Permission-based, Policy-driven architecture.
+
+NEW FILES CREATED:
+------------------
+1. AUTHApi/Services/TokenService.cs
+   - Centralized JWT generation logic.
+   - Injects granular "Permission" claims into the JWT by querying role-to-policy mappings.
+
+FILES MODIFIED:
+---------------
+1. AUTHApi/Program.cs
+   - Registered ITokenService.
+   - Cleaned up legacy role-based policies (AdminOnly, etc.).
+   - Registered PermissionPolicyProvider and PermissionAuthorizationHandler.
+
+2. AUTHApi/Core/Security/Permissions.cs
+   - Added new permission constants for Roles, Users, and KYC actions.
+   - Updated GetAllPermissions() helper.
+
+3. AUTHApi/Controllers/UserAuthController.cs
+   - Injected ITokenService.
+   - Removed internal GenerateJWTToken() method.
+   - Updated Login to use the service.
+
+4. AUTHApi/Controllers/ExternalAuthController.cs
+   - Injected ITokenService.
+   - Removed internal GenerateJwtToken() method.
+   - Updated GoogleResponse to use the service.
+
+5. AUTHApi/Controllers/KycApprovalController.cs
+   - Replaced [Authorize(Roles = "...")] with Permission Policies.
+   - Actions now require Permissions.Kyc.Approve, Permissions.Kyc.Reject, or Permissions.Kyc.Workflow.
+
+6. AUTHApi/Controllers/RolesController.cs
+   - Replaced [Authorize(Roles = "...")] with Permission Policies.
+   - Secured with Permissions.Roles.View, Create, Delete, and Assign.
+
+7. AUTHApi/Controllers/UserController.cs
+   - Replaced [Authorize(Roles = "...")] with Permission Policies.
+   - Actions require Permissions.Users.View, Create, or Delete.
+
+8. AUTHApi/Controllers/MenuManagementController.cs
+   - Replaced [Authorize(Roles = "SuperAdmin")] with [Authorize(Policy = Permissions.Settings.Sidebar)].
+
+CORE LOGIC CHANGES:
+-------------------
+- Shifted from hardcoded roles to dynamic policies.
+- Policies are dynamically matched by PermissionPolicyProvider based on strings starting with "Permissions.".
+- SuperAdmin bypass is implemented in PermissionAuthorizationHandler.
+- Permission claims are embedded in the JWT at login, making the token the single source of truth for user capabilities.
+
+NOTE: All staff and admin users must logout and login again to refresh their JWT with the new permission claims.

@@ -122,6 +122,7 @@ export const PERMISSION_CONSTANTS = {
     KYC_SIDEBAR: 'Permissions.Kyc.Sidebar',
     KYC_VERIFY: 'Permissions.Kyc.Verify',
     KYC_APPROVE: 'Permissions.Kyc.Approve',
+    KYC_REJECT: 'Permissions.Kyc.Reject',
     KYC_WORKFLOW: 'Permissions.Kyc.Workflow',
 } as const;
 
@@ -131,7 +132,7 @@ export const PERMISSION_CONSTANTS = {
 export function mapBackendPermissionsToFrontend(backendPermissions: string[]): Permissions {
     const permSet = new Set(backendPermissions);
 
-    return {
+    const result: Permissions = {
         // Users
         users: {
             create: permSet.has(PERMISSION_CONSTANTS.USERS_CREATE),
@@ -146,7 +147,10 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             read: permSet.has(PERMISSION_CONSTANTS.ANALYTICS_VIEW),
             sidebar: permSet.has(PERMISSION_CONSTANTS.ANALYTICS_SIDEBAR),
         },
-        permission_charts: { // Charts acts as analytics alias
+        charts: { // Map 'charts' resource from Editor to Analytics policy
+            sidebar: permSet.has(PERMISSION_CONSTANTS.ANALYTICS_SIDEBAR),
+        },
+        permission_charts: { // Legacy alias
             sidebar: permSet.has(PERMISSION_CONSTANTS.ANALYTICS_SIDEBAR),
         },
 
@@ -255,8 +259,15 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             update: permSet.has(PERMISSION_CONSTANTS.KYC_UPDATE),
             delete: permSet.has(PERMISSION_CONSTANTS.KYC_DELETE),
             sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_SIDEBAR),
+            verify: permSet.has(PERMISSION_CONSTANTS.KYC_VERIFY),
+            approve: permSet.has(PERMISSION_CONSTANTS.KYC_APPROVE),
+            reject: permSet.has(PERMISSION_CONSTANTS.KYC_REJECT),
         },
         kyc_workflow: {
+            read: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
+            sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
+        },
+        kyc_unified_queue: {
             read: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
             sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
         },
@@ -306,10 +317,24 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
         view_settings: permSet.has(PERMISSION_CONSTANTS.SETTINGS_SIDEBAR),
         view_security: permSet.has(PERMISSION_CONSTANTS.SECURITY_SIDEBAR),
         view_backup: permSet.has(PERMISSION_CONSTANTS.BACKUP_SIDEBAR),
+
+        // KYC specific helpers
+        view_kyc: permSet.has(PERMISSION_CONSTANTS.KYC_SIDEBAR),
         view_kyc_workflow: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
+        view_kyc_unified_queue: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
 
         dashboard: true, // Dashboard is always visible
     };
+
+    // --- ENHANCEMENT: RAW KEY SUPPORT ---
+    // We add the raw backend permission strings as top-level 'true' values.
+    // This ensures that simple lookups like "permissions['Permissions.Users.View']" work perfectly
+    // without needing complex mapping in every component.
+    backendPermissions.forEach(p => {
+        (result as any)[p] = true;
+    });
+
+    return result;
 }
 
 /**
@@ -385,10 +410,10 @@ export function mapFrontendPermissionsToBackend(frontendPermissions: Permissions
     pushIfTrue(frontendPermissions.project_settings?.sidebar, PERMISSION_CONSTANTS.PROJECT_SETTINGS_SIDEBAR);
 
     // Analytics
-    if (frontendPermissions.analytics?.read) {
+    if (frontendPermissions.analytics?.read || frontendPermissions.charts?.read) {
         pushIfTrue(true, PERMISSION_CONSTANTS.ANALYTICS_VIEW);
     }
-    pushIfTrue(frontendPermissions.analytics?.sidebar, PERMISSION_CONSTANTS.ANALYTICS_SIDEBAR);
+    pushIfTrue(frontendPermissions.analytics?.sidebar || frontendPermissions.charts?.sidebar, PERMISSION_CONSTANTS.ANALYTICS_SIDEBAR);
 
     // Other Modules
     pushIfTrue(frontendPermissions.reports?.read, PERMISSION_CONSTANTS.REPORTS_VIEW);
@@ -421,9 +446,13 @@ export function mapFrontendPermissionsToBackend(frontendPermissions: Permissions
     pushIfTrue(frontendPermissions.kyc?.update, PERMISSION_CONSTANTS.KYC_UPDATE);
     pushIfTrue(frontendPermissions.kyc?.delete, PERMISSION_CONSTANTS.KYC_DELETE);
     pushIfTrue(frontendPermissions.kyc?.sidebar, PERMISSION_CONSTANTS.KYC_SIDEBAR);
+    pushIfTrue(frontendPermissions.kyc?.verify, PERMISSION_CONSTANTS.KYC_VERIFY);
+    pushIfTrue(frontendPermissions.kyc?.approve, PERMISSION_CONSTANTS.KYC_APPROVE);
+    pushIfTrue(frontendPermissions.kyc?.reject, PERMISSION_CONSTANTS.KYC_REJECT);
 
     // KYC Workflow
-    if (frontendPermissions.kyc_workflow?.read || frontendPermissions.kyc_workflow?.sidebar) {
+    if (frontendPermissions.kyc_workflow?.read || frontendPermissions.kyc_workflow?.sidebar ||
+        frontendPermissions.kyc_unified_queue?.read || frontendPermissions.kyc_unified_queue?.sidebar) {
         pushIfTrue(true, PERMISSION_CONSTANTS.KYC_WORKFLOW);
     }
 

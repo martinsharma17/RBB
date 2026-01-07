@@ -4,6 +4,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
+import { useProjectSettings } from '../../context/ProjectSettingsContext';
 
 interface IconProps {
     className?: string;
@@ -41,6 +42,7 @@ const ShieldIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
 
 const Navbar = () => {
     const { user, logout } = useAuth();
+    const { settings } = useProjectSettings();
     const navigate = useNavigate();
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -122,11 +124,17 @@ const Navbar = () => {
                             to="/"
                             className="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors duration-200"
                         >
-                            <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center">
-                                <span className="text-blue-600 font-bold text-lg">A</span>
+                            <div className="h-8 w-8 flex items-center justify-center">
+                                {settings.logoUrl ? (
+                                    <img src={settings.logoUrl} alt="Logo" className="h-full w-full object-contain rounded" />
+                                ) : (
+                                    <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center font-bold text-blue-600">
+                                        {settings.applicationName.charAt(0)}
+                                    </div>
+                                )}
                             </div>
                             <span className="text-xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">
-                                AuthApp
+                                {settings.applicationName}
                             </span>
                         </Link>
 
@@ -162,11 +170,17 @@ const Navbar = () => {
                             to="/"
                             className="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors duration-200"
                         >
-                            <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center">
-                                <span className="text-blue-600 font-bold text-lg">A</span>
+                            <div className="h-8 w-8 flex items-center justify-center">
+                                {settings.logoUrl ? (
+                                    <img src={settings.logoUrl} alt="Logo" className="h-full w-full object-contain rounded" />
+                                ) : (
+                                    <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center font-bold text-blue-600">
+                                        {settings.applicationName.charAt(0)}
+                                    </div>
+                                )}
                             </div>
                             <span className="text-xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">
-                                AuthApp
+                                {settings.applicationName}
                             </span>
                         </Link>
 

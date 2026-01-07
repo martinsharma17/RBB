@@ -16,7 +16,7 @@ namespace AUTHApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Policy = Permissions.Users.View)]
+[Authorize] // Loosen class balance: any authenticated user can fetch their own profile/perms
 public class UserController : BaseApiController
 {
     private readonly UserManager<ApplicationUser> _userManager;
@@ -49,6 +49,7 @@ public class UserController : BaseApiController
     /// </summary>
     /// <returns>List of users with their basic information and roles.</returns>
     [HttpGet("users")]
+    [Authorize(Policy = Permissions.Users.View)] // Strictly protect the full user list
     public async Task<IActionResult> GetAllUsers()
     {
         var currentUser = await _userManager.GetUserAsync(User);

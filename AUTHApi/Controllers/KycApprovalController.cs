@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using AUTHApi.Core.Security;
+using AUTHApi.DTOs;
 
 namespace AUTHApi.Controllers
 {
@@ -30,9 +31,16 @@ namespace AUTHApi.Controllers
         /// Staff action to approve a KYC.
         /// </summary>
         [HttpPost("approve")]
-        [Authorize(Policy = Permissions.Kyc.Approve)]
+        [Authorize] // Handled via manual check for Verify OR Approve
         public async Task<IActionResult> ApproveKyc([FromBody] ApprovalModel model)
         {
+            if (!User.HasClaim(c =>
+                    c.Type == "Permission" &&
+                    (c.Value == Permissions.Kyc.Approve || c.Value == Permissions.Kyc.Verify)))
+            {
+                return Failure("You do not have permission to approve/verify KYC applications.", 403);
+            }
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
@@ -46,9 +54,15 @@ namespace AUTHApi.Controllers
         /// Staff action to reject a KYC.
         /// </summary>
         [HttpPost("reject")]
-        [Authorize(Policy = Permissions.Kyc.Reject)]
+        [Authorize] // Handled via manual check for Reject OR Verify
         public async Task<IActionResult> RejectKyc([FromBody] ApprovalModel model)
         {
+            if (!User.HasClaim(c =>
+                    c.Type == "Permission" && (c.Value == Permissions.Kyc.Reject || c.Value == Permissions.Kyc.Verify)))
+            {
+                return Failure("You do not have permission to reject/return KYC applications.", 403);
+            }
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
 
@@ -112,6 +126,46 @@ namespace AUTHApi.Controllers
                 .ToListAsync();
 
             return Success(new { pending });
+        }
+
+        /// <summary>
+        /// Gets a unified, flattened list of all KYCs and their workflow status.
+        /// Ideal for high-level administration dashboards.
+        /// </summary>
+        [HttpGet("unified-list")]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
+        public async Task<IActionResult> GetUnifiedList()
+        {
+            var list = await _context.KycWorkflowMasters
+                .Include(w => w.KycSession)
+                .ThenInclude(s => s.KycDetail)
+                .OrderByDescending(w => w.CreatedAt)
+                .Select(w => new KycUnifiedViewDto
+                {
+                    WorkflowId = w.Id,
+                    KycId = w.KycSession != null && w.KycSession.KycDetail != null ? w.KycSession.KycDetail.Id : 0,
+                    CustomerName = w.KycSession != null && w.KycSession.KycDetail != null
+                        ? (w.KycSession.KycDetail.FirstName + " " + (w.KycSession.KycDetail.MiddleName ?? "") + " " +
+                           w.KycSession.KycDetail.LastName).Trim()
+                        : "Unknown",
+                    Email = w.KycSession != null ? w.KycSession.Email : "Unknown",
+                    MobileNumber = w.KycSession != null && w.KycSession.KycDetail != null
+                        ? w.KycSession.KycDetail.MobileNumber
+                        : null,
+                    Status = w.Status.ToString(),
+                    PendingLevel = w.PendingLevel,
+                    CurrentRoleName = _context.Roles.Where(r => r.Id == w.CurrentRoleId).Select(r => r.Name)
+                        .FirstOrDefault(),
+                    SubmittedRoleName = _context.Roles.Where(r => r.Id == w.SubmittedRoleId).Select(r => r.Name)
+                        .FirstOrDefault(),
+                    FullChain = w.FullChain,
+                    CreatedAt = w.CreatedAt,
+                    LastUpdatedAt = w.UpdatedAt,
+                    LastRemarks = w.LastRemarks
+                })
+                .ToListAsync();
+
+            return Success(list);
         }
 
         /// <summary>

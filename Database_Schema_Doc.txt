@@ -1,0 +1,186 @@
+================================================================================
+DATABASE SCHEMA DOCUMENTATION - USER MANAGEMENT & KYC SYSTEM
+================================================================================
+
+This document provides a detailed description of the tables used in the system,
+their purpose, and their primary columns.
+
+--------------------------------------------------------------------------------
+1. IDENTITY & AUTHORIZATION (Standard + Custom)
+--------------------------------------------------------------------------------
+
+TABLE: AspNetUsers (Entity: ApplicationUser)
+Description: Stores core user login information, extending IdentityUser.
+Key Columns:
+- Id (string, PK): Unique identifier for the user.
+- UserName / Email: Authentication credentials.
+- Name (string): User's full name.
+- ManagerId (string, FK): Link to another user (admin/manager).
+- IsActive (bool): Whether the account is enabled.
+
+TABLE: AspNetRoles
+Description: Stores system roles (e.g., SuperAdmin, Maker, Checker).
+Key Columns:
+- Id (string, PK): Unique identifier for the role.
+- Name: Unique name of the role.
+
+TABLE: AspNetUserRoles
+Description: Links Users to Roles (Many-to-Many).
+Key Columns:
+- UserId (FK): Reference to AspNetUsers.
+- RoleId (FK): Reference to AspNetRoles.
+
+TABLE: SystemPolicies (Entity: SystemPolicy)
+Description: Defines granular permissions/policies available in the system.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- PolicyKey (string): Unique code used in code (e.g., "Permissions.Kyc.View").
+- DisplayName (string): Human-readable name.
+- Category (string): Group for UI organization (e.g., "KYC").
+
+TABLE: RolePolicies (Entity: RolePolicy)
+Description: Links Roles to SystemPolicies. Replaces complex claim strings.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- RoleId (string, FK): Reference to AspNetRoles.
+- PolicyId (int, FK): Reference to SystemPolicies.
+- IsGranted (bool): Explicitly grants or denies the permission to the role.
+
+--------------------------------------------------------------------------------
+2. KYC SUBMISSION & VERIFICATION (Customer Flow)
+--------------------------------------------------------------------------------
+
+TABLE: KycFormSessions (Entity: KycFormSession)
+Description: Tracks a customer's progress during the KYC form-filling process.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- SessionToken (Guid): A unique token for unauthenticated access.
+- Email / MobileNo: Contact info used for verification.
+- EmailVerified / MobileVerified (bool): Status of OTP verification.
+- CurrentStep / LastSavedStep (int): Tracking progress through multi-step form.
+- FormStatus (byte): 1=In Progress, 2=Completed, 3=Submitted.
+- KycDetailId (int, FK): Links to the actual KYC data once submitted.
+
+TABLE: KycDetails (Entity: KycDetail)
+Description: THE MASTER DATA table. Stores all information submitted by the customer.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- UserId (string, FK): Link to the registered user (if applicable).
+- FirstName / LastName / DateOfBirth: Personal info.
+- Gender / MaritalStatus / Nationality: Demographics.
+- PermanentState / District / Municipality / WardNo / Street: Permanent Address.
+- CurrentState / District / Municipality / WardNo / Street: Current Address.
+- FatherName / MotherName / GrandFatherName: Family tree.
+- CitizenshipNumber / IssuedDistrict / IssuedDate: Identification ID info.
+- Occupation / Designation / OrganizationName: Employment info.
+- SourceOfFunds / AnnualIncome: Financial info.
+- BankName / BankAccountNumber / BankBranch: Payment info.
+- IsPep / HasCriminalRecord (bool): AML compliance flags.
+- Status (string): Overall status (Pending, Approved, Rejected).
+
+TABLE: KycDocuments (Entity: KycDocument)
+Description: Stores files uploaded by the customer (Photos, IDs).
+Key Columns:
+- Id (int, PK): Unique identifier.
+- KycDetailId (int, FK): Link to the KycDetail record.
+- DocumentType (string): Type of doc (e.g., "CitizenshipFront", "Photo").
+- Data (blob/byte[]): The actual file content.
+- FilePath / OriginalFileName: Metadata for the file.
+
+TABLE: KycOtpVerifications (Entity: KycOtpVerification)
+Description: Stores OTP codes sent to users for verification.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- SessionId (int, FK): Link to the active session.
+- OtpCode (string): The temporary code.
+- OtpType (byte): 1=Email, 2=Mobile.
+- IsVerified (bool): Whether the user entered it correctly.
+- ExpiryDate (datetime): When the code becomes invalid.
+
+TABLE: KycFormSteps (Entity: KycFormSteps)
+Description: Defines the sequence of steps in the frontend KYC form.
+Key Columns:
+- StepNumber (int, PK): Order of the step.
+- StepName: Display name of the section (e.g., "Personal Info").
+- TableName: Which logical table it maps to.
+
+TABLE: KycStepCompletions (Entity: KycStepCompletion)
+Description: Tracks specific step completion for a session.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- SessionId (int, FK): Link to the session.
+- StepNumber (int, FK): Link to the step definition.
+- IsCompleted / IsSaved (bool): Progress flags.
+
+--------------------------------------------------------------------------------
+3. KYC WORKFLOW & APPROVAL (Internal Staff Flow)
+--------------------------------------------------------------------------------
+
+TABLE: KycWorkflowMasters (Entity: KycWorkflowMaster)
+Description: Tracks the "Current Stage" of a submitted KYC in the approval pipeline.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- KycSessionId (int, FK): Reference to the session/detail being approved.
+- CurrentRoleId (string, FK): Which role (Maker/Checker) currently has the ball.
+- SubmittedRoleId (string, FK): Role that started the workflow.
+- PendingLevel (int): Number of approval stages remaining.
+- Status (enum): InProgress, Approved, Rejected, ResubmissionRequired.
+- FullChain (string): Visual path of roles (e.g., "Maker -> Checker").
+
+TABLE: KycApprovalLogs (Entity: KycApprovalLog)
+Description: Audit trail for every action taken on a KYC form.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- KycWorkflowId (int, FK): Reference to the master workflow record.
+- UserId (string, FK): User who performed the action.
+- Action (string): What was done (Approved, Forwarded, Rejected).
+- Remarks (string): Comments left by the staff.
+- ForwardedToRoleId (string, FK): Next role in the chain.
+
+TABLE: KycApprovalConfigs (Entity: KycApprovalConfig)
+Description: Defines the default approval path for different submission types.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- RoleId (string): The role this path is for (e.g., "Maker" submission path).
+
+TABLE: KycApprovalSteps (Entity: KycApprovalStep)
+Description: Individual steps within a configuration chain.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- ConfigId (int, FK): Reference to the config object.
+- RoleId (string): Which role approves at this specific sequence.
+- StepOrder (int): Sequence number (0, 1, 2...).
+
+--------------------------------------------------------------------------------
+4. SYSTEM & UI CONFIGURATION
+--------------------------------------------------------------------------------
+
+TABLE: MenuItems (Entity: MenuItem)
+Description: Controls the dynamic Sidebar menu structure.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- Title (string): Display text in the sidebar.
+- ViewId (string): Maps to the frontend component view.
+- Url (string): Navigation path.
+- RequiredPolicyId (int, FK): Permission required to see this menu item.
+- ParentId (int, FK): Self-referencing link for sub-menus (nesting).
+- Order (int): Sorting order.
+
+TABLE: Branches (Entity: Branch)
+Description: Stores physical/logical branch offices.
+Key Columns:
+- Id (int, PK): Unique identifier.
+- Name (string): Branch name.
+- Code (string): Unique branch code.
+- Location (string): Address/City.
+
+TABLE: ProjectSettings (Entity: ProjectSetting)
+Description: High-level system configuration (App Name, Branding).
+Key Columns:
+- Id (int, PK): Unique identifier.
+- ApplicationName (string): Global title of the system.
+- LogoPath (string): URL to the system logo.
+
+================================================================================
+Generated on: 2026-01-06
+================================================================================

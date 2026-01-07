@@ -8,6 +8,7 @@ namespace AUTHApi.Data
     {
         public DbSet<MenuItem> MenuItems { get; set; }
         public DbSet<Branch> Branches { get; set; }
+        public DbSet<ProjectSetting> ProjectSettings { get; set; }
 
         // --- Core KYC Session Tables ---
         public DbSet<KycFormSession> KycFormSessions { get; set; }

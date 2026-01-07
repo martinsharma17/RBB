@@ -82,16 +82,29 @@ const KycWorkflowView: React.FC = () => {
                     returnToPrevious: returnToPrevious
                 })
             });
-            const data = await res.json();
-            if (data.success) {
-                setSelectedKyc(null);
-                setRemarks('');
-                fetchPending();
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.success) {
+                    setSelectedKyc(null);
+                    setRemarks('');
+                    fetchPending();
+                } else {
+                    alert(data.message || `Failed to ${action} KYC.`);
+                }
             } else {
-                alert(data.message);
+                // Handle non-OK responses (403, 500 etc)
+                if (res.status === 403) {
+                    alert(`Access Forbidden: You do not have permission to ${action} this KYC application.`);
+                } else {
+                    const errorText = await res.text();
+                    console.error("Server Error Response:", errorText);
+                    alert(`Server returned an error (${res.status}). Please check your permissions or contact support.`);
+                }
             }
         } catch (err) {
-            console.error(`Failed to ${action} KYC`, err);
+            console.error(`Network Error while trying to ${action} KYC:`, err);
+            alert(`A network error occurred. Please try again or check your connection.`);
         } finally {
             setActionLoading(false);
         }

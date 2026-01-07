@@ -10,6 +10,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProjectSettingsProvider } from './context/ProjectSettingsContext';
 import LoginForm from './components/auth/LoginForm';
 import RegisterForm from './components/auth/RegisterForm';
 import Dashboard from './pages/Dashboard';
@@ -133,7 +134,9 @@ export default function App() {
   return (
     // Wrap entire app in AuthProvider to make auth state global
     <AuthProvider>
-      <AppContent />
+      <ProjectSettingsProvider>
+        <AppContent />
+      </ProjectSettingsProvider>
     </AuthProvider>
   )
 }

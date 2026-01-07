@@ -209,18 +209,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // ============================================================================
         // Auto-refresh permissions every 10 seconds to detect policy changes
         // This ensures if SuperAdmin changes policies, other tabs pick it up
-        // const refreshInterval = setInterval(() => {
-        //     console.log('🔄 Auto-refreshing permissions (policy sync)...');
-        //     fetchPermissions(token);
-        // }, 10000); // 10 seconds
+        const refreshInterval = setInterval(() => {
+            if (token) {
+                console.log('🔄 Auto-refreshing permissions (policy sync)...');
+                fetchPermissions(token);
+            }
+        }, 10000); // 10 seconds
 
         window.addEventListener('focus', handleFocus);
 
         return () => {
             window.removeEventListener('focus', handleFocus);
-            // if (refreshInterval) {
-            //     clearInterval(refreshInterval);
-            // }
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
         };
     }, [token, user, fetchPermissions]);
 

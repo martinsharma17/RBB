@@ -201,6 +201,11 @@ internal class Program
                     scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(),
                     scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>()
                 );
+
+                // Seed Project Settings
+                await ProjectSettingsSeeder.SeedProjectSettingsAsync(
+                    scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
+                );
             }
             catch (Exception ex)
             {
@@ -225,6 +230,7 @@ internal class Program
         app.UseMiddleware<AUTHApi.Middlewares.ExceptionMiddleware>();
 
         app.UseHttpsRedirection(); // Redirect HTTP to HTTPS
+        app.UseStaticFiles(); // Enable serving static files from wwwroot
         app.UseCors("AllowSpecificOrigin"); // Enable CORS (Must be before Auth)
 
 

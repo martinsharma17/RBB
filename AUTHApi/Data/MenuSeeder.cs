@@ -78,6 +78,15 @@ namespace AUTHApi.Data
                 Order = 7
             };
 
+            var kycUnifiedQueueItem = new MenuItem
+            {
+                Title = "Unified KYC Queue", ViewId = "kyc_unified_queue", Icon = "Shield",
+                Url = "/kyc-unified",
+                Permission = Permissions.Kyc.Workflow,
+                RequiredPolicyId = GetPolicyId(Permissions.Kyc.Workflow),
+                Order = 8
+            };
+
             // Menu Management - SuperAdmin only (no permission required, role-based)
             var menuManagementItem = new MenuItem
             {
@@ -126,6 +135,7 @@ namespace AUTHApi.Data
                 policyItem,
                 kycItem,
                 kycWorkflowItem,
+                kycUnifiedQueueItem,
                 menuManagementItem, // Menu Management for SuperAdmin
                 chartsItem,
                 projectsItem,

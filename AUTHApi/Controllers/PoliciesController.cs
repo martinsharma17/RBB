@@ -122,11 +122,9 @@ namespace AUTHApi.Controllers
             {
                 if (!validPolicyIds.Contains(link.PolicyId))
                 {
-                    // Option 1: Hard Delete (Cleaner table)
-                    _context.RolePolicies.Remove(link);
-
-                    // Option 2: Soft Delete (IsGranted = false)
-                    // link.IsGranted = false; 
+                    // Soft Delete (IsGranted = false) 
+                    // This prevents the seeder from re-adding it on next restart
+                    if (link.IsGranted) link.IsGranted = false;
                 }
             }
 
