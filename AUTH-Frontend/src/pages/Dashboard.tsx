@@ -23,7 +23,9 @@ const Dashboard = () => {
 
     // UI States
     const [showAddModal, setShowAddModal] = useState(false);
-    const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "User" });
+    const [newUser, setNewUser] = useState<{ name: string, email: string, password: string, role: string, branchId: string }>({
+        name: "", email: "", password: "", role: "User", branchId: ""
+    });
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedUserForRole, setSelectedUserForRole] = useState<any | null>(null);
 
@@ -133,12 +135,13 @@ const Dashboard = () => {
                     UserName: newUser.name,
                     Email: newUser.email,
                     Password: newUser.password,
-                    Role: newUser.role || "User"
+                    Role: newUser.role || "User",
+                    BranchId: newUser.branchId ? parseInt(newUser.branchId) : null
                 })
             });
             if (response.ok) {
                 setShowAddModal(false);
-                setNewUser({ name: "", email: "", password: "", role: "User" });
+                setNewUser({ name: "", email: "", password: "", role: "User", branchId: "" });
                 fetchData();
             } else {
                 alert("Failed to add user");

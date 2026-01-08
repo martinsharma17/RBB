@@ -24,13 +24,16 @@ namespace AUTHApi.Controllers
     [Authorize] // Standardize: allow entry to controller, protect specific methods
     public class RolesController : BaseApiController
     {
-        private readonly RoleManager<IdentityRole> _roleManager; // API to create/delete roles
+        private readonly RoleManager<ApplicationRole> _roleManager; // API to create/delete roles
         private readonly UserManager<ApplicationUser> _userManager; // API to assign roles to users
+        private readonly ApplicationDbContext _context;
 
-        public RolesController(RoleManager<IdentityRole> roleManager, UserManager<ApplicationUser> userManager)
+        public RolesController(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager,
+            ApplicationDbContext context)
         {
             _roleManager = roleManager;
             _userManager = userManager;
+            _context = context;
         }
 
 
@@ -43,8 +46,10 @@ namespace AUTHApi.Controllers
         [Authorize(Policy = Permissions.Roles.View)] // Protect the full role list
         public IActionResult GetAllRoles()
         {
-            // Project to anonymous object to hide internal details if any
-            var roles = _roleManager.Roles.Select(r => new { r.Id, r.Name }).ToList();
+            var roles = _roleManager.Roles
+                .OrderBy(r => r.OrderLevel ?? -1) // SuperAdmin (null) first
+                .Select(r => new { r.Id, r.Name, r.OrderLevel })
+                .ToList();
             return Success(new { roles = roles });
         }
 
@@ -55,29 +60,50 @@ namespace AUTHApi.Controllers
         /// </summary>
         [HttpPost("CreateRole")]
         [Authorize(Policy = Permissions.Roles.Create)] // Only users with Role Create permission
-        public async Task<IActionResult> CreateRole([FromBody] CreateRoleModel model)
+        public async Task<IActionResult> CreateRole([FromBody] DynamicCreateRoleModel model)
         {
-            // 1. Validation
             if (string.IsNullOrWhiteSpace(model.RoleName))
             {
                 return Failure("RoleName is required");
             }
 
-            // 2. Check existence
+            if (model.RoleName.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
+            {
+                return Failure("Cannot create or duplicate the SuperAdmin role");
+            }
+
             var roleExists = await _roleManager.RoleExistsAsync(model.RoleName);
             if (roleExists)
             {
                 return Failure("Role already exists");
             }
 
-            // 3. Create Role
-            var role = new IdentityRole(model.RoleName);
+            int assignedOrder;
+            if (model.OrderLevel.HasValue)
+            {
+                assignedOrder = model.OrderLevel.Value;
+            }
+            else
+            {
+                // Automatic Order Level Assignment: Start from 1 if no roles exist, 
+                // ensuring 0 is left for public/basic maker role.
+                var maxOrder = await _roleManager.Roles
+                    .Where(r => r.OrderLevel.HasValue)
+                    .MaxAsync(r => (int?)r.OrderLevel) ?? 0;
+                assignedOrder = maxOrder + 1;
+            }
+
+            var role = new ApplicationRole(model.RoleName)
+            {
+                OrderLevel = assignedOrder
+            };
+
             var result = await _roleManager.CreateAsync(role);
 
             if (result.Succeeded)
             {
-                return Success(new { role = new { role.Id, role.Name } },
-                    $"Role '{model.RoleName}' created successfully");
+                return Success(new { role = new { role.Id, role.Name, role.OrderLevel } },
+                    $"Role '{model.RoleName}' created successfully with Level {role.OrderLevel}");
             }
 
             return Failure("Failed to create role", 400, result.Errors);
@@ -92,10 +118,7 @@ namespace AUTHApi.Controllers
         [Authorize(Policy = Permissions.Roles.Delete)]
         public async Task<IActionResult> DeleteRole(string roleName)
         {
-            // 1. Protect Critical Roles
-            // We should never delete the basic system roles or we break the app.
-            var systemRoles = new[] { "SuperAdmin", "Admin", "User" };
-            if (systemRoles.Contains(roleName))
+            if (roleName.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
             {
                 return Failure("Cannot delete system roles");
             }
@@ -141,25 +164,23 @@ namespace AUTHApi.Controllers
         }
 
         /// <summary>
-        /// Gets all Admin users.
-        /// Endpoint: GET /api/Roles/AllAdmins
-        /// Access: SuperAdmin Only
+        /// Gets all system users.
+        /// Endpoint: GET /api/Roles/SystemUsers
         /// </summary>
-        [HttpGet("AllAdmins")]
+        [HttpGet("SystemUsers")]
         [Authorize(Policy = Permissions.Users.View)]
-        public async Task<IActionResult> GetAllAdmins()
+        public async Task<IActionResult> GetSystemUsers()
         {
-            // Helper method from UserManager to find users by role
-            var admins = await _userManager.GetUsersInRoleAsync("Admin");
-            var adminList = new List<object>();
+            var users = await _userManager.Users.ToListAsync();
+            var userList = new List<object>();
 
-            foreach (var admin in admins)
+            foreach (var user in users)
             {
-                var roles = await _userManager.GetRolesAsync(admin);
-                adminList.Add(new { admin.Id, admin.Name, admin.Email, isActive = admin.IsActive, Roles = roles });
+                var roles = await _userManager.GetRolesAsync(user);
+                userList.Add(new { user.Id, user.Name, user.Email, isActive = user.IsActive, Roles = roles });
             }
 
-            return Success(new { admins = adminList });
+            return Success(new { users = userList });
         }
 
         /// <summary>
@@ -201,6 +222,29 @@ namespace AUTHApi.Controllers
         /// Endpoint: POST /api/Roles/AssignRole
         /// Access: Admin Only (implicitly via class-level attribute)
         /// </summary>
+        [HttpPost("UpdateRoleOrder")]
+        [Authorize(Policy = Permissions.Roles.Edit)]
+        public async Task<IActionResult> UpdateRoleOrder([FromBody] UpdateRoleOrderModel model)
+        {
+            if (string.IsNullOrWhiteSpace(model.RoleName)) return Failure("RoleName is required");
+
+            var role = await _roleManager.FindByNameAsync(model.RoleName);
+            if (role == null) return Failure("Role not found");
+
+            if (role.Name == "SuperAdmin") return Failure("Cannot modify SuperAdmin hierarchy");
+
+            role.OrderLevel = model.OrderLevel;
+            var result = await _roleManager.UpdateAsync(role);
+
+            if (result.Succeeded)
+            {
+                return Success(new { roleName = role.Name, newLevel = role.OrderLevel },
+                    $"Hierarchy updated for '{role.Name}' to Level {role.OrderLevel}");
+            }
+
+            return Failure("Failed to update hierarchy", 400, result.Errors);
+        }
+
         [HttpPost("AssignRole")]
         [Authorize(Policy = Permissions.Roles.Assign)]
         public async Task<IActionResult> AssignRoleToUser([FromBody] AssignRoleModel model)
@@ -300,10 +344,18 @@ namespace AUTHApi.Controllers
         public string RoleName { get; set; } = string.Empty;
     }
 
-    /// Model for creating roles
-    public class CreateRoleModel
+    /// Model for creating roles with explicit hierarchy
+    public class DynamicCreateRoleModel
     {
         public string RoleName { get; set; } = string.Empty;
+        public int? OrderLevel { get; set; }
+    }
+
+    /// Model for updating role hierarchy
+    public class UpdateRoleOrderModel
+    {
+        public string RoleName { get; set; } = string.Empty;
+        public int OrderLevel { get; set; }
     }
 }
 

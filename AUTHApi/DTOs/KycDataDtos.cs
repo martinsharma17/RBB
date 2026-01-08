@@ -13,6 +13,7 @@ namespace AUTHApi.DTOs
         public DateTime? CitizenshipIssueDate { get; set; }
         public string? ClientAccountNo { get; set; }
         public string? ReferenceNo { get; set; }
+        public int? BranchId { get; set; }
     }
 
     public class AddressDto
@@ -150,3 +151,4 @@ namespace AUTHApi.DTOs
         public AgreementDto? Agreement { get; set; }
     }
 }
+

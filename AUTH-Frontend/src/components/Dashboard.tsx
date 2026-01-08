@@ -52,14 +52,8 @@ const Dashboard = () => {
                         const filteredMenu = filterDynamicMenus(mappedMenu, permissions, user);
                         setMenuItems(filteredMenu);
                     } else {
-                        // If no permissions loaded yet, but we have user..
-                        if (user && (user.roles?.includes('SuperAdmin') || user.roles?.includes('Super Admin'))) {
-                            setMenuItems(mappedMenu);
-                        } else {
-                            // Fallback or empty? Better to wait for permissions.
-                            // But if permissions is null, we might show nothing for regular users.
-                            setMenuItems([]);
-                        }
+                        // Wait for permissions to load for accurate filtering
+                        setMenuItems([]);
                     }
                 } catch (err) {
                     console.error("Failed to load menu", err);
@@ -84,9 +78,10 @@ const Dashboard = () => {
                 const res = await userRes.json();
                 const data = res.data || [];
                 setUsers(data);
-                // Derive admins if simple list, otherwise separate call needed for SuperAdmin
-                const adminList = data.filter((u: any) => u.roles && (u.roles.includes("Admin") || u.roles.includes("SuperAdmin")));
-                setAdmins(adminList);
+                // Identification of users with management capabilities can be done by permissions,
+                // but for a summary list, showing users with any role other than the most basic might be enough,
+                // or just remove this simplified 'admins' state and rely on API filtering.
+                setAdmins(data.filter((u: any) => u.roles && u.roles.length > 0));
             }
 
             // Fetch Roles (if permission allows or if needed for modals)
@@ -117,8 +112,6 @@ const Dashboard = () => {
     };
 
     const handleAddUser = async () => {
-        // ... (reuse logic from generic add user)
-        // For brevity, basic implementation:
         try {
             const response = await fetch(`${apiBase}/api/User`, {
                 method: 'POST',
@@ -129,8 +122,7 @@ const Dashboard = () => {
                 body: JSON.stringify({
                     UserName: newUser.name,
                     Email: newUser.email,
-                    Password: newUser.password,
-                    Role: "User" // Default
+                    Password: newUser.password
                 })
             });
             if (response.ok) {
@@ -140,7 +132,9 @@ const Dashboard = () => {
             } else {
                 alert("Failed to add user");
             }
-        } catch (e) { alert("Error adding user"); }
+        } catch (e) {
+            alert("Error adding user");
+        }
     };
 
     const handleDeleteUser = async (userId: string) => {
@@ -152,7 +146,7 @@ const Dashboard = () => {
             });
             fetchData();
         } catch (e) { }
-    }
+    };
 
     // 7. Render
     if (!token) return null; // Or generic loading

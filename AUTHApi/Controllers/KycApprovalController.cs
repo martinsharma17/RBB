@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using AUTHApi.Data;
 using AUTHApi.Entities;
 using AUTHApi.Services;
@@ -117,8 +121,8 @@ namespace AUTHApi.Controllers
 
             var roles = await _userManager.GetRolesAsync(user);
 
-            var isGlobalReviewer = roles.Any(r => r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)
-                                                  || r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+            var isGlobalReviewer = roles.Any(r => r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) ||
+                                                  r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
 
             var query = _context.KycWorkflowMasters
                 .Include(w => w.KycSession)
@@ -137,8 +141,21 @@ namespace AUTHApi.Controllers
                 query = query.Where(w => roleIds.Contains(w.CurrentRoleId));
             }
 
+
+            // BRANCH SCOPING: Filter by Branch
+            if (!isGlobalReviewer) // Admins might want to see everything, or maybe they strictly belong to HO?
+            {
+                // Check if user has a specific branch
+                if (user.BranchId.HasValue)
+                {
+                    // Staff sees their branch + Global items that need assignment
+                    query = query.Where(w => w.BranchId == user.BranchId.Value || w.BranchId == null);
+                }
+            }
+
             var pending = await query
                 .Include(w => w.KycSession)
+                .Include(w => w.Branch) // Include Branch info
                 .OrderByDescending(w => w.CreatedAt)
                 .Select(w => new
                 {
@@ -151,13 +168,16 @@ namespace AUTHApi.Controllers
                     Status = (int)w.Status,
                     CurrentRoleName = _context.Roles.Where(r => r.Id == w.CurrentRoleId).Select(r => r.Name)
                         .FirstOrDefault(),
-                    TotalLevels = _context.KycApprovalSteps.Count(s =>
-                        _context.KycApprovalConfigs.Any(c => c.Id == s.ConfigId && c.RoleId == w.SubmittedRoleId)),
+                    BranchName = w.Branch != null ? w.Branch.Name : "Head Office / Global",
+                    TotalLevels =
+                        _context.Roles.Count(r => r.OrderLevel.HasValue && r.OrderLevel > w.SubmittedOrderLevel),
                     Chain = (w.FullChain ?? "").Split(" -> ", StringSplitOptions.RemoveEmptyEntries).ToList()
                 })
                 .ToListAsync();
-
-            return Success(new { pending });
+            return Success(new
+            {
+                pending
+            });
         }
 
         /// <summary>
@@ -171,6 +191,7 @@ namespace AUTHApi.Controllers
             var list = await _context.KycWorkflowMasters
                 .Include(w => w.KycSession)
                 .ThenInclude(s => s.KycDetail)
+                .Include(w => w.Branch)
                 .OrderByDescending(w => w.CreatedAt)
                 .Select(w => new KycUnifiedViewDto
                 {
@@ -184,6 +205,8 @@ namespace AUTHApi.Controllers
                     MobileNumber = w.KycSession != null && w.KycSession.KycDetail != null
                         ? w.KycSession.KycDetail.MobileNumber
                         : null,
+
+                    BranchName = w.Branch != null ? w.Branch.Name : "Global",
                     Status = w.Status.ToString(),
                     PendingLevel = w.PendingLevel,
                     CurrentRoleName = _context.Roles.Where(r => r.Id == w.CurrentRoleId).Select(r => r.Name)
@@ -226,6 +249,8 @@ namespace AUTHApi.Controllers
                     log.Remarks,
                     log.UserId,
                     log.CreatedAt,
+                    log.ClientIpAddress,
+                    log.UserAgent,
                     ActionedByRoleName = _context.Roles.Where(r => r.Id == log.ActionedByRoleId).Select(r => r.Name)
                         .FirstOrDefault(),
                     ForwardedToRoleName = _context.Roles.Where(r => r.Id == log.ForwardedToRoleId).Select(r => r.Name)
@@ -234,26 +259,39 @@ namespace AUTHApi.Controllers
                 })
                 .ToListAsync();
 
-            var approvalChain = await _context.KycApprovalSteps
-                .Where(s => _context.KycApprovalConfigs.Any(c =>
-                    c.Id == s.ConfigId && c.RoleId == workflow.SubmittedRoleId))
-                .OrderBy(s => s.StepOrder)
-                .Select(s => new
-                {
-                    s.StepOrder,
-                    RoleName = _context.Roles.Where(r => r.Id == s.RoleId).Select(r => r.Name).FirstOrDefault(),
-                    s.RoleId,
-                    IsCurrent = s.RoleId == workflow.CurrentRoleId,
-                    IsCompleted = _context.KycApprovalLogs.Any(l =>
-                        l.KycWorkflowId == workflowId && l.ActionedByRoleId == s.RoleId && l.Action == "Approved")
-                })
+            // DYNAMIC CHAIN: Build from roles with OrderLevel > submittedOrderLevel
+            var chainRoles = await _context.Roles
+                .Where(r => r.OrderLevel.HasValue && r.OrderLevel > workflow.SubmittedOrderLevel)
+                .OrderBy(r => r.OrderLevel)
                 .ToListAsync();
+
+            var approvalChain = chainRoles.Select((r, idx) => new
+            {
+                StepOrder = idx + 1,
+                RoleName = r.Name,
+                RoleId = r.Id,
+                IsCurrent = r.Id == workflow.CurrentRoleId,
+                IsCompleted = r.OrderLevel < workflow.CurrentOrderLevel ||
+                              (workflow.Status == KycWorkflowStatus.Approved &&
+                               r.OrderLevel <= workflow.CurrentOrderLevel)
+            }).ToList();
+
+            // ROBUST DATA FETCH: Ensure details and documents are loaded even if navigation is flaky
+            var details = workflow.KycSession?.KycDetail;
+            if (details == null && workflow.KycSessionId > 0)
+            {
+                details = await _context.KycDetails
+                    .Include(k => k.Documents)
+                    .FirstOrDefaultAsync(k => k.SessionId == workflow.KycSessionId);
+            }
+
+            var documents = details?.Documents ?? new List<KycDocument>();
 
             return Success(new
             {
                 workflow,
-                details = workflow.KycSession?.KycDetail,
-                documents = workflow.KycSession?.KycDetail?.Documents,
+                details,
+                documents,
                 logs,
                 approvalChain
             });
@@ -378,6 +416,26 @@ namespace AUTHApi.Controllers
             public int WorkflowId { get; set; }
         }
 
+        [HttpPost("transfer")]
+        [Authorize]
+        public async Task<IActionResult> TransferKyc([FromBody] TransferModel model)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var (success, message) =
+                await _workflowService.TransferBranchAsync(model.WorkflowId, model.NewBranchId, userId);
+            if (!success) return Failure(message);
+
+            return Success(message);
+        }
+
+        public class TransferModel
+        {
+            public int WorkflowId { get; set; }
+            public int NewBranchId { get; set; }
+        }
+
         public class ApprovalModel
         {
             public int WorkflowId { get; set; }
@@ -386,3 +444,5 @@ namespace AUTHApi.Controllers
         }
     }
 }
+
+

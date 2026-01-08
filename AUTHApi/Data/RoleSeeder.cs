@@ -1,8 +1,4 @@
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Threading.Tasks;
 using AUTHApi.Entities;
 
 namespace AUTHApi.Data
@@ -11,16 +7,20 @@ namespace AUTHApi.Data
     {
         public static async Task SeedRolesAsync(IServiceProvider serviceProvider)
         {
-            var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            var roleManager = serviceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
             var configuration = serviceProvider.GetRequiredService<IConfiguration>();
 
-            var roles = configuration.GetSection("Roles:DefaultRoles").Get<string[]>() ?? new string[] { "SuperAdmin", "Admin", "User", "Manager" };
+            var roles = configuration.GetSection("Roles:DefaultRoles").Get<string[]>() ?? ["SuperAdmin"];
 
-            foreach (var role in roles)
+            foreach (var roleName in roles)
             {
-                if (!await roleManager.RoleExistsAsync(role))
+                if (!await roleManager.RoleExistsAsync(roleName))
                 {
-                    await roleManager.CreateAsync(new IdentityRole(role));
+                    var role = new ApplicationRole(roleName)
+                    {
+                        OrderLevel = null // System roles have null order
+                    };
+                    await roleManager.CreateAsync(role);
                 }
             }
         }
@@ -30,7 +30,7 @@ namespace AUTHApi.Data
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
             string email = "martinsharma18@gmail.com";
-            string password = "Martin#123";  // dev only
+            string password = "Martin#123"; // dev only
 
             var superAdmin = await userManager.FindByEmailAsync(email);
 
@@ -70,7 +70,7 @@ namespace AUTHApi.Data
             // This fixes the issue where the new column defaults to 0 (Inactive)
             var allUsers = userManager.Users.ToList();
             bool changesMade = false;
-            foreach(var u in allUsers)
+            foreach (var u in allUsers)
             {
                 if (!u.IsActive)
                 {
@@ -81,7 +81,8 @@ namespace AUTHApi.Data
                     changesMade = true;
                 }
             }
-            if(changesMade) Console.WriteLine("Re-activated all users from default migration state.");
+
+            if (changesMade) Console.WriteLine("Re-activated all users from default migration state.");
         }
     }
 }

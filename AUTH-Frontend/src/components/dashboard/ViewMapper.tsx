@@ -15,6 +15,7 @@ import KycFormMaster from './user/KycFormMaster';
 import MenuManagementView from './admin/MenuManagementView';
 import KycWorkflowView from './admin/KycWorkflowView';
 import UnifiedKycQueueView from './admin/UnifiedKycQueueView';
+import BranchManagementView from './superadmin/BranchManagementView';
 
 
 // Placeholder for missing component
@@ -56,6 +57,8 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
             return <MenuManagementView {...props} />;
         case 'access':
             return <AccessManagementView {...props} />;
+        case 'branches':
+            return <BranchManagementView {...props} />;
 
         // --- Analytics ---
         case 'charts':

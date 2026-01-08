@@ -41,6 +41,9 @@ internal class Program
         // Add Swagger for API documentation and testing UI.
         builder.Services.AddSwaggerGen();
 
+        // Register HttpContextAccessor to allow services to access current request info (IP, UserAgent)
+        builder.Services.AddHttpContextAccessor();
+
         // --- CORS Configuration ---
         // Defines who can access this API. Here we allow the frontend URL.
         builder.Services.AddCors(options =>
@@ -57,7 +60,7 @@ internal class Program
 
         // --- IDENTITY (USER MANAGEMENT) Configuration ---
         // Configures ASP.NET Core Identity for user storage and management.
-        builder.Services.AddIdentity<ApplicationUser, IdentityRole>(option =>
+        builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(option =>
             {
                 // Password settings (relaxed for development, tighten for production!)
                 option.Password.RequireDigit = false;
@@ -193,14 +196,6 @@ internal class Program
                 // Seed Menu Items
                 await MenuSeeder.SeedMenuItemsAsync(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>());
 
-                // Seed KYC steps
-                await KycStepSeeder.SeedStepsAsync(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>());
-
-                // Seed Dynamic KYC Workflow Configuration
-                await KycWorkflowSeeder.SeedWorkflowConfigAsync(
-                    scope.ServiceProvider.GetRequiredService<ApplicationDbContext>(),
-                    scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>()
-                );
 
                 // Seed Project Settings
                 await ProjectSettingsSeeder.SeedProjectSettingsAsync(

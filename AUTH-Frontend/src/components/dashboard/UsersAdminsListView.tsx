@@ -14,46 +14,37 @@ interface UsersAdminsListViewProps {
 
 const UsersAdminsListView: React.FC<UsersAdminsListViewProps> = ({
     users,
-    admins,
     roles = [],
-    isAlreadyAdmin,
     onAddUser,
-    onMakeAdmin,
     onDelete,
-    onRevokeAdmin,
     onAssignRole
 }) => {
     // Helper to get users for a specific role
-    const getUsersSuccessByRole = (roleName: string) => {
+    const getUsersInRole = (roleName: string) => {
         return users.filter((user: any) => {
             const userRoles = user.Roles || user.roles || [];
-            // If user has no roles, they are typically considered standard "User"
-            if (roleName === "User" && userRoles.length === 0) return true;
             return userRoles.includes(roleName);
         });
     };
 
-    // If roles are not yet loaded, fallback to default view or show nothing
-    const displayRoles = roles.length > 0 ? roles : [{ Name: "User" }, { Name: "Admin" }];
+    // If roles are not yet loaded, show nothing
+    const displayRoles = roles.length > 0 ? roles : [];
 
     return (
         <div className="space-y-8">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-900">Users & Admins Management</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Users & Roles Management</h2>
                 <button
                     onClick={onAddUser}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                    Add New User/Admin
+                    Add New User
                 </button>
             </div>
 
             {displayRoles.map((role) => {
                 const roleName = role.Name || role.name || role;
-                const roleUsers = getUsersSuccessByRole(roleName);
-
-                // Skip empty tables if desired, or show them to indicate 0 users
-                // User asked to "show mw list of other roles users also", implying they want to see the tables.
+                const roleUsers = getUsersInRole(roleName);
 
                 return (
                     <div key={roleName} className="bg-white rounded-lg shadow overflow-hidden">
@@ -89,7 +80,6 @@ const UsersAdminsListView: React.FC<UsersAdminsListViewProps> = ({
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex space-x-2">
-                                                            {/* Safety Check: Protected User */}
                                                             {(user.Email === 'martinsharma18@gmail.com' || user.email === 'martinsharma18@gmail.com') ? (
                                                                 <span className="text-xs text-gray-400 font-medium italic px-2">Protected Account</span>
                                                             ) : (
@@ -98,28 +88,10 @@ const UsersAdminsListView: React.FC<UsersAdminsListViewProps> = ({
                                                                         onClick={() => onAssignRole(user)}
                                                                         className="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200"
                                                                     >
-                                                                        Assign Role
+                                                                        Manage Roles
                                                                     </button>
-                                                                    {/* Show Make Admin/Revoke Admin only if relevant, or generic delete */}
-                                                                    {roleName === "Admin" || roleName === "SuperAdmin" ? (
-                                                                        <button
-                                                                            onClick={() => onRevokeAdmin(user.Id || user.id)}
-                                                                            className="px-3 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200"
-                                                                        >
-                                                                            Revoke Admin
-                                                                        </button>
-                                                                    ) : (
-                                                                        !isAlreadyAdmin(user.Email || user.email) && (
-                                                                            <button
-                                                                                onClick={() => onMakeAdmin(user.Id || user.id)}
-                                                                                className="px-3 py-1 text-xs bg-green-100 text-green-700 hover:bg-green-200 rounded"
-                                                                            >
-                                                                                Make Admin
-                                                                            </button>
-                                                                        )
-                                                                    )}
                                                                     <button
-                                                                        onClick={() => onDelete(user.Id || user.id, roleName === "Admin")}
+                                                                        onClick={() => onDelete(user.Id || user.id)}
                                                                         className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
                                                                     >
                                                                         Delete User
@@ -149,4 +121,3 @@ const UsersAdminsListView: React.FC<UsersAdminsListViewProps> = ({
 };
 
 export default UsersAdminsListView;
-

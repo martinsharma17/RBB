@@ -48,6 +48,17 @@ namespace AUTHApi.Entities
         /// </summary>
         public string? ForwardedToRoleId { get; set; }
 
+        /// <summary>
+        /// Security Audit: IP Address of the user/system performing the action.
+        /// </summary>
+        [MaxLength(45)]
+        public string? ClientIpAddress { get; set; }
+
+        /// <summary>
+        /// Security Audit: Browser/System info.
+        /// </summary>
+        public string? UserAgent { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

@@ -16,9 +16,9 @@ namespace AUTHApi.Controllers;
 public class SuperAdminController : BaseApiController
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
 
-    public SuperAdminController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+    public SuperAdminController(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager)
     {
         _userManager = userManager;
         _roleManager = roleManager;
@@ -58,7 +58,7 @@ public class SuperAdminController : BaseApiController
         if (user == null) return Failure("User not found", 404);
 
         if (!await _roleManager.RoleExistsAsync("Admin"))
-            await _roleManager.CreateAsync(new IdentityRole("Admin"));
+            await _roleManager.CreateAsync(new ApplicationRole("Admin"));
 
         if (await _userManager.IsInRoleAsync(user, "Admin"))
             return Failure("User is already an admin");

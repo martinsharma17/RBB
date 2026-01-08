@@ -13,9 +13,9 @@ namespace AUTHApi.Controllers
     public class PoliciesController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
-        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly RoleManager<ApplicationRole> _roleManager;
 
-        public PoliciesController(ApplicationDbContext context, RoleManager<IdentityRole> roleManager)
+        public PoliciesController(ApplicationDbContext context, RoleManager<ApplicationRole> roleManager)
         {
             _context = context;
             _roleManager = roleManager;

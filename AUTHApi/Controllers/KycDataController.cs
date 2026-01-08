@@ -61,7 +61,8 @@ namespace AUTHApi.Controllers
                     OtherNationality = detail.Nationality != "Nepali" ? detail.Nationality : null,
                     CitizenshipNo = detail.CitizenshipNumber,
                     CitizenshipIssueDistrict = detail.CitizenshipIssuedDistrict,
-                    CitizenshipIssueDate = detail.CitizenshipIssuedDate
+                    CitizenshipIssueDate = detail.CitizenshipIssuedDate,
+                    BranchId = detail.BranchId
                 },
                 CurrentAddress = new AddressDto
                 {

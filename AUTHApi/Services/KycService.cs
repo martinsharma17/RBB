@@ -53,6 +53,15 @@ namespace AUTHApi.Services
                 };
                 _context.KycDetails.Add(detail);
                 await _context.SaveChangesAsync();
+
+                // CRITICAL FIX: Link the Session to this Detail
+                var session = await _context.KycFormSessions.FindAsync(sessionId);
+                if (session != null)
+                {
+                    session.KycDetailId = detail.Id;
+                    _context.KycFormSessions.Update(session);
+                    await _context.SaveChangesAsync();
+                }
             }
 
             return detail;
@@ -94,6 +103,11 @@ namespace AUTHApi.Services
                     {
                         detail.CitizenshipIssuedDate =
                             DateTime.SpecifyKind(p.CitizenshipIssueDate.Value, DateTimeKind.Utc);
+                    }
+
+                    if (p.BranchId.HasValue)
+                    {
+                        detail.BranchId = p.BranchId.Value;
                     }
 
                     break;

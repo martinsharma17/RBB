@@ -4,7 +4,7 @@ using AUTHApi.Entities;
 
 namespace AUTHApi.Data
 {
-    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, string>
     {
         public DbSet<MenuItem> MenuItems { get; set; }
         public DbSet<Branch> Branches { get; set; }

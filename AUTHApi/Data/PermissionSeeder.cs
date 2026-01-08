@@ -15,7 +15,7 @@ namespace AUTHApi.Data
         public static async Task SeedDefaultPermissionsAsync(IServiceProvider serviceProvider)
         {
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
-            var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+            var roleManager = serviceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
 
             // 1. Seed System Policies
             var allPermissions = Permissions.GetAllPermissions();
@@ -45,46 +45,7 @@ namespace AUTHApi.Data
             // This map defines the "Golden State" for new deployments
             var defaultRoleMap = new Dictionary<string, List<string>>
             {
-                ["SuperAdmin"] = allPermissions, // Explicitly grant all to SuperAdmin
-                ["Admin"] = allPermissions, // Admin gets everything by default
-
-                ["Manager"] = new List<string>
-                {
-                    Permissions.Users.View, Permissions.Users.Sidebar,
-                    Permissions.Tasks.View, Permissions.Tasks.Sidebar,
-                    Permissions.Tasks.ViewList, Permissions.Tasks.CreateList, Permissions.Tasks.EditList,
-                    Permissions.Tasks.SidebarList,
-                    Permissions.Tasks.ViewKanban, Permissions.Tasks.CreateKanban, Permissions.Tasks.EditKanban,
-                    Permissions.Tasks.SidebarKanban,
-                    Permissions.Projects.View, Permissions.Projects.Sidebar,
-                    Permissions.Analytics.View, Permissions.Analytics.Sidebar,
-                    Permissions.Reports.View, Permissions.Reports.Sidebar,
-                    Permissions.Kyc.View, Permissions.Kyc.Sidebar
-                },
-
-                ["User"] = new List<string>
-                {
-                    Permissions.Tasks.View, Permissions.Tasks.Sidebar,
-                    Permissions.Tasks.ViewList, Permissions.Tasks.SidebarList,
-                    Permissions.Tasks.ViewKanban, Permissions.Tasks.SidebarKanban,
-                    Permissions.Notifications.View, Permissions.Notifications.Sidebar,
-                    Permissions.Kyc.Sidebar // Users can fill their own KYC
-                },
-
-                ["Maker"] = new List<string>
-                {
-                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow
-                },
-
-                ["Checker"] = new List<string>
-                {
-                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow
-                },
-
-                ["RBBSec"] = new List<string>
-                {
-                    Permissions.Kyc.View, Permissions.Kyc.Sidebar, Permissions.Kyc.Workflow
-                }
+                ["SuperAdmin"] = allPermissions // Only SuperAdmin gets everything by default
             };
 
             // 3. Apply Role Assignments

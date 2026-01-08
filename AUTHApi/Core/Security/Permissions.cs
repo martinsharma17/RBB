@@ -134,6 +134,16 @@ namespace AUTHApi.Core.Security
             public const string Delete = "Permissions.Kyc.Delete";
             public const string Workflow = "Permissions.Kyc.Workflow"; // Staff Queue access
             public const string Sidebar = "Permissions.Kyc.Sidebar";
+            public const string GlobalSearch = "Permissions.Kyc.GlobalSearch"; // Cross-branch search
+        }
+
+        public static class Branches
+        {
+            public const string View = "Permissions.Branches.View";
+            public const string Create = "Permissions.Branches.Create";
+            public const string Edit = "Permissions.Branches.Edit";
+            public const string Delete = "Permissions.Branches.Delete";
+            public const string Sidebar = "Permissions.Branches.Sidebar";
         }
 
         // Helper to get all permissions for seeding or listing
@@ -163,7 +173,8 @@ namespace AUTHApi.Core.Security
                 Security.View, Security.Sidebar,
                 Backup.View, Backup.Sidebar,
                 Kyc.View, Kyc.Create, Kyc.Edit, Kyc.Delete, Kyc.Workflow,
-                Kyc.Sidebar
+                Kyc.Sidebar, Kyc.GlobalSearch,
+                Branches.View, Branches.Create, Branches.Edit, Branches.Delete, Branches.Sidebar
             };
         }
     }

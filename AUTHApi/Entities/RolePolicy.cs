@@ -11,20 +11,15 @@ namespace AUTHApi.Entities
     /// </summary>
     public class RolePolicy
     {
-        [Key]
-        public int Id { get; set; }
+        [Key] public int Id { get; set; }
 
-        [Required]
-        public string RoleId { get; set; } = string.Empty;
+        [Required] public string RoleId { get; set; } = string.Empty;
 
-        [ForeignKey("RoleId")]
-        public IdentityRole? Role { get; set; }
+        [ForeignKey("RoleId")] public ApplicationRole? Role { get; set; }
 
-        [Required]
-        public int PolicyId { get; set; }
+        [Required] public int PolicyId { get; set; }
 
-        [ForeignKey("PolicyId")]
-        public SystemPolicy? Policy { get; set; }
+        [ForeignKey("PolicyId")] public SystemPolicy? Policy { get; set; }
 
         /// <summary>
         /// Explicitly grants or denies the permission.

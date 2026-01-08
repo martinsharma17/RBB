@@ -46,6 +46,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'policies', name: 'Policy Editor' },
         { id: 'charts', name: 'Charts & Analytics' },
         { id: 'settings', name: 'Settings' },
+        { id: 'branches', name: 'Branch Management' },
 
         // Projects & Nested Resources
         { id: 'projects', name: 'Projects (Root)' },

@@ -21,9 +21,14 @@ namespace AUTHApi.Services
             bool returnToPrevious = false);
 
         /// <summary>
-        /// Gets the pending KYC list for a specific role.
+        /// Gets the pending KYC list for a specific role and filters by user's branch.
         /// </summary>
-        Task<object> GetPendingKycsAsync(string roleId);
+        Task<object> GetPendingKycsAsync(string roleId, string userId);
+
+        /// <summary>
+        /// Transfers a KYC workflow to a different branch.
+        /// </summary>
+        Task<(bool success, string message)> TransferBranchAsync(int workflowId, int newBranchId, string userId);
 
         /// <summary>
         /// Resubmits a rejected KYC, moving it back to the first level of approval.

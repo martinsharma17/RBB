@@ -59,6 +59,14 @@ namespace AUTHApi.Data
                 RequiredPolicyId = GetPolicyId(Permissions.Policies.Sidebar),
                 Order = 5
             };
+            var branchItem = new MenuItem
+            {
+                Title = "Branch Management", ViewId = "branches", Icon = "BranchIcon",
+                Url = "/branches",
+                Permission = Permissions.Branches.Sidebar,
+                RequiredPolicyId = GetPolicyId(Permissions.Branches.Sidebar),
+                Order = 6
+            };
 
             var kycItem = new MenuItem
             {
@@ -133,6 +141,7 @@ namespace AUTHApi.Data
                 usersItem,
                 rolesItem,
                 policyItem,
+                branchItem,
                 kycItem,
                 kycWorkflowItem,
                 kycUnifiedQueueItem,

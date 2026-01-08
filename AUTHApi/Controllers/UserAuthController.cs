@@ -27,7 +27,7 @@ namespace AUTHApi.Controllers
 
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signinManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly ILogger<UserAuthController> _logger;
         private readonly ITokenService _tokenService;
 
@@ -41,7 +41,7 @@ namespace AUTHApi.Controllers
         public UserAuthController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            RoleManager<IdentityRole> roleManager,
+            RoleManager<ApplicationRole> roleManager,
             IConfiguration configuration,
             ILogger<UserAuthController> logger,
             ITokenService tokenService)
@@ -101,9 +101,9 @@ namespace AUTHApi.Controllers
             if (result.Succeeded)
             {
                 // 5. Default Role Assignment
-                // IMPORTANT: Every new user is automatically assigned the "User" role.
-                // This grants them basic access permission (see policies in Program.cs).
-                await _userManager.AddToRoleAsync(user, "User");
+                // In a dynamic system, we may avoid hardcoding "User". 
+                // Roles can be assigned later or managed via a configurable default.
+                // await _userManager.AddToRoleAsync(user, "User");
 
                 return Success("User registered successfully");
             }

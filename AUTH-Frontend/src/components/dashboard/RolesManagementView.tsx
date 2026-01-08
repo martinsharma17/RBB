@@ -18,11 +18,13 @@ const RolesManagementView: React.FC<RolesManagementViewProps> = ({ apiBase, toke
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [newRoleName, setNewRoleName] = useState("");
+    const [newRoleLevel, setNewRoleLevel] = useState<number | "">(0);
     const [assignRoleData, setAssignRoleData] = useState({ email: "", roleName: "" });
     const [selectedUser, setSelectedUser] = useState<any | null>(null);
 
     // System roles that cannot be deleted
-    const systemRoles = ["SuperAdmin", "Admin", "User"];
+    // System roles that cannot be deleted - Only SuperAdmin is a fixed constant now
+    const systemRoles = ["SuperAdmin"];
 
     useEffect(() => {
         fetchRoles();
@@ -62,18 +64,45 @@ const RolesManagementView: React.FC<RolesManagementViewProps> = ({ apiBase, toke
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ RoleName: newRoleName.trim() })
+                body: JSON.stringify({
+                    RoleName: newRoleName.trim(),
+                    OrderLevel: newRoleLevel === "" ? null : Number(newRoleLevel)
+                })
             });
 
             const data = await response.json();
             if (response.ok) {
-                setSuccess(`Role "${newRoleName}" created successfully`);
+                setSuccess(`Role "${newRoleName}" created successfully with Level ${data.data.role.OrderLevel}`);
                 setNewRoleName("");
+                setNewRoleLevel(0);
                 setShowCreateModal(false);
                 fetchRoles();
                 if (onRolesChange) onRolesChange(); // Notify parent
             } else {
                 setError(data.message || "Failed to create role");
+            }
+        } catch (err) {
+            setError("Network error");
+        }
+    };
+
+    const handleUpdateLevel = async (roleName: string, newLevel: number) => {
+        try {
+            const response = await fetch(`${apiBase}/api/Roles/UpdateRoleOrder`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ RoleName: roleName, OrderLevel: newLevel })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                setSuccess(`Updated "${roleName}" to Level ${newLevel}`);
+                fetchRoles();
+            } else {
+                setError(data.message || "Failed to update level");
             }
         } catch (err) {
             setError("Network error");
@@ -248,20 +277,43 @@ const RolesManagementView: React.FC<RolesManagementViewProps> = ({ apiBase, toke
                                     key={roleId}
                                     className="border border-gray-200 rounded-lg p-4 flex justify-between items-center"
                                 >
-                                    <div>
-                                        <h4 className="font-medium text-gray-900">{roleName}</h4>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="font-medium text-gray-900">{roleName}</h4>
+                                            {role.OrderLevel !== undefined && role.OrderLevel !== null && (
+                                                <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded font-mono font-bold" title="Hierarchy Level">
+                                                    Lvl {role.OrderLevel}
+                                                </span>
+                                            )}
+                                        </div>
                                         {isSystemRole && (
-                                            <span className="text-xs text-blue-600 mt-1">System Role</span>
+                                            <span className="text-xs text-blue-600">System Role</span>
                                         )}
                                     </div>
-                                    {!isSystemRole && (
-                                        <button
-                                            onClick={() => handleDeleteRole(roleName)}
-                                            className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
-                                        >
-                                            Delete
-                                        </button>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {!isSystemRole && (
+                                            <input
+                                                type="number"
+                                                defaultValue={role.OrderLevel ?? 0}
+                                                className="w-12 px-1 py-0.5 text-xs border rounded text-center"
+                                                onBlur={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    if (!isNaN(val) && val !== role.OrderLevel) {
+                                                        handleUpdateLevel(roleName, val);
+                                                    }
+                                                }}
+                                                title="Change Level"
+                                            />
+                                        )}
+                                        {!isSystemRole && (
+                                            <button
+                                                onClick={() => handleDeleteRole(roleName)}
+                                                className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                            >
+                                                Delete
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}
@@ -391,8 +443,19 @@ const RolesManagementView: React.FC<RolesManagementViewProps> = ({ apiBase, toke
                                         }}
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Hierarchy Level</label>
+                                    <input
+                                        type="number"
+                                        placeholder="0 (Maker), 1 (Checker), etc."
+                                        value={newRoleLevel}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewRoleLevel(e.target.value === "" ? "" : parseInt(e.target.value))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                                    />
+                                    <p className="mt-1 text-xs text-gray-500">Note: KYC workflow built by sorting roles from Level 0 up.</p>
+                                </div>
                                 <div className="text-sm text-gray-500">
-                                    <p>Note: System roles (SuperAdmin, Admin, User) cannot be deleted.</p>
+                                    <p>Note: System roles (SuperAdmin) cannot be deleted and have full control.</p>
                                 </div>
                             </div>
                             <div className="flex justify-end space-x-3 mt-6">

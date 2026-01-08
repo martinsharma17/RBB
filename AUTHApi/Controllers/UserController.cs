@@ -20,9 +20,9 @@ namespace AUTHApi.Controllers;
 public class UserController : BaseApiController
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly RoleManager<ApplicationRole> _roleManager;
 
-    public UserController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+    public UserController(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager)
     {
         _userManager = userManager;
         _roleManager = roleManager;
@@ -181,7 +181,13 @@ public class UserController : BaseApiController
     [Authorize(Policy = Permissions.Users.Create)]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserModel model)
     {
-        var user = new ApplicationUser { UserName = model.UserName, Email = model.Email };
+        var user = new ApplicationUser
+        {
+            UserName = model.UserName,
+            Email = model.Email,
+            BranchId = model.BranchId
+        };
+
         var result = await _userManager.CreateAsync(user, model.Password);
         if (!result.Succeeded) return Failure("Failed to create user", 400, result.Errors);
 
@@ -248,6 +254,9 @@ public class CreateUserModel
 
     /// <summary>Role to assign (optional).</summary>
     public string? Role { get; set; }
+
+    /// <summary>Branch ID to assign (optional).</summary>
+    public int? BranchId { get; set; }
 }
 
 #endregion

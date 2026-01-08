@@ -28,6 +28,9 @@ namespace AUTHApi.Entities
 
         [ForeignKey("KycSessionId")] public virtual KycFormSession? KycSession { get; set; }
 
+        public int? BranchId { get; set; }
+        [ForeignKey("BranchId")] public virtual Branch? Branch { get; set; }
+
         /// <summary>
         /// The role that originally submitted the form (e.g., Maker).
         /// </summary>

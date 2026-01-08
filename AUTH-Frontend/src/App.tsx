@@ -64,15 +64,7 @@ function AppContent() {
 
   // Boolean flags for easy permission checks in JSX
   const isSuperAdmin = roles.includes("SuperAdmin");
-  const isAdmin = roles.includes("Admin");
-  const isManager = roles.includes("Manager");
-  const isUser = roles.includes("User");
-
-  // Suppress unused variable warnings (these are here for future use)
   void isSuperAdmin;
-  void isAdmin;
-  void isManager;
-  void isUser;
 
   return (
     <div className="App">

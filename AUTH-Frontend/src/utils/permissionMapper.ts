@@ -53,6 +53,13 @@ export const PERMISSION_CONSTANTS = {
     TASKS_KANBAN_DELETE: 'Permissions.Tasks.Kanban.Delete',
     TASKS_KANBAN_SIDEBAR: 'Permissions.Tasks.Kanban.Sidebar',
 
+    // Branches
+    BRANCHES_VIEW: 'Permissions.Branches.View',
+    BRANCHES_CREATE: 'Permissions.Branches.Create',
+    BRANCHES_EDIT: 'Permissions.Branches.Edit',
+    BRANCHES_DELETE: 'Permissions.Branches.Delete',
+    BRANCHES_SIDEBAR: 'Permissions.Branches.Sidebar',
+
     // Projects
     PROJECTS_VIEW: 'Permissions.Projects.View',
     PROJECTS_CREATE: 'Permissions.Projects.Create',
@@ -137,6 +144,15 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             update: permSet.has(PERMISSION_CONSTANTS.USERS_EDIT),
             delete: permSet.has(PERMISSION_CONSTANTS.USERS_DELETE),
             sidebar: permSet.has(PERMISSION_CONSTANTS.USERS_SIDEBAR),
+        },
+
+        // Branches
+        branches: {
+            create: permSet.has(PERMISSION_CONSTANTS.BRANCHES_CREATE),
+            read: permSet.has(PERMISSION_CONSTANTS.BRANCHES_VIEW),
+            update: permSet.has(PERMISSION_CONSTANTS.BRANCHES_EDIT),
+            delete: permSet.has(PERMISSION_CONSTANTS.BRANCHES_DELETE),
+            sidebar: permSet.has(PERMISSION_CONSTANTS.BRANCHES_SIDEBAR),
         },
 
         // Analytics
@@ -317,6 +333,8 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
         view_kyc_workflow: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
         view_kyc_unified_queue: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
 
+        view_branches: permSet.has(PERMISSION_CONSTANTS.BRANCHES_SIDEBAR),
+
         dashboard: true, // Dashboard is always visible
     };
 
@@ -440,6 +458,13 @@ export function mapFrontendPermissionsToBackend(frontendPermissions: Permissions
     pushIfTrue(frontendPermissions.kyc?.update, PERMISSION_CONSTANTS.KYC_UPDATE);
     pushIfTrue(frontendPermissions.kyc?.delete, PERMISSION_CONSTANTS.KYC_DELETE);
     pushIfTrue(frontendPermissions.kyc?.sidebar, PERMISSION_CONSTANTS.KYC_SIDEBAR);
+
+    // Branches
+    pushIfTrue(frontendPermissions.branches?.create, PERMISSION_CONSTANTS.BRANCHES_CREATE);
+    pushIfTrue(frontendPermissions.branches?.read, PERMISSION_CONSTANTS.BRANCHES_VIEW);
+    pushIfTrue(frontendPermissions.branches?.update, PERMISSION_CONSTANTS.BRANCHES_EDIT);
+    pushIfTrue(frontendPermissions.branches?.delete, PERMISSION_CONSTANTS.BRANCHES_DELETE);
+    pushIfTrue(frontendPermissions.branches?.sidebar, PERMISSION_CONSTANTS.BRANCHES_SIDEBAR);
 
     // KYC Workflow
     if (frontendPermissions.kyc_workflow?.read || frontendPermissions.kyc_workflow?.sidebar ||

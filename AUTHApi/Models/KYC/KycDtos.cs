@@ -22,8 +22,7 @@ namespace AUTHApi.Models.KYC
 
     public class KycPersonalInfoDto
     {
-        [Required]
-        public string FullName { get; set; } = string.Empty;
+        [Required] public string FullName { get; set; } = string.Empty;
         public DateTime? DobAd { get; set; }
         public string? DobBs { get; set; }
         public string? Gender { get; set; }
@@ -32,6 +31,7 @@ namespace AUTHApi.Models.KYC
         public DateTime? CitizenshipIssueDate { get; set; }
         public string? CitizenshipIssueDistrict { get; set; }
         public string? PanNo { get; set; }
+        public int? BranchId { get; set; }
     }
 
     public class KycAddressDto

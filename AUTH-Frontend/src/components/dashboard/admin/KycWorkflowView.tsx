@@ -250,7 +250,7 @@ const KycWorkflowView: React.FC = () => {
                                                     ></div>
                                                 </div>
                                                 <span className="text-[10px] font-bold text-indigo-600 uppercase italic">
-                                                    Step {kyc.totalLevels - kyc.pendingLevel + 1} of {kyc.totalLevels}
+                                                    Step {kyc.totalLevels - kyc.pendingLevel + 1} of {Math.max(kyc.totalLevels, 1)}
                                                 </span>
                                             </div>
                                         </td>
@@ -290,25 +290,27 @@ const KycWorkflowView: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
-                                {(detailData?.workflow?.status === 4 || detailData?.workflow?.status === "ResubmissionRequired" || detailData?.workflow?.status === 3 || detailData?.workflow?.status === "Rejected") && (
-                                    <button
-                                        onClick={() => isEditing ? handleSaveEdit() : setIsEditing(true)}
-                                        disabled={actionLoading}
-                                        className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}
-                                    >
-                                        {isEditing ? (
-                                            <>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                                Save Changes
-                                            </>
-                                        ) : (
-                                            <>
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                                Edit Info
-                                            </>
-                                        )}
-                                    </button>
-                                )}
+                                {(detailData?.workflow?.status === 4 || detailData?.workflow?.status === "ResubmissionRequired" ||
+                                    detailData?.workflow?.status === 5 || detailData?.workflow?.status === "InReview" ||
+                                    detailData?.workflow?.status === 3 || detailData?.workflow?.status === "Rejected") && (
+                                        <button
+                                            onClick={() => isEditing ? handleSaveEdit() : setIsEditing(true)}
+                                            disabled={actionLoading}
+                                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}
+                                        >
+                                            {isEditing ? (
+                                                <>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                                                    Save Changes
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                    Edit Info
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                 <button
                                     onClick={() => !actionLoading && setSelectedKyc(null)}
                                     className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
@@ -355,7 +357,11 @@ const KycWorkflowView: React.FC = () => {
                                             <div className="absolute top-1/2 left-10 right-10 h-1 bg-gray-100 -translate-y-1/2"></div>
                                             <div
                                                 className="absolute top-1/2 left-10 h-1 bg-indigo-500 -translate-y-1/2 transition-all duration-1000 ease-in-out"
-                                                style={{ width: `${(detailData.approvalChain?.findIndex((c: any) => c.isCurrent) / (detailData.approvalChain?.length - 1)) * 100}%` }}
+                                                style={{
+                                                    width: detailData.approvalChain?.length > 1
+                                                        ? `${(detailData.approvalChain.findIndex((c: any) => c.isCurrent) / (detailData.approvalChain.length - 1)) * 100}%`
+                                                        : detailData.approvalChain?.some((c: any) => c.isCompleted) ? '100%' : '0%'
+                                                }}
                                             ></div>
 
                                             {detailData.approvalChain?.map((step: any, idx: number) => (
@@ -387,96 +393,225 @@ const KycWorkflowView: React.FC = () => {
                                     </div>
 
                                     {activeTab === 'overview' && (
-                                        <div className="grid md:grid-cols-2 gap-6">
-                                            <SectionCard title="Personal Summary">
-                                                <InfoRow label="First Name" value={editedData.FirstName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, FirstName: v })} />
-                                                <InfoRow label="Last Name" value={editedData.LastName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, LastName: v })} />
-                                                <InfoRow label="Gender" value={editedData.Gender} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, Gender: v })} />
-                                                <InfoRow label="Citizenship" value={editedData.CitizenshipNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, CitizenshipNumber: v })} />
-                                                <InfoRow label="Mobile" value={editedData.MobileNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, MobileNumber: v })} />
-                                            </SectionCard>
-                                            <SectionCard title="Address & Financial">
-                                                <InfoRow label="District" value={editedData.PermanentDistrict} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, PermanentDistrict: v })} />
-                                                <InfoRow label="Annual Income" value={editedData.AnnualIncome} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, AnnualIncome: v })} />
-                                                <InfoRow label="Occupation" value={editedData.Occupation} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, Occupation: v })} />
-                                                <InfoRow label="PEP Status" value={editedData.IsPep ? 'YES' : 'NO'} isEditing={isEditing} type="checkbox" onChange={(v) => setEditedData({ ...editedData, IsPep: v })} />
-                                            </SectionCard>
+                                        <div className="grid gap-6">
+                                            {/* Dedicated New Section for Latest Remark */}
+                                            {detailData.logs && detailData.logs.length > 0 && (
+                                                <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100">
+                                                    <h4 className="text-[10px] font-black text-indigo-500 uppercase mb-3 tracking-widest flex items-center gap-2">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                                                        Latest Feedback
+                                                    </h4>
+                                                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-indigo-50">
+                                                        <p className="text-gray-800 text-sm font-medium italic">
+                                                            "{detailData.logs[0].remarks || 'No remarks provided.'}"
+                                                        </p>
+                                                        <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
+                                                            <span className="font-bold uppercase tracking-wide">By {detailData.logs[0].userFullName || 'System'} ({detailData.logs[0].actionedByRoleName})</span>
+                                                            <span>{new Date(detailData.logs[0].createdAt).toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="grid md:grid-cols-2 gap-6">
+                                                <SectionCard title="Personal Summary">
+                                                    <InfoRow label="First Name" value={editedData.firstName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, firstName: v })} />
+                                                    <InfoRow label="Last Name" value={editedData.lastName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, lastName: v })} />
+                                                    <InfoRow label="Email" value={editedData.email} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, email: v })} />
+                                                    <InfoRow label="Mobile" value={editedData.mobileNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, mobileNumber: v })} />
+                                                    <InfoRow label="Gender" value={editedData.gender} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, gender: v })} />
+                                                    <InfoRow label="Citizenship" value={editedData.citizenshipNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, citizenshipNumber: v })} />
+                                                </SectionCard>
+                                                <SectionCard title="Address & Status">
+                                                    <InfoRow label="Province" value={editedData.permanentState} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, permanentState: v })} />
+                                                    <InfoRow label="District" value={editedData.permanentDistrict} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, permanentDistrict: v })} />
+                                                    <InfoRow label="Occupation" value={editedData.occupation} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, occupation: v })} />
+                                                    <InfoRow label="Annual Income" value={editedData.annualIncome} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, annualIncome: v })} />
+                                                    <InfoRow label="PEP Status" value={editedData.isPep ? 'YES' : 'NO'} isEditing={isEditing} type="checkbox" onChange={(v) => setEditedData({ ...editedData, isPep: v })} />
+                                                </SectionCard>
+                                            </div>
                                         </div>
                                     )}
 
                                     {activeTab === 'details' && (
-                                        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                                            <pre className="text-xs font-mono text-gray-700 bg-gray-50 p-6 rounded-xl overflow-x-auto border">
-                                                {JSON.stringify(detailData.details, null, 2)}
-                                            </pre>
+                                        <div className="grid gap-6">
+                                            <div className="columns-1 lg:columns-2 gap-6 space-y-6">
+                                                <SectionCard title="1. Personal Information">
+                                                    <InfoRow label="Full Name" value={`${editedData.firstName} ${editedData.middleName || ''} ${editedData.lastName}`} />
+                                                    <InfoRow label="Date of Birth" value={editedData.dateOfBirth ? new Date(editedData.dateOfBirth).toLocaleDateString() : 'N/A'} />
+                                                    <InfoRow label="Gender" value={editedData.gender} />
+                                                    <InfoRow label="Nationality" value={editedData.nationality} />
+                                                    <InfoRow label="Marital Status" value={editedData.maritalStatus} />
+                                                    <InfoRow label="Email Address" value={editedData.email} />
+                                                    <InfoRow label="Mobile Number" value={editedData.mobileNumber} />
+                                                </SectionCard>
+
+                                                <SectionCard title="2. Permanent Address">
+                                                    <InfoRow label="State/Province" value={editedData.permanentState} />
+                                                    <InfoRow label="District" value={editedData.permanentDistrict} />
+                                                    <InfoRow label="Municipality" value={editedData.permanentMunicipality} />
+                                                    <InfoRow label="Ward No" value={editedData.permanentWardNo} />
+                                                    <InfoRow label="Street/Tole" value={editedData.permanentStreet} />
+                                                </SectionCard>
+
+                                                <SectionCard title="3. Current Address">
+                                                    <InfoRow label="State/Province" value={editedData.currentState} />
+                                                    <InfoRow label="District" value={editedData.currentDistrict} />
+                                                    <InfoRow label="Municipality" value={editedData.currentMunicipality} />
+                                                    <InfoRow label="Ward No" value={editedData.currentWardNo} />
+                                                    <InfoRow label="Street/Tole" value={editedData.currentStreet} />
+                                                </SectionCard>
+
+                                                <SectionCard title="4. Family Details">
+                                                    <InfoRow label="Father Name" value={editedData.fatherName} />
+                                                    <InfoRow label="Mother Name" value={editedData.motherName} />
+                                                    <InfoRow label="Grandfather" value={editedData.grandFatherName} />
+                                                    <InfoRow label="Spouse Name" value={editedData.spouseName} />
+                                                </SectionCard>
+
+                                                <SectionCard title="5. Bank Account">
+                                                    <InfoRow label="Bank Name" value={editedData.bankName} />
+                                                    <InfoRow label="Account Number" value={editedData.bankAccountNumber} />
+                                                    <InfoRow label="Branch" value={editedData.bankBranch} />
+                                                    <InfoRow label="Account Type" value={editedData.bankAccountType} />
+                                                </SectionCard>
+
+                                                <SectionCard title="6. Financial & Occupation">
+                                                    <InfoRow label="Occupation" value={editedData.occupation} />
+                                                    <InfoRow label="Organization" value={editedData.organizationName} />
+                                                    <InfoRow label="Income Range" value={editedData.annualIncome} />
+                                                    <InfoRow label="Source of Funds" value={editedData.sourceOfFunds} />
+                                                </SectionCard>
+
+                                                <SectionCard title="7. AML & PEP Status">
+                                                    <InfoRow label="PE Person?" value={editedData.isPep ? 'Yes' : 'No'} />
+                                                    <InfoRow label="Criminal Record?" value={editedData.hasCriminalRecord ? 'Yes' : 'No'} />
+                                                    <InfoRow label="Beneficial Owner?" value={editedData.hasBeneficialOwner ? 'Yes' : 'No'} />
+                                                    {editedData.isPep && <InfoRow label="Relation" value={editedData.pepRelation} />}
+                                                </SectionCard>
+                                            </div>
                                         </div>
                                     )}
 
                                     {activeTab === 'documents' && (
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                                            {detailData.details?.Documents?.map((doc: any) => (
-                                                <div key={doc.Id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group cursor-pointer">
-                                                    <div className="aspect-square bg-gray-50 rounded-xl mb-3 flex items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors">
-                                                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
+                                            {detailData.documents?.map((doc: any) => (
+                                                <div key={doc.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group cursor-pointer relative">
+                                                    <div className="aspect-video bg-gray-50 rounded-xl mb-3 flex items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors overflow-hidden border border-gray-100">
+                                                        {doc.contentType?.startsWith('image/') ? (
+                                                            <img
+                                                                src={`${apiBase}/api/KycData/document/${doc.id}?t=${new Date().getTime()}`}
+                                                                alt={doc.documentType}
+                                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                            />
+                                                        ) : (
+                                                            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                            </svg>
+                                                        )}
                                                     </div>
-                                                    <p className="text-[10px] font-bold text-gray-500 uppercase truncate" title={doc.DocumentName}>
-                                                        {doc.DocumentName}
-                                                    </p>
-                                                    <a href={doc.FilePath} target="_blank" rel="noreferrer" className="text-[10px] text-indigo-600 font-bold mt-1 block hover:underline">VIEW FILE</a>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-[8px] font-black text-indigo-500 uppercase mb-0.5">{doc.documentType}</span>
+                                                        <p className="text-[10px] font-bold text-gray-800 uppercase truncate" title={doc.originalFileName}>
+                                                            {doc.originalFileName}
+                                                        </p>
+                                                        <a
+                                                            href={`${apiBase}/api/KycData/document/${doc.id}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-[9px] text-white bg-indigo-600 px-3 py-1 rounded-full font-bold mt-2 w-fit hover:bg-indigo-700 transition-colors"
+                                                        >
+                                                            VIEW FULL FILE
+                                                        </a>
+                                                    </div>
                                                 </div>
                                             ))}
-                                            {(!detailData.details?.Documents || detailData.details.Documents.length === 0) && (
-                                                <div className="col-span-full py-12 text-center text-gray-400 font-medium">No documents attached.</div>
+                                            {(!detailData.documents || detailData.documents.length === 0) && (
+                                                <div className="col-span-full py-12 text-center text-gray-400 font-medium bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
+                                                    <p>No documents attached to this application.</p>
+                                                </div>
                                             )}
                                         </div>
                                     )}
 
                                     {activeTab === 'history' && (
                                         <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                                            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-8">Audit Timeline & Security Logs</h3>
                                             <div className="space-y-8 relative">
-                                                <div className="absolute top-0 bottom-0 left-[15px] w-0.5 bg-gray-100"></div>
+                                                <div className="absolute top-0 bottom-0 left-[19px] w-0.5 bg-gray-100"></div>
                                                 {detailData.logs?.map((h: any) => (
-                                                    <div key={h.id} className="flex gap-6 relative">
-                                                        <div className={`w-8 h-8 rounded-full flex-shrink-0 z-10 flex items-center justify-center border-4 border-white shadow-sm ${h.action === 'Approved' ? 'bg-green-500' : h.action === 'Rejected' ? 'bg-red-500' : 'bg-indigo-500'
+                                                    <div key={h.id} className="flex gap-6 relative group">
+                                                        <div className={`w-10 h-10 rounded-full flex-shrink-0 z-10 flex items-center justify-center border-4 border-white shadow-sm transition-transform group-hover:scale-110 ${h.action === 'Approved' ? 'bg-green-500' : h.action === 'Rejected' ? 'bg-red-500' : 'bg-indigo-500'
                                                             }`}>
                                                             <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
                                                         </div>
                                                         <div className="flex-1">
-                                                            <div className="flex items-center justify-between">
+                                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                                                                 <div className="flex items-center gap-3">
-                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest text-white ${h.action === 'Approved' ? 'bg-green-500' : h.action === 'Rejected' ? 'bg-red-500' : 'bg-indigo-500'
+                                                                    <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest text-white shadow-sm ${h.action === 'Approved' ? 'bg-green-500' : h.action === 'Rejected' ? 'bg-red-500' : 'bg-indigo-500'
                                                                         }`}>
                                                                         {h.action}
                                                                     </span>
-                                                                    <span className="text-[10px] text-gray-400 font-bold">{new Date(h.createdAt).toLocaleString()}</span>
+                                                                    <span className="text-xs text-gray-500 font-mono">{new Date(h.createdAt).toLocaleString()}</span>
                                                                 </div>
-                                                                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-                                                                    <span className="text-[10px] font-black text-indigo-600 uppercase">{h.actionedByRoleName || 'System'}</span>
-                                                                    <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
+                                                                    <div className="flex flex-col items-end">
+                                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">From</span>
+                                                                        <span className="text-[10px] font-black text-indigo-700 uppercase">{h.actionedByRoleName || 'System'}</span>
+                                                                    </div>
+                                                                    <svg className="w-3 h-3 text-gray-300 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                                                                     </svg>
-                                                                    <span className="text-[10px] font-black text-gray-400 uppercase">{h.forwardedToRoleName || 'Finalized'}</span>
+                                                                    <div className="flex flex-col items-start">
+                                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">To</span>
+                                                                        <span className="text-[10px] font-black text-gray-600 uppercase">{h.forwardedToRoleName || 'Finalized'}</span>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                            <p className="text-gray-600 text-sm mt-2 leading-relaxed bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">{h.remarks || "No remarks provided."}</p>
-                                                            <p className="text-[10px] text-gray-400 font-medium mt-2 flex items-center gap-2">
-                                                                <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                                                                    {h.userFullName?.charAt(0) || 'S'}
+                                                            <div className="mt-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm relative overflow-hidden">
+                                                                <div className="absolute top-0 left-0 w-1 h-full bg-indigo-50"></div>
+                                                                <p className="text-gray-700 text-sm leading-relaxed font-medium">{h.remarks || "No specific remarks provided for this action."}</p>
+                                                            </div>
+                                                            <div className="flex flex-wrap items-center gap-4 mt-3 pl-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 ring-2 ring-white shadow-sm">
+                                                                        {h.userFullName?.charAt(0) || 'S'}
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-[10px] text-gray-900 font-bold">{h.userFullName || 'System'}</span>
+                                                                        <span className="text-[9px] text-gray-400 font-mono">User ID: {h.userId || 'N/A'}</span>
+                                                                    </div>
                                                                 </div>
-                                                                Action by: <span className="text-gray-600 font-bold">{h.userFullName || 'System'}</span> (ID: {h.userId || 'N/A'})
-                                                            </p>
+                                                                {(h.clientIpAddress || h.userAgent) && (
+                                                                    <>
+                                                                        <div className="w-px h-6 bg-gray-200"></div>
+                                                                        <div className="flex items-center gap-4 text-[9px] text-gray-400 font-mono">
+                                                                            {h.clientIpAddress && (
+                                                                                <span title="Client IP Address" className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+                                                                                    {h.clientIpAddress}
+                                                                                </span>
+                                                                            )}
+                                                                            {h.userAgent && (
+                                                                                <span title={h.userAgent} className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border border-gray-100 max-w-[200px] truncate">
+                                                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                                                                    {h.userAgent}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 ))}
                                                 <div className="flex gap-6 relative">
-                                                    <div className="w-8 h-8 rounded-full flex-shrink-0 z-10 flex items-center justify-center border-4 border-white shadow-sm bg-gray-200">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                                                    <div className="w-10 h-10 rounded-full flex-shrink-0 z-10 flex items-center justify-center border-4 border-white shadow-sm bg-gray-100">
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
                                                     </div>
-                                                    <div>
-                                                        <span className="font-black text-gray-400 uppercase tracking-tight text-sm">Initiated</span>
-                                                        <p className="text-gray-400 text-[10px] font-bold mt-1">Application started its journey here.</p>
+                                                    <div className="pt-2">
+                                                        <span className="font-black text-gray-400 uppercase tracking-tight text-xs">Origin</span>
+                                                        <p className="text-gray-400 text-[10px] font-bold mt-1">Audit Trail begins at application submission.</p>
                                                     </div>
                                                 </div>
                                             </div>

@@ -24,7 +24,7 @@ namespace AUTHApi.Controllers
     public class ExternalAuthController : BaseApiController
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly IConfiguration _configuration;
         private readonly ILogger<ExternalAuthController> _logger;
         private readonly ITokenService _tokenService;
@@ -32,7 +32,7 @@ namespace AUTHApi.Controllers
 
         public ExternalAuthController(
             UserManager<ApplicationUser> userManager,
-            RoleManager<IdentityRole> roleManager,
+            RoleManager<ApplicationRole> roleManager,
             IConfiguration configuration,
             ILogger<ExternalAuthController> logger,
             ITokenService tokenService)

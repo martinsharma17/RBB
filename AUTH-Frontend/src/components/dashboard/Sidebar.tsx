@@ -52,8 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         {(() => {
                             const roles = user?.roles || [];
                             if (roles.includes("SuperAdmin")) return "SuperAdmin";
-                            if (roles.includes("Admin")) return "Admin";
-                            return roles[0] || "User";
+                            return "Management"; // Generic for all dynamic staff roles
                         })()} Dashboard
                     </h2>
                 )}

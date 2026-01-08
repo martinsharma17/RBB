@@ -10,7 +10,7 @@ namespace AUTHApi.DTOs
     {
         // Workflow Info
         public int WorkflowId { get; set; }
-        public string? Status { get; set; }
+        public string Status { get; set; } = string.Empty;
         public int PendingLevel { get; set; }
         public string? CurrentRoleName { get; set; }
         public string? SubmittedRoleName { get; set; }
@@ -18,11 +18,10 @@ namespace AUTHApi.DTOs
 
         // Data Info (from KycDetail)
         public int KycId { get; set; }
-        public string? CustomerName { get; set; }
-        public string? Email { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
         public string? MobileNumber { get; set; }
-        public string? CitizenshipNumber { get; set; }
-        public string? PermanentAddress { get; set; }
+        public string? BranchName { get; set; }
 
         // Audit Meta
         public DateTime CreatedAt { get; set; }
