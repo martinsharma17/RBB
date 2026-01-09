@@ -94,33 +94,21 @@ internal class Program
         // ==========================================
 
         // Configure Authentication Services
+  
         builder.Services.AddAuthentication(options =>
             {
-                // Set JWT (JSON Web Token) as the default scheme for authentication.
-                // This means the API expects a Bearer token in the Authorization header.
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-            // --- JWT Bearer Configuration ---
             .AddJwtBearer(options =>
             {
-                // JWT Bearer events are handled silently in production.
-                // In development, structured logging captures authentication issues.
-                // Note: Logging is configured at the application level, not here.
-
                 options.IncludeErrorDetails = builder.Environment.IsDevelopment();
-
-                // Get key from configuration
                 var jwtKey = builder.Configuration["Jwt:Key"];
-
-                // Enforce presence of key. Do NOT fallback to a hardcoded string in production.
-                // This ensures we don't accidentally ship with a known weak key.
                 if (string.IsNullOrEmpty(jwtKey))
                 {
                     throw new InvalidOperationException(
                         "JWT Key is missing in Configuration. Please add 'Jwt:Key' to appsettings.json or Environment Variables.");
                 }
-
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = false,
@@ -128,15 +116,12 @@ internal class Program
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
                     ClockSkew = TimeSpan.FromMinutes(5),
-
                     IssuerSigningKey = new SymmetricSecurityKey(
                         System.Text.Encoding.UTF8.GetBytes(jwtKey)
                     ),
-
                     RoleClaimType = ClaimTypes.Role,
                     NameClaimType = ClaimTypes.Name
                 };
-            });
             });
             // --- External Auth (Google) Configuration ---
             // .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme) // Cookies needed for Google sign-in flow

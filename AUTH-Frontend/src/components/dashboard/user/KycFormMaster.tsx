@@ -18,6 +18,10 @@ import "./slider.css";
 
 import { useTranslation } from "react-i18next";
 import addressData from "./addressData.json";
+import "./i18n";
+import nationalitiesData from "./nationalities.json";
+import Select from "react-select";
+import CreatableSelect from "react-select/creatable";
 
 const TOTAL_STEPS = 10;
 
@@ -136,6 +140,13 @@ function Form() {
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   const [currentStep, setCurrentStep] = useState(1);
+  const [nationalities, setNationalities] = useState<string[]>([
+    ...nationalitiesData,
+    "Other",
+  ]);
+  const [nationalitySearch, setNationalitySearch] = useState("");
+  const [newNationality, setNewNationality] = useState("");
+
   const [currentProvince, setCurrentProvince] = useState("");
   const [currentDistrict, setCurrentDistrict] = useState("");
   const [currentMunicipality, setCurrentMunicipality] = useState("");
@@ -357,6 +368,18 @@ function Form() {
   const getMunicipalities = (provinceName: string, districtName: string) =>
     getDistricts(provinceName).find((d) => d.name === districtName)
       ?.municipalityList || [];
+
+  const handleAddNationality = () => {
+    const trimmed = newNationality.trim();
+    if (trimmed && !nationalities.includes(trimmed)) {
+      setNationalities([...nationalities, trimmed]);
+      setNewNationality("");
+    }
+  };
+  const nationalityOptions = nationalities.map((n) => ({
+    value: n,
+    label: n,
+  }));
 
   /* -------------------- NAVIGATION -------------------- */
   //   const handleNext = async () => {
@@ -752,6 +775,9 @@ function Form() {
       alert("❌ Failed to capture screenshot. Please try again.");
     }
   };
+  const defaultNationality = nationalityOptions.find(
+    (opt) => opt.value === "Nepalese"
+  );
 
   /* -------------------- STEP RENDERER -------------------- */
   const renderStep = () => {
@@ -819,100 +845,99 @@ function Form() {
       </div>
 
       {/* First Name, Middle Name, Last Name */}
-      <div className="form-field">
-        <label className="form-label">
-          {t("step1.firstName")} <span className="required">*</span>
-        </label>
+      <div className="form-field name-row">
+        <div className="name-input">
+          <label className="form-label">
+            {t("step1.firstName")} <span className="required">*</span>
+          </label>
+          <Controller
+            name="firstName"
+            control={control}
+            rules={{ required: "First name is required" }}
+            render={({ field }) => (
+              <input
+                {...field}
+                type="text"
+                className="form-input"
+                placeholder={t("First Name")}
+                onChange={(e) => {
+                  // Update fullName
+                  const upper = e.target.value.toUpperCase();
 
-        <Controller
-          name="firstName"
-          control={control}
-          rules={{ required: "First name is required" }}
-          render={({ field }) => (
-            <input
-              {...field}
-              type="text"
-              className="form-input"
-              placeholder={t("First Name")}
-              onChange={(e) => {
-                // Update fullName
-                const upper = e.target.value.toUpperCase();
-
-                field.onChange(upper);
-                const firstName = e.target.value;
-                const middleName = getValues("middleName") || "";
-                const lastName = getValues("lastName") || "";
-                setValue(
-                  "fullName",
-                  `${upper}${firstName} ${middleName} ${lastName}`.trim()
-                );
-              }}
-            />
+                  field.onChange(upper);
+                  const firstName = e.target.value;
+                  const middleName = getValues("middleName") || "";
+                  const lastName = getValues("lastName") || "";
+                  setValue(
+                    "fullName",
+                    `${upper}${firstName} ${middleName} ${lastName}`.trim()
+                  );
+                }}
+              />
+            )}
+          />
+          {errors.firstName && (
+            <p className="error-message">{errors.firstName.message}</p>
           )}
-        />
-        {errors.firstName && (
-          <p className="error-message">{errors.firstName.message}</p>
-        )}
-      </div>
-
-      <div className="form-field">
-        <label className="form-label">{t("step1.middleName")}</label>
-        <Controller
-          name="middleName"
-          control={control}
-          render={({ field }) => (
-            <input
-              {...field}
-              type="text"
-              className="form-input"
-              placeholder={t("Middle Name")}
-              onChange={(e) => {
-                field.onChange(e.target.value.toUpperCase());
-                // Update fullName
-                const firstName = getValues("firstName") || "";
-                const middleName = e.target.value;
-                const lastName = getValues("lastName") || "";
-                setValue(
-                  "fullName",
-                  `${firstName} ${middleName} ${lastName}`.trim()
-                );
-              }}
-            />
+        </div>
+        <div className="name-input">
+          <label className="form-label">{t("step1.middleName")}</label>
+          <Controller
+            name="middleName"
+            control={control}
+            render={({ field }) => (
+              <input
+                {...field}
+                type="text"
+                className="form-input"
+                placeholder={t("Middle Name")}
+                onChange={(e) => {
+                  field.onChange(e.target.value.toUpperCase());
+                  // Update fullName
+                  const firstName = getValues("firstName") || "";
+                  const middleName = e.target.value;
+                  const lastName = getValues("lastName") || "";
+                  setValue(
+                    "fullName",
+                    `${firstName} ${middleName} ${lastName}`.trim()
+                  );
+                }}
+              />
+            )}
+          />
+        </div>
+        <div className="name-input">
+          <label className="form-label">
+            {t("step1.lastName")} <span className="required">*</span>
+          </label>
+          <Controller
+            name="lastName"
+            control={control}
+            rules={{ required: "Last name is required" }}
+            render={({ field }) => (
+              <input
+                {...field}
+                type="text"
+                className="form-input"
+                placeholder={t("Last Name")}
+                onChange={(e) => {
+                  field.onChange(e.target.value.toUpperCase());
+                  // Update fullName
+                  const firstName = getValues("firstName") || "";
+                  const middleName = getValues("middleName") || "";
+                  const lastName = e.target.value;
+                  setValue(
+                    "fullName",
+                    `${firstName} ${middleName} ${lastName}`.trim()
+                  );
+                }}
+              />
+            )}
+          />
+          {errors.lastName && (
+            <p className="error-message">{errors.lastName.message}</p>
           )}
-        />
-      </div>
-
-      <div className="form-field">
-        <label className="form-label">
-          {t("step1.lastName")} <span className="required">*</span>
-        </label>
-        <Controller
-          name="lastName"
-          control={control}
-          rules={{ required: "Last name is required" }}
-          render={({ field }) => (
-            <input
-              {...field}
-              type="text"
-              className="form-input"
-              placeholder={t("Last Name")}
-              onChange={(e) => {
-                field.onChange(e.target.value.toUpperCase());
-                // Update fullName
-                const firstName = getValues("firstName") || "";
-                const middleName = getValues("middleName") || "";
-                const lastName = e.target.value;
-                setValue(
-                  "fullName",
-                  `${firstName} ${middleName} ${lastName}`.trim()
-                );
-              }}
-            />
-          )}
-        />
-        {errors.lastName && (
-          <p className="error-message">{errors.lastName.message}</p>
-        )}
+        </div>
       </div>
 
       <div className="form-field">
@@ -980,203 +1005,172 @@ function Form() {
           <p className="error-message">{errors.dateOfBirth.message}</p>
         )}
       </div>
+      <div className="form-field gender-nationality-row">
+        <div className="gender-input">
+          <div className="form-field">
+            <label className="form-label">
+              {t("step1.gender")}
+              <span className="required">*</span>
+            </label>
 
-      <div className="form-field">
-        <label className="form-label">
-          {t("step1.gender")}
-          <span className="required">*</span>
-        </label>
+            <Controller
+              name="gender"
+              control={control}
+              rules={{ required: "Please select your gender" }}
+              render={({ field }) => (
+                <div className="gender-radio-group">
+                  {/* Male */}
+                  <div
+                    className={`gender-option ${
+                      field.value === "Male" ? "selected" : ""
+                    }`}
+                    onClick={() => field.onChange("Male")}
+                  >
+                    <input
+                      type="radio"
+                      id="male"
+                      name="gender"
+                      checked={field.value === "Male"}
+                      onChange={() => {}}
+                      className="gender-radio-input"
+                    />
+                    <div className="gender-icon-container">
+                      <span className="material-icons male-icon">male</span>
+                    </div>
+                    <label htmlFor="male" className="gender-label">
+                      {t("step1.gender.male")}
+                    </label>
+                  </div>
 
-        <Controller
-          name="gender"
-          control={control}
-          rules={{ required: "Please select your gender" }}
-          render={({ field }) => (
-            <div className="gender-radio-group">
-              {/* Male */}
-              <div
-                className={`gender-option ${
-                  field.value === "Male" ? "selected" : ""
-                }`}
-                onClick={() => field.onChange("Male")}
-              >
-                <input
-                  type="radio"
-                  id="male"
-                  name="gender"
-                  checked={field.value === "Male"}
-                  onChange={() => {}}
-                  className="gender-radio-input"
-                />
-                <div className="gender-icon-container">
-                  <span className="material-icons male-icon">male</span>
+                  {/* Female */}
+                  <div
+                    className={`gender-option ${
+                      field.value === "Female" ? "selected" : ""
+                    }`}
+                    onClick={() => field.onChange("Female")}
+                  >
+                    <input
+                      type="radio"
+                      id="female"
+                      name="gender"
+                      checked={field.value === "Female"}
+                      onChange={() => {}}
+                      className="gender-radio-input"
+                    />
+                    <div className="gender-icon-container">
+                      <span className="material-icons female-icon">female</span>
+                    </div>
+                    <label htmlFor="female" className="gender-label">
+                      {t("step1.gender.female")}
+                    </label>
+                  </div>
+
+                  {/* Other */}
+                  <div
+                    className={`gender-option ${
+                      field.value === "Other" ? "selected" : ""
+                    }`}
+                    onClick={() => field.onChange("Other")}
+                  >
+                    <input
+                      type="radio"
+                      id="other"
+                      name="gender"
+                      checked={field.value === "Other"}
+                      onChange={() => {}}
+                      className="gender-radio-input"
+                    />
+                    <div className="gender-icon-container">
+                      <span className="material-icons other-icon">
+                        transgender
+                      </span>
+                    </div>
+                    <label htmlFor="other" className="gender-label">
+                      {t("step1.gender.other")}
+                    </label>
+                  </div>
                 </div>
-                <label htmlFor="male" className="gender-label">
-                  {t("step1.gender.male")}
-                </label>
-              </div>
+              )}
+            />
 
-              {/* Female */}
-              <div
-                className={`gender-option ${
-                  field.value === "Female" ? "selected" : ""
-                }`}
-                onClick={() => field.onChange("Female")}
-              >
-                <input
-                  type="radio"
-                  id="female"
-                  name="gender"
-                  checked={field.value === "Female"}
-                  onChange={() => {}}
-                  className="gender-radio-input"
-                />
-                <div className="gender-icon-container">
-                  <span className="material-icons female-icon">female</span>
-                </div>
-                <label htmlFor="female" className="gender-label">
-                  {t("step1.gender.female")}
-                </label>
-              </div>
+            {errors.gender && (
+              <p className="error-message">{errors.gender.message}</p>
+            )}
+          </div>
 
-              {/* Other */}
-              <div
-                className={`gender-option ${
-                  field.value === "Other" ? "selected" : ""
-                }`}
-                onClick={() => field.onChange("Other")}
-              >
-                <input
-                  type="radio"
-                  id="other"
-                  name="gender"
-                  checked={field.value === "Other"}
-                  onChange={() => {}}
-                  className="gender-radio-input"
-                />
-                <div className="gender-icon-container">
-                  <span className="material-icons other-icon">transgender</span>
-                </div>
-                <label htmlFor="other" className="gender-label">
-                  {t("step1.gender.other")}
-                </label>
-              </div>
+          {/* Conditional "Other" gender specification field */}
+          {watch("gender") === "Other" && (
+            <div className="form-field">
+              <label className="form-label">
+                {t("step1.genderOther")} <span className="required">*</span>
+              </label>
+              <Controller
+                name="genderOther"
+                control={control}
+                rules={{
+                  required:
+                    watch("gender") === "Other"
+                      ? "Please specify your gender"
+                      : false,
+                }}
+                render={({ field }) => (
+                  <input
+                    {...field}
+                    type="text"
+                    className="form-input"
+                    placeholder="Enter your gender"
+                  />
+                )}
+              />
+              {errors.genderOther && (
+                <p className="error-message">{errors.genderOther.message}</p>
+              )}
             </div>
           )}
-        />
+        </div>
 
-        {errors.gender && (
-          <p className="error-message">{errors.gender.message}</p>
-        )}
-      </div>
-
-      {/* Conditional "Other" gender specification field */}
-      {watch("gender") === "Other" && (
-        <div className="form-field">
-          <label className="form-label">
-            {t("step1.genderOther")} <span className="required">*</span>
-          </label>
+        {/* Nationality Search & Add Section */}
+        <div className="form-field" style={{ minWidth: 300, width: "50%" }}>
+          <label className="form-label">Nationality</label>
           <Controller
-            name="genderOther"
+            name="nationality"
             control={control}
-            rules={{
-              required:
-                watch("gender") === "Other"
-                  ? "Please specify your gender"
-                  : false,
-            }}
+            defaultValue={defaultNationality?.value}
+            rules={{ required: "Nationality is required" }}
             render={({ field }) => (
-              <input
+              <CreatableSelect
                 {...field}
-                type="text"
-                className="form-input"
-                placeholder="Enter your gender"
+                options={nationalityOptions}
+                value={
+                  nationalityOptions.find((opt) => opt.value === field.value) ||
+                  defaultNationality
+                }
+                onChange={(option) => {
+                  if (option) {
+                    field.onChange(option.value);
+                    // Optionally add to state if new
+                    if (!nationalities.includes(option.value)) {
+                      setNationalities([...nationalities, option.value]);
+                    }
+                  }
+                }}
+                isSearchable
+                placeholder="Select or add nationality"
+                styles={{
+                  container: (base) => ({
+                    ...base,
+                    minWidth: 300,
+                    width: "100%",
+                  }),
+                }}
               />
             )}
           />
-          {errors.genderOther && (
-            <p className="error-message">{errors.genderOther.message}</p>
+          {errors.nationality && (
+            <p className="error-message">{errors.nationality.message}</p>
           )}
         </div>
-      )}
-      <div className="form-field">
-        <label className="form-label">
-          {t("step1.nationality")} <span className="required">*</span>
-        </label>
-        <Controller
-          name="nationality"
-          control={control}
-          rules={{ required: "Nationality is required" }}
-          render={({ field }) => (
-            <div className="radio-group">
-              <div className="radio-option">
-                <input
-                  type="radio"
-                  id="nepali"
-                  value="Nepali"
-                  checked={field.value === "Nepali"}
-                  onChange={() => {
-                    field.onChange("Nepali");
-                    setValue("nationalityOther", ""); // Clear other field
-                  }}
-                  className="radio-input"
-                />
-                <label htmlFor="nepali" className="radio-label">
-                  {t("step1.nationality.nepali")}
-                </label>
-              </div>
-
-              <div className="radio-option">
-                <input
-                  type="radio"
-                  id="nationality-other"
-                  value="Other"
-                  checked={field.value === "Other"}
-                  onChange={() => field.onChange("Other")}
-                  className="radio-input"
-                />
-                <label htmlFor="nationality-other" className="radio-label">
-                  {t("step1.nationality.other")}
-                </label>
-              </div>
-            </div>
-          )}
-        />
-        {errors.nationality && (
-          <p className="error-message">{errors.nationality.message}</p>
-        )}
       </div>
-
-      {/* Conditional "Other" nationality specification field */}
-      {watch("nationality") === "Other" && (
-        <div className="form-field">
-          <label className="form-label">
-            {t("step1.nationalityOther")}
-            <span className="required">*</span>
-          </label>
-          <Controller
-            name="nationalityOther"
-            control={control}
-            rules={{
-              required:
-                watch("nationality") === "Other"
-                  ? "Please specify your nationality"
-                  : false,
-            }}
-            render={({ field }) => (
-              <input
-                {...field}
-                type="text"
-                className="form-input"
-                placeholder="Enter your nationality"
-              />
-            )}
-          />
-          {errors.nationalityOther && (
-            <p className="error-message">{errors.nationalityOther.message}</p>
-          )}
-        </div>
-      )}
 
       <div className="form-field">
         <label className="form-label">
