@@ -133,6 +133,7 @@ type FormData = {
 };
 
 function Form() {
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const [currentStep, setCurrentStep] = useState(1);
   const [currentProvince, setCurrentProvince] = useState("");
@@ -196,6 +197,24 @@ function Form() {
   const [emailVerified, setEmailVerified] = useState(false);
 
   // Check if session already exists in sessionStorage
+
+  useEffect(() => {
+    // Try to get sessionId from URL
+    const params = new URLSearchParams(window.location.search);
+    const sessionIdFromUrl = params.get("sessionId");
+    if (sessionIdFromUrl) {
+      setSessionId(sessionIdFromUrl);
+      sessionStorage.setItem("kycSessionId", sessionIdFromUrl);
+      return;
+    }
+    // Or from sessionStorage
+    const sessionIdFromStorage = sessionId;
+    if (sessionIdFromStorage) {
+      setSessionId(sessionIdFromStorage);
+    }
+    // Or from API after OTP verification, etc.
+    // setSessionId(newSessionId);
+  }, []);
 
   useEffect(() => {
     const saved = sessionStorage.getItem("kycDraftValues");
@@ -371,12 +390,6 @@ function Form() {
     const isValid = await trigger(stepFields);
     if (!isValid) return;
 
-    const sessionId = sessionStorage.getItem("kycSessionId");
-    if (!sessionId) {
-      alert("Session not initialized.");
-      return;
-    }
-
     const endpoint = getSaveEndpoint(currentStep);
     if (endpoint) {
       const values = getValues();
@@ -385,11 +398,25 @@ function Form() {
         payload[field] = values[field];
       });
       payload.sessionId = sessionId;
-      await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("API Error:", response.status, errorText);
+          alert(`Failed to save data: ${response.status} ${errorText}`);
+          return; // Do not advance step
+        }
+      } catch (err) {
+        console.error("Network/API error:", err);
+        alert("Network or server error. Please try again.");
+        return; // Do not advance step
+      }
     }
 
     if (currentStep < totalStepsCount) {
@@ -511,7 +538,7 @@ function Form() {
       };
 
       // Replace this endpoint with your final "submit" API if different
-      const sessionIdFromStorage = sessionStorage.getItem("kycSessionId");
+      const sessionIdFromStorage = sessionId;
       if (!sessionIdFromStorage) {
         alert("Session not initialized. Please refresh the page.");
         return;
