@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import KycFormMaster from '../components/dashboard/user/KycFormMaster';
+import DeveloperForm from '../components/dashboard/user/DeveloperForm';
 import KycVerification from '../components/dashboard/user/sections/KycVerification';
 
 const PublicKyc = () => {
@@ -13,21 +14,70 @@ const PublicKyc = () => {
     const [error, setError] = useState<string | null>(null);
     const [step, setStep] = useState(1); // 1: Initialize, 2: Verify OTP, 3: Form
 
-    // Check if there's an existing session in localStorage to resume
-    useEffect(() => {
-        const savedSessionId = localStorage.getItem('kyc_session_id');
-        const savedEmailVerified = localStorage.getItem('kyc_email_verified') === 'true';
+    const [isRedirecting, setIsRedirecting] = useState(false);
 
-        if (savedSessionId) {
-            setSessionId(parseInt(savedSessionId));
-            setIsEmailVerified(savedEmailVerified);
-            if (savedEmailVerified) {
-                setStep(3);
-            } else {
-                setStep(2);
+    // Check if there's an existing session in URL or localStorage to resume
+    useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const urlSessionId = queryParams.get('sessionId');
+        const isTargetPort = window.location.port === '3000';
+
+        const syncSession = async (sid: number) => {
+            try {
+                // Call backend to get real-time status of this session
+                const response = await fetch(`${apiBase}/api/KycSession/progress/${sid}`);
+                if (response.ok) {
+                    const res = await response.json();
+                    if (res.success && res.data.session) {
+                        const verified = res.data.session.emailVerified;
+                        setIsEmailVerified(verified);
+                        setSessionId(sid);
+
+                        if (verified) {
+                            if (!isTargetPort) {
+                                // On 5173: Move to 3000 - Trigger logic handled in effect or button?
+                                // For session resume, we might want to check again or just stay local if strictly separate
+                                // For now, if verify is true and we're not on port 3000, we stick to logic or offer redirect
+                                // The original code auto-redirected. Let's make it safer.
+                                // We'll just let them stay on step 3 (Local) if they arrived here manually, 
+                                // but technically we should have redirected. 
+                                // Let's just setStep(3) to avoid loops, or user can click verify again.
+                                setStep(3);
+                            } else {
+                                // On 3000: Open the form
+                                setStep(3);
+                            }
+                        } else {
+                            setStep(2); // Still need to verify
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Session sync failed:", err);
+            }
+        };
+
+        if (urlSessionId) {
+            syncSession(parseInt(urlSessionId));
+        } else {
+            const savedSessionId = localStorage.getItem('kyc_session_id');
+            const savedEmailVerified = localStorage.getItem('kyc_email_verified') === 'true';
+
+            if (savedSessionId) {
+                const sid = parseInt(savedSessionId);
+                setSessionId(sid);
+                setIsEmailVerified(savedEmailVerified);
+
+                // If resuming, just show local form to avoid infinite redirect loops or network blocks
+                // The user can always "Handoff" explicitly if we added a button, but for now Auto-Resume = Local
+                if (savedEmailVerified) {
+                    setStep(3);
+                } else {
+                    setStep(2);
+                }
             }
         }
-    }, []);
+    }, [apiBase]);
 
     const handleInitialize = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,11 +115,58 @@ const PublicKyc = () => {
         }
     };
 
-    const handleVerified = () => {
+    const handleVerified = async () => {
         setIsEmailVerified(true);
         localStorage.setItem('kyc_email_verified', 'true');
-        setStep(3);
+        setIsRedirecting(true);
+
+        // External URL to redirect to
+        const externalUrl = `http://192.168.100.67:3000/form?sessionId=${sessionId}`;
+
+        try {
+            // Try to ping the external server first (simple fetch with short timeout)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+
+            // Note: This fetch might fail with CORS if not configured on port 3000, 
+            // but for "Connection Refused" it will definitely throw.
+            await fetch(`http://192.168.100.67:3000`, {
+                method: 'HEAD',
+                signal: controller.signal,
+                mode: 'no-cors' // We just care if it's reachable, not the content
+            });
+            clearTimeout(timeoutId);
+
+            // If reachable, redirect
+            window.location.href = externalUrl;
+        } catch (err) {
+            console.warn("External form unreachable, falling back to local form.", err);
+            // Fallback: Just open the form locally on this laptop
+            setIsRedirecting(false);
+            setStep(3);
+        }
     };
+
+    if (isRedirecting) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-6">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto"></div>
+                    <h2 className="text-2xl font-bold text-gray-900">Connecting to Form...</h2>
+                    <p className="text-gray-500">Attempting to open the form on your secure device (Port 3000).</p>
+
+                    <div className="pt-4 border-t border-gray-100">
+                        <button
+                            onClick={() => { setIsRedirecting(false); setStep(3); }}
+                            className="text-indigo-600 font-semibold hover:text-indigo-800 hover:underline transition-colors"
+                        >
+                            Taking too long? Click here to fill form on this device.
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (step === 1) {
         return (
@@ -170,7 +267,11 @@ const PublicKyc = () => {
 
     return (
         <div className="min-h-screen bg-gray-50 py-12 px-4">
-            <KycFormMaster initialSessionId={sessionId} initialEmailVerified={isEmailVerified} />
+            {window.location.port === '3000' ? (
+                <DeveloperForm sessionId={sessionId} />
+            ) : (
+                <KycFormMaster initialSessionId={sessionId} initialEmailVerified={isEmailVerified} />
+            )}
         </div>
     );
 };

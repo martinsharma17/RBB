@@ -4,6 +4,11 @@ import { branchService, Branch } from '../../../services/branchService';
 import { useAuth } from '../../../context/AuthContext';
 import { toast } from 'react-hot-toast';
 
+// Interfaces for Address Lookup
+interface Province { id: number; name: string; }
+interface District { id: number; name: string; }
+interface Municipality { id: number; name: string; }
+
 const BranchManagementView: React.FC = () => {
     const { apiBase, token } = useAuth();
     const [branches, setBranches] = useState<Branch[]>([]);
@@ -19,6 +24,15 @@ const BranchManagementView: React.FC = () => {
         location: ''
     });
 
+    // Address Dropdown State
+    const [provinces, setProvinces] = useState<Province[]>([]);
+    const [districts, setDistricts] = useState<District[]>([]);
+    const [municipalities, setMunicipalities] = useState<Municipality[]>([]);
+
+    const [selectedProvince, setSelectedProvince] = useState<number | ''>('');
+    const [selectedDistrict, setSelectedDistrict] = useState<number | ''>('');
+    const [selectedMunicipality, setSelectedMunicipality] = useState<number | ''>('');
+
     const loadBranches = useCallback(async () => {
         if (!token) return;
         setLoading(true);
@@ -33,9 +47,66 @@ const BranchManagementView: React.FC = () => {
         }
     }, [apiBase, token]);
 
+    // Fetch Provinces on Mount
     useEffect(() => {
         loadBranches();
+        fetchProvinces();
     }, [loadBranches]);
+
+    const fetchProvinces = async () => {
+        try {
+            const res = await fetch(`${apiBase}/api/Address/provinces`);
+            if (res.ok) setProvinces(await res.json());
+        } catch (e) {
+            console.error("Failed to load provinces", e);
+        }
+    };
+
+    // Fetch Districts when Province changes
+    useEffect(() => {
+        if (selectedProvince) {
+            fetch(`${apiBase}/api/Address/districts/${selectedProvince}`)
+                .then(res => res.json())
+                .then(data => setDistricts(data));
+        } else {
+            setDistricts([]);
+            setMunicipalities([]);
+        }
+        setSelectedDistrict('');
+        setSelectedMunicipality('');
+    }, [selectedProvince, apiBase]);
+
+    // Fetch Municipalities when District changes
+    useEffect(() => {
+        if (selectedDistrict) {
+            fetch(`${apiBase}/api/Address/municipalities/${selectedDistrict}`)
+                .then(res => res.json())
+                .then(data => setMunicipalities(data));
+        } else {
+            setMunicipalities([]);
+        }
+        setSelectedMunicipality('');
+    }, [selectedDistrict, apiBase]);
+
+    // Auto-fill Location and Name based on selection
+    useEffect(() => {
+        if (selectedMunicipality) {
+            const moth = municipalities.find(m => m.id === Number(selectedMunicipality));
+            const dist = districts.find(d => d.id === Number(selectedDistrict));
+            const prov = provinces.find(p => p.id === Number(selectedProvince));
+
+            if (moth && dist && prov) {
+                // Auto-generate location string: "Municipality, District, Province"
+                const locationStr = `${moth.name}, ${dist.name}, ${prov.name}`;
+                setFormData(prev => ({
+                    ...prev,
+                    location: locationStr,
+                    name: prev.name || `${moth.name} Branch` // Auto-suggest name if empty
+                }));
+            }
+        }
+    }, [selectedMunicipality, municipalities, districts, provinces, selectedDistrict, selectedProvince]);
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,12 +148,17 @@ const BranchManagementView: React.FC = () => {
             code: branch.code,
             location: branch.location
         });
+        // Note: We don't reverse-engineer the dropdowns from the string yet (complex),
+        // so for editing, we let them edit the text string directly or re-select.
         setIsModalOpen(true);
     };
 
     const resetForm = () => {
         setEditingBranch(null);
         setFormData({ name: '', code: '', location: '' });
+        setSelectedProvince('');
+        setSelectedDistrict('');
+        setSelectedMunicipality('');
     };
 
     const filteredBranches = branches.filter(b =>
@@ -221,7 +297,7 @@ const BranchManagementView: React.FC = () => {
             {/* Glass Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-in fade-in zoom-in duration-200">
-                    <div className="bg-white rounded-[2.5rem] w-full max-w-xl shadow-2xl overflow-hidden">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
                         <div className="bg-indigo-600 p-8 text-white relative">
                             <button
                                 onClick={() => setIsModalOpen(false)}
@@ -237,6 +313,48 @@ const BranchManagementView: React.FC = () => {
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-10 space-y-6">
+
+                            {/* Address Dropdowns (Only for new branches or when needed) */}
+                            {!editingBranch && (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                                    <div className="col-span-full">
+                                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Select Location</label>
+                                    </div>
+                                    <div>
+                                        <select
+                                            value={selectedProvince}
+                                            onChange={e => setSelectedProvince(Number(e.target.value))}
+                                            className="w-full p-2 rounded-lg border text-sm"
+                                        >
+                                            <option value="">Province</option>
+                                            {provinces.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <select
+                                            value={selectedDistrict}
+                                            onChange={e => setSelectedDistrict(Number(e.target.value))}
+                                            disabled={!selectedProvince}
+                                            className="w-full p-2 rounded-lg border text-sm"
+                                        >
+                                            <option value="">District</option>
+                                            {districts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <select
+                                            value={selectedMunicipality}
+                                            onChange={e => setSelectedMunicipality(Number(e.target.value))}
+                                            disabled={!selectedDistrict}
+                                            className="w-full p-2 rounded-lg border text-sm"
+                                        >
+                                            <option value="">Municipality</option>
+                                            {municipalities.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-bold text-gray-700 mb-2 px-1 uppercase tracking-wider">Branch Name</label>
@@ -249,7 +367,17 @@ const BranchManagementView: React.FC = () => {
                                         placeholder="e.g. Kathmandu Main Branch"
                                     />
                                 </div>
-                                <div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 px-1 uppercase tracking-wider">Full Address</label>
+                                    <input
+                                        type="text"
+                                        value={formData.location}
+                                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 outline-none focus:border-indigo-500 transition-all text-gray-800 font-medium"
+                                        placeholder="Address will be auto-filled..."
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
                                     <label className="block text-sm font-bold text-gray-700 mb-2 px-1 uppercase tracking-wider">Unique Code</label>
                                     <input
                                         required
@@ -258,16 +386,6 @@ const BranchManagementView: React.FC = () => {
                                         onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                                         className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 outline-none focus:border-indigo-500 transition-all text-gray-800 font-medium font-mono"
                                         placeholder="e.g. KTM01"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 px-1 uppercase tracking-wider">Full Address</label>
-                                    <input
-                                        type="text"
-                                        value={formData.location}
-                                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 outline-none focus:border-indigo-500 transition-all text-gray-800 font-medium"
-                                        placeholder="e.g. Durbar Marg, KTM"
                                     />
                                 </div>
                             </div>

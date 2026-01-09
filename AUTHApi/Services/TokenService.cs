@@ -41,11 +41,17 @@ namespace AUTHApi.Services
         {
             // 1. Get User Roles
             var roles = await _userManager.GetRolesAsync(user);
-            
+
             // 2. Aggregate Permissions (Policies) from all Roles
-            // We query RolePolicies joined with SystemPolicies to get the unique set of permission keys
+            // Improved Query: Resolve Role IDs first, then fetch policies. Safer for EF Core translation.
+            var roleIds = await _context.Roles
+                .Where(r => roles.Contains(r.Name))
+                .Select(r => r.Id)
+                .ToListAsync();
+
             var permissions = await _context.RolePolicies
-                .Where(rp => roles.Contains(_context.Roles.Where(r => r.Id == rp.RoleId).Select(r => r.Name).FirstOrDefault()!) && rp.IsGranted)
+                .Include(rp => rp.Policy)
+                .Where(rp => roleIds.Contains(rp.RoleId) && rp.IsGranted && rp.Policy != null)
                 .Select(rp => rp.Policy!.PolicyKey)
                 .Distinct()
                 .ToListAsync();
@@ -82,7 +88,7 @@ namespace AUTHApi.Services
             // 6. Signing and Token Creation
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                 _configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is missing.")));
-            
+
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(

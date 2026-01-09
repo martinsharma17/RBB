@@ -44,17 +44,27 @@ internal class Program
         // Register HttpContextAccessor to allow services to access current request info (IP, UserAgent)
         builder.Services.AddHttpContextAccessor();
 
-        // --- CORS Configuration ---
+//host locally 
+
+
+// --- CORS Configuration ---
         // Defines who can access this API. Here we allow the frontend URL.
         builder.Services.AddCors(options =>
         {
             options.AddPolicy("AllowSpecificOrigin",
                 builder =>
                 {
-                    // Allow requests from React Frontend running on localhost:5173
-                    builder.WithOrigins("http://localhost:5173")
+                    // Allow requests from React Frontend running on localhost:5173 or localhost:3000
+                    // Also allow cross-network access from actual IP addresses
+                    builder.WithOrigins(
+                            "http://localhost:5173",
+                            "http://localhost:3000",
+                            "http://192.168.100.67:3000", // Second laptop frontend
+                            "http://192.168.100.99:3001" // Backend API (for self-reference if needed)
+                        )
                         .AllowAnyHeader() // Allow any HTTP headers (e.g., Authorization, Content-Type)
-                        .AllowAnyMethod(); // Allow any HTTP methods (GET, POST, PUT, DELETE, etc.)
+                        .AllowAnyMethod() // Allow any HTTP methods (GET, POST, PUT, DELETE, etc.)
+                        .AllowCredentials(); // Allow credentials (cookies, authorization headers)
                 });
         });
 
@@ -201,6 +211,10 @@ internal class Program
                 await ProjectSettingsSeeder.SeedProjectSettingsAsync(
                     scope.ServiceProvider.GetRequiredService<ApplicationDbContext>()
                 );
+
+                // seed Branches data
+                var addressSeeder = new AddressSeeder(dbContext);
+                await addressSeeder.SeedAsync();
             }
             catch (Exception ex)
             {

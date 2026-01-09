@@ -373,6 +373,15 @@ namespace AUTHApi.Controllers
 
                 if (file == null || file.Length == 0) return Failure("No file uploaded");
 
+                // Limit file size to 4MB
+                const long maxFileSize = 4 * 1024 * 1024; // 4MB in bytes
+                if (file.Length > maxFileSize)
+                {
+                    return Failure(
+                        $"File size exceeds the maximum allowed size of 4MB. Your file is {file.Length / 1024.0 / 1024.0:F2}MB",
+                        400);
+                }
+
                 // Read file bytes
                 byte[] content;
                 using (var ms = new MemoryStream())

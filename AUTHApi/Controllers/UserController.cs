@@ -1,12 +1,10 @@
-using AUTHApi.Data;
-using AUTHApi.Entities;
-using Microsoft.AspNetCore.Authorization;
-using AUTHApi.Core.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Threading.Tasks;
+using AUTHApi.Entities;
+using AUTHApi.Core.Security;
+using Microsoft.AspNetCore.Authorization;
+using AUTHApi.Data;
 
 namespace AUTHApi.Controllers;
 
@@ -20,12 +18,11 @@ namespace AUTHApi.Controllers;
 public class UserController : BaseApiController
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly RoleManager<ApplicationRole> _roleManager;
+    // Removed unused _roleManager
 
-    public UserController(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager)
+    public UserController(UserManager<ApplicationUser> userManager)
     {
         _userManager = userManager;
-        _roleManager = roleManager;
     }
 
     /// <summary>
@@ -35,11 +32,26 @@ public class UserController : BaseApiController
     [HttpGet("profile")]
     public async Task<IActionResult> GetProfile()
     {
-        var user = await _userManager.GetUserAsync(User);
+        var context = HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+        var userId = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+        var user = await context.Users
+            .Include(u => u.Branch)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
         if (user == null) return Failure("User not found", 404);
 
         var roles = await _userManager.GetRolesAsync(user);
-        return Success(new { user.Id, user.Email, user.UserName, Roles = roles });
+        return Success(new
+        {
+            user.Id,
+            user.Email,
+            user.UserName,
+            Roles = roles,
+            user.BranchId,
+            BranchName = user.Branch?.Name ?? "Head Office / Global"
+        });
     }
 
     /// <summary>
@@ -131,7 +143,7 @@ public class UserController : BaseApiController
         // SuperAdmin Bypass: Grant all permissions
         if (roles.Contains("SuperAdmin"))
         {
-            return Success(AUTHApi.Core.Security.Permissions.GetAllPermissions());
+            return Success(Permissions.GetAllPermissions());
         }
 
         // Resolve effective permissions from RolePolicy table
@@ -183,9 +195,11 @@ public class UserController : BaseApiController
     {
         var user = new ApplicationUser
         {
-            UserName = model.UserName,
+            UserName = model.Email, // Use Email as UserName for identity compatibility
             Email = model.Email,
-            BranchId = model.BranchId
+            Name = model.Name ?? model.UserName, // Map Name property
+            BranchId = model.BranchId,
+            EmailConfirmed = true // Auto-confirm for admin created users
         };
 
         var result = await _userManager.CreateAsync(user, model.Password);
@@ -248,6 +262,9 @@ public class CreateUserModel
 
     /// <summary>Email address for the new account.</summary>
     public string Email { get; set; } = string.Empty;
+
+    /// <summary>Display Name or Full Name.</summary>
+    public string? Name { get; set; }
 
     /// <summary>Password for the new account.</summary>
     public string Password { get; set; } = string.Empty;

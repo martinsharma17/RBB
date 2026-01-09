@@ -1,0 +1,44 @@
+    To delete an unused sidebar menu item (e.g., "Reports"), follow these steps. 
+
+### Step 1: Remove from Backend (Data Source)
+The menu items are defined and seeded from the backend. You must remove them here first.
+
+**File:** `AUTHApi\Data\MenuSeeder.cs`
+1.  Open the file and locate the `SeedMenuItemsAsync` method.
+2.  Find the code block creating the `MenuItem` you want to delete.
+    *   *Example:* To delete "Reports":
+        ```csharp
+        // DELETE THIS BLOCK
+        new MenuItem
+        {
+            Title = "Reports", ViewId = "reports", Icon = "ReportsIcon",
+            Url = "/reports",
+            Permission = Permissions.Reports.Sidebar,
+            RequiredPolicyId = GetPolicyId(Permissions.Reports.Sidebar),
+            Order = 9
+        },
+        ```
+3.  If the item is added to a list (like `var items = new List<MenuItem> { ... }`), make sure to remove it from there too.
+4.  **Action:** Save the file and restart your backend application. The seeder runs on startup and will automatically remove the item from the database table `MenuItems` because of the line `context.MenuItems.RemoveRange(context.MenuItems);`.
+
+### Step 2: Remove Frontend Mapping
+The frontend maps the backend `ViewId` to a React component. 
+
+**File:** `AUTH-Frontend\src\components\dashboard\ViewMapper.tsx`
+1.  Open the file and find the `getViewComponent` function.
+2.  Locate the `case` statement matching the `ViewId` of the item you deleted (e.g., `'reports'`).
+3.  Delete the case block:
+    ```typescript
+    // DELETE THIS
+    case 'reports':
+        return <div className="p-8 text-center text-gray-500">Reports Module (Coming Soon)</div>;
+    ```
+    *   *Note:* If it imports a component (e.g., `import ReportsView from './ReportsView';`), delete the import statement at the top of the file as well.
+
+### Step 3: Delete Unused Component Files (Optional)
+If the menu item was pointing to a specific React component that is no longer used anywhere else, you should delete that file to keep the project clean.
+*   *Example:* If you had `AUTH-Frontend\src\components\dashboard\ReportsView.tsx`, you can delete this file.
+
+### Step 4: Remove Unused Icons (Optional)
+**File:** `AUTH-Frontend\src\components\dashboard\SidebarIcons.tsx`
+1.  If the menu item used a unique icon (e.g., `ReportsIcon`) that is not used by any other menu, you can remove its export from this file to reduce bundle size.

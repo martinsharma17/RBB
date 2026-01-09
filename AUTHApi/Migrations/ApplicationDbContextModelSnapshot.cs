@@ -157,6 +157,26 @@ namespace AUTHApi.Migrations
                     b.ToTable("Branches");
                 });
 
+            modelBuilder.Entity("AUTHApi.Entities.District", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int>("ProvinceId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProvinceId");
+
+                    b.ToTable("Districts");
+                });
+
             modelBuilder.Entity("AUTHApi.Entities.KycApprovalConfig", b =>
                 {
                     b.Property<int>("Id")
@@ -958,6 +978,26 @@ namespace AUTHApi.Migrations
                     b.ToTable("MenuItems");
                 });
 
+            modelBuilder.Entity("AUTHApi.Entities.Municipality", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DistrictId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DistrictId");
+
+                    b.ToTable("Municipalities");
+                });
+
             modelBuilder.Entity("AUTHApi.Entities.ProjectSetting", b =>
                 {
                     b.Property<int>("Id")
@@ -980,6 +1020,21 @@ namespace AUTHApi.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ProjectSettings");
+                });
+
+            modelBuilder.Entity("AUTHApi.Entities.Province", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Provinces");
                 });
 
             modelBuilder.Entity("AUTHApi.Entities.RolePolicy", b =>
@@ -1160,6 +1215,17 @@ namespace AUTHApi.Migrations
                     b.Navigation("Branch");
                 });
 
+            modelBuilder.Entity("AUTHApi.Entities.District", b =>
+                {
+                    b.HasOne("AUTHApi.Entities.Province", "Province")
+                        .WithMany("Districts")
+                        .HasForeignKey("ProvinceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Province");
+                });
+
             modelBuilder.Entity("AUTHApi.Entities.KycApprovalLog", b =>
                 {
                     b.HasOne("AUTHApi.Entities.KycFormSession", "KycSession")
@@ -1294,6 +1360,17 @@ namespace AUTHApi.Migrations
                     b.Navigation("RequiredPolicy");
                 });
 
+            modelBuilder.Entity("AUTHApi.Entities.Municipality", b =>
+                {
+                    b.HasOne("AUTHApi.Entities.District", "District")
+                        .WithMany("Municipalities")
+                        .HasForeignKey("DistrictId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("District");
+                });
+
             modelBuilder.Entity("AUTHApi.Entities.RolePolicy", b =>
                 {
                     b.HasOne("AUTHApi.Entities.SystemPolicy", "Policy")
@@ -1364,6 +1441,11 @@ namespace AUTHApi.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("AUTHApi.Entities.District", b =>
+                {
+                    b.Navigation("Municipalities");
+                });
+
             modelBuilder.Entity("AUTHApi.Entities.KycApprovalConfig", b =>
                 {
                     b.Navigation("Steps");
@@ -1384,6 +1466,11 @@ namespace AUTHApi.Migrations
             modelBuilder.Entity("AUTHApi.Entities.MenuItem", b =>
                 {
                     b.Navigation("Children");
+                });
+
+            modelBuilder.Entity("AUTHApi.Entities.Province", b =>
+                {
+                    b.Navigation("Districts");
                 });
 #pragma warning restore 612, 618
         }

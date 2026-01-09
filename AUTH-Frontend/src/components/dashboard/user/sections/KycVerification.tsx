@@ -28,7 +28,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    sessionId: sessionId,
+                    sessionId: Number(sessionId || 0),
                     email: email,
                     otpType: 1 // Email OTP
                 })
@@ -57,7 +57,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    sessionId: sessionId,
+                    sessionId: Number(sessionId || 0),
                     otpCode: otp,
                     otpType: 1
                 })
