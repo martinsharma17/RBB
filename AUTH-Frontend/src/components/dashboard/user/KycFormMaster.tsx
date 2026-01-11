@@ -77,6 +77,7 @@ type FormData = {
   accountType: string;
   bankAccount: string;
   bankName: string;
+  bankBranch: string;
   bankAddress: string;
 
   // Occupation & Finance
@@ -514,6 +515,7 @@ function Form() {
           accountNumber: data.bankAccount,
           bankName: data.bankName,
           bankAddress: data.bankAddress,
+          bankBranch: data.bankBranch,
         },
         occupation: {
           occupation:
@@ -679,7 +681,7 @@ function Form() {
         return step3Fields;
       }
       case 4:
-        return ["accountType", "bankAccount", "bankName", "bankAddress"];
+        return ["accountType", "bankAccount", "bankName", "bankAddress","bankBranch"];
       case 5: {
         const step5Fields: (keyof FormData)[] = [
           "occupationType",
@@ -1131,7 +1133,9 @@ function Form() {
 
         {/* Nationality Search & Add Section */}
         <div className="form-field" style={{ minWidth: 300, width: "50%" }}>
-          <label className="form-label">Nationality</label>
+          <label className="form-label">
+            {t("step1.nationality")} <span className="required">*</span>
+          </label>
           <Controller
             name="nationality"
             control={control}
@@ -1148,14 +1152,20 @@ function Form() {
                 onChange={(option) => {
                   if (option) {
                     field.onChange(option.value);
-                    // Optionally add to state if new
+                    // Add to state if new nationality is created
                     if (!nationalities.includes(option.value)) {
                       setNationalities([...nationalities, option.value]);
                     }
                   }
                 }}
+                onCreateOption={(inputValue) => {
+                  // Add new nationality to state and select it
+                  setNationalities([...nationalities, inputValue]);
+                  field.onChange(inputValue);
+                }}
                 isSearchable
                 placeholder="Select or add nationality"
+                formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
                 styles={{
                   container: (base) => ({
                     ...base,
@@ -1171,22 +1181,42 @@ function Form() {
           )}
         </div>
       </div>
-
-      <div className="form-field">
-        <label className="form-label">
-          {t("step1.citizenshipNumber")} <span className="required">*</span>
-        </label>
-        <Controller
-          name="citizenshipNumber"
-          control={control}
-          rules={{ required: "Citizenship number is required" }}
-          render={({ field }) => (
-            <input {...field} type="text" className="form-input" />
+      <div className="grid-2-cols">
+        <div className="form-field">
+          <label className="form-label">
+            {t("step1.citizenshipNumber")} <span className="required">*</span>
+          </label>
+          <Controller
+            name="citizenshipNumber"
+            control={control}
+            rules={{ required: "Citizenship number is required" }}
+            render={({ field }) => (
+              <input {...field} type="text" className="form-input" />
+            )}
+          />
+          {errors.citizenshipNumber && (
+            <p className="error-message">{errors.citizenshipNumber.message}</p>
           )}
-        />
-        {errors.citizenshipNumber && (
-          <p className="error-message">{errors.citizenshipNumber.message}</p>
-        )}
+        </div>
+        <div className="form-field">
+          <label className="form-label">
+            {t("step1.citizenshipIssueDistrict")}{" "}
+            <span className="required">*</span>
+          </label>
+          <Controller
+            name="citizenshipIssueDistrict"
+            control={control}
+            rules={{ required: "Citizenship issue district is required" }}
+            render={({ field }) => (
+              <input {...field} type="text" className="form-input" />
+            )}
+          />
+          {errors.citizenshipIssueDistrict && (
+            <p className="error-message">
+              {errors.citizenshipIssueDistrict.message}
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="form-field">
@@ -1261,68 +1291,53 @@ function Form() {
         )}
       </div>
 
-      <div className="form-field">
-        <label className="form-label">
-          {t("step1.citizenshipIssueDistrict")}{" "}
-          <span className="required">*</span>
-        </label>
-        <Controller
-          name="citizenshipIssueDistrict"
-          control={control}
-          rules={{ required: "Citizenship issue district is required" }}
-          render={({ field }) => (
-            <input {...field} type="text" className="form-input" />
-          )}
-        />
-        {errors.citizenshipIssueDistrict && (
-          <p className="error-message">
-            {errors.citizenshipIssueDistrict.message}
-          </p>
-        )}
-      </div>
+      <div className="grid-2-cols">
+        <div className="form-field">
+          <label className="form-label">{t("step1.beneficiaryIdNo")}</label>
+          <Controller
+            name="beneficiaryIdNo"
+            control={control}
+            render={({ field }) => (
+              <input {...field} type="text" className="form-input" />
+            )}
+          />
+        </div>
 
-      <div className="form-field">
-        <label className="form-label">{t("step1.beneficiaryIdNo")}</label>
-        <Controller
-          name="beneficiaryIdNo"
-          control={control}
-          render={({ field }) => (
-            <input {...field} type="text" className="form-input" />
-          )}
-        />
+        <div className="form-field">
+          <label className="form-label">{t("step1.panNumber")}</label>
+          <Controller
+            name="panNumber"
+            control={control}
+            render={({ field }) => (
+              <input {...field} type="text" className="form-input" />
+            )}
+          />
+        </div>
       </div>
+      <div className="grid-2-cols">
+        <div className="form-field">
+          <label className="form-label">{t("step1.identificationNo")}</label>
+          <Controller
+            name="identificationNo"
+            control={control}
+            render={({ field }) => (
+              <input {...field} type="text" className="form-input" />
+            )}
+          />
+        </div>
 
-      <div className="form-field">
-        <label className="form-label">{t("step1.panNumber")}</label>
-        <Controller
-          name="panNumber"
-          control={control}
-          render={({ field }) => (
-            <input {...field} type="text" className="form-input" />
-          )}
-        />
-      </div>
-
-      <div className="form-field">
-        <label className="form-label">{t("step1.identificationNo")}</label>
-        <Controller
-          name="identificationNo"
-          control={control}
-          render={({ field }) => (
-            <input {...field} type="text" className="form-input" />
-          )}
-        />
-      </div>
-
-      <div className="form-field">
-        <label className="form-label">{t("step1.identificationAddress")}</label>
-        <Controller
-          name="identificationAddress"
-          control={control}
-          render={({ field }) => (
-            <input {...field} type="text" className="form-input" />
-          )}
-        />
+        <div className="form-field">
+          <label className="form-label">
+            {t("step1.identificationAddress")}
+          </label>
+          <Controller
+            name="identificationAddress"
+            control={control}
+            render={({ field }) => (
+              <input {...field} type="text" className="form-input" />
+            )}
+          />
+        </div>
       </div>
     </div>
   );
@@ -1343,18 +1358,24 @@ function Form() {
 
   const wardOptions = Array.from({ length: 15 }, (_, i) => (i + 1).toString());
 
-  const renderStep2 = () => {
-    // For current address
-    const currentProvince = watch("currentProvince");
-    const currentDistrict = watch("currentDistrict");
-    const currentMunicipality = watch("currentMunicipality");
-    const currentWardNo = watch("currentWardNo");
+  // ...existing code...
 
+  const renderStep2 = () => {
     // For permanent address
     const permanentProvince = watch("permanentProvince");
     const permanentDistrict = watch("permanentDistrict");
     const permanentMunicipality = watch("permanentMunicipality");
     const permanentWardNo = watch("permanentWardNo");
+    const permanentTole = watch("permanentTole");
+    const permanentCountry = watch("permanentCountry");
+
+    // For current address
+    const currentProvince = watch("currentProvince");
+    const currentDistrict = watch("currentDistrict");
+    const currentMunicipality = watch("currentMunicipality");
+    const currentWardNo = watch("currentWardNo");
+    const currentTole = watch("currentTole");
+    const currentCountry = watch("currentCountry");
 
     // Helper functions
     const getDistricts = (provinceName: string) =>
@@ -1364,208 +1385,24 @@ function Form() {
       getDistricts(provinceName).find((d) => d.name === districtName)
         ?.municipalityList || [];
 
-    const handleSameAsCurrentAddress = (
+    // Checkbox handler: copy permanent address to current address
+    const handleSameAsPermanentAddress = (
       e: React.ChangeEvent<HTMLInputElement>
     ) => {
       if (e.target.checked) {
-        setValue("permanentProvince", currentProvince || "");
-        setValue("permanentDistrict", currentDistrict || "");
-        setValue("permanentMunicipality", currentMunicipality || "");
-        setValue("permanentWardNo", currentWardNo || "");
-        setValue("permanentTole", watch("currentTole") || "");
-        setValue("permanentCountry", watch("currentCountry") || "");
+        setValue("currentProvince", permanentProvince || "");
+        setValue("currentDistrict", permanentDistrict || "");
+        setValue("currentMunicipality", permanentMunicipality || "");
+        setValue("currentWardNo", permanentWardNo || "");
+        setValue("currentTole", permanentTole || "");
+        setValue("currentCountry", permanentCountry || "");
       }
     };
 
     return (
       <div className="form-section">
         <h2 className="section-title">{t("step2.title")}</h2>
-
-        <h3 className="subsection-title">{t("step2.currentAddress")}</h3>
-        <div className="grid-2-cols">
-          {/* Province */}
-          <div className="form-field">
-            <label className="form-label">
-              {t("step2.currentProvince")} <span className="required">*</span>
-            </label>
-            <Controller
-              name="currentProvince"
-              control={control}
-              rules={{ required: t("validation.required") }}
-              render={({ field }) => (
-                <select
-                  {...field}
-                  className="form-input"
-                  onChange={(e) => {
-                    field.onChange(e.target.value);
-                    setValue("currentDistrict", "");
-                    setValue("currentMunicipality", "");
-                    setValue("currentWardNo", "");
-                  }}
-                >
-                  <option value="">Select Province</option>
-                  {addressData.provinceList.map((prov: any) => (
-                    <option key={prov.id} value={prov.name}>
-                      {prov.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            />
-            {errors.currentProvince && (
-              <p className="error-message">{errors.currentProvince.message}</p>
-            )}
-          </div>
-          {/* District */}
-          <div className="form-field">
-            <label className="form-label">
-              {t("step2.currentDistrict")} <span className="required">*</span>
-            </label>
-            <Controller
-              name="currentDistrict"
-              control={control}
-              rules={{ required: t("validation.required") }}
-              render={({ field }) => (
-                <select
-                  {...field}
-                  className="form-input"
-                  disabled={!currentProvince}
-                  onChange={(e) => {
-                    field.onChange(e.target.value);
-                    setValue("currentMunicipality", "");
-                    setValue("currentWardNo", "");
-                  }}
-                >
-                  <option value="">Select District</option>
-                  {getDistricts(currentProvince).map((dist: any) => (
-                    <option key={dist.id} value={dist.name}>
-                      {dist.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-            />
-            {errors.currentDistrict && (
-              <p className="error-message">{errors.currentDistrict.message}</p>
-            )}
-          </div>
-          {/* Municipality */}
-          <div className="form-field">
-            <label className="form-label">
-              {t("step2.currentMunicipality")}{" "}
-              <span className="required">*</span>
-            </label>
-            <Controller
-              name="currentMunicipality"
-              control={control}
-              rules={{ required: t("validation.required") }}
-              render={({ field }) => (
-                <select
-                  {...field}
-                  className="form-input"
-                  disabled={!currentDistrict}
-                  onChange={(e) => {
-                    field.onChange(e.target.value);
-                    setValue("currentWardNo", "");
-                  }}
-                >
-                  <option value="">Select Municipality</option>
-                  {getMunicipalities(currentProvince, currentDistrict).map(
-                    (muni: any) => (
-                      <option key={muni.id} value={muni.name}>
-                        {muni.name}
-                      </option>
-                    )
-                  )}
-                </select>
-              )}
-            />
-            {errors.currentMunicipality && (
-              <p className="error-message">
-                {errors.currentMunicipality.message}
-              </p>
-            )}
-          </div>
-          {/* Ward */}
-          <div className="form-field">
-            <label className="form-label">
-              {t("step2.currentWardNo")} <span className="required">*</span>
-            </label>
-            <Controller
-              name="currentWardNo"
-              control={control}
-              rules={{ required: t("validation.required") }}
-              render={({ field }) => (
-                <select
-                  {...field}
-                  className="form-input"
-                  disabled={!currentMunicipality}
-                >
-                  <option value="">Select Ward</option>
-                  {wardOptions.map((ward) => (
-                    <option key={ward} value={ward}>
-                      {ward}
-                    </option>
-                  ))}
-                </select>
-              )}
-            />
-            {errors.currentWardNo && (
-              <p className="error-message">{errors.currentWardNo.message}</p>
-            )}
-          </div>
-          {/* Tole */}
-          <div className="form-field">
-            <label className="form-label">
-              {t("step2.currentTole")} <span className="required">*</span>
-            </label>
-            <Controller
-              name="currentTole"
-              control={control}
-              rules={{ required: t("validation.required") }}
-              render={({ field }) => (
-                <input {...field} type="text" className="form-input" />
-              )}
-            />
-            {errors.currentTole && (
-              <p className="error-message">{errors.currentTole.message}</p>
-            )}
-          </div>
-          {/* Country */}
-          <div className="form-field">
-            <label className="form-label">
-              {t("step2.currentCountry")} <span className="required">*</span>
-            </label>
-            <Controller
-              name="currentCountry"
-              control={control}
-              rules={{ required: t("validation.required") }}
-              render={({ field }) => (
-                <input
-                  {...field}
-                  type="text"
-                  className="form-input"
-                  value={field.value}
-                />
-              )}
-            />
-            {errors.currentCountry && (
-              <p className="error-message">{errors.currentCountry.message}</p>
-            )}
-          </div>
-        </div>
-
         <h3 className="subsection-title">{t("step2.permanentAddress")}</h3>
-        <div className="form-field" style={{ marginBottom: "1.5rem" }}>
-          <label className="form-label">
-            <input
-              type="checkbox"
-              onChange={handleSameAsCurrentAddress}
-              className="checkbox-input"
-            />
-            {t("step2.sameAsCurrentAddress")}
-          </label>
-        </div>
         <div className="grid-2-cols">
           {/* Province */}
           <div className="form-field">
@@ -1743,60 +1580,250 @@ function Form() {
           </div>
         </div>
 
-        <h3 className="subsection-title">{t("step2.contactInfo")}</h3>
-        <div className="form-field">
+        {/* Checkbox: Same as Permanent Address */}
+        <div className="form-field" style={{ marginBottom: "1.5rem" }}>
           <label className="form-label">
-            {t("step2.contactNumber")} <span className="required">*</span>
+            <input
+              type="checkbox"
+              onChange={handleSameAsPermanentAddress}
+              className="checkbox-input"
+            />
+            {t("step2.sameAsPermanentAddress")}
           </label>
-          <Controller
-            name="contactNumber"
-            control={control}
-            rules={{
-              required: t("validation.required"),
-              pattern: {
-                value: /^[0-9+\-\s()]*$/,
-                message: t("validation.invalidPhone"),
-              },
-            }}
-            render={({ field }) => (
-              <input {...field} type="tel" className="form-input" />
-            )}
-          />
-          {errors.contactNumber && (
-            <p className="error-message">{errors.contactNumber.message}</p>
-          )}
         </div>
 
-        <div className="form-field">
-          <label className="form-label">
-            {t("step2.emailAddress")} <span className="required">*</span>
-          </label>
-          <Controller
-            name="emailAddress"
-            control={control}
-            rules={{
-              required: t("validation.required"),
-              pattern: {
-                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: t("validation.invalidEmail"),
-              },
-            }}
-            render={({ field }) => (
-              <input {...field} type="email" className="form-input" />
+        <h3 className="subsection-title">{t("step2.currentAddress")}</h3>
+        <div className="grid-2-cols">
+          {/* Province */}
+          <div className="form-field">
+            <label className="form-label">
+              {t("step2.currentProvince")} <span className="required">*</span>
+            </label>
+            <Controller
+              name="currentProvince"
+              control={control}
+              rules={{ required: t("validation.required") }}
+              render={({ field }) => (
+                <select
+                  {...field}
+                  className="form-input"
+                  onChange={(e) => {
+                    field.onChange(e.target.value);
+                    setValue("currentDistrict", "");
+                    setValue("currentMunicipality", "");
+                    setValue("currentWardNo", "");
+                  }}
+                >
+                  <option value="">Select Province</option>
+                  {addressData.provinceList.map((prov: any) => (
+                    <option key={prov.id} value={prov.name}>
+                      {prov.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
+            {errors.currentProvince && (
+              <p className="error-message">{errors.currentProvince.message}</p>
             )}
-          />
-          {errors.emailAddress && (
-            <p className="error-message">{errors.emailAddress.message}</p>
-          )}
+          </div>
+          {/* District */}
+          <div className="form-field">
+            <label className="form-label">
+              {t("step2.currentDistrict")} <span className="required">*</span>
+            </label>
+            <Controller
+              name="currentDistrict"
+              control={control}
+              rules={{ required: t("validation.required") }}
+              render={({ field }) => (
+                <select
+                  {...field}
+                  className="form-input"
+                  disabled={!currentProvince}
+                  onChange={(e) => {
+                    field.onChange(e.target.value);
+                    setValue("currentMunicipality", "");
+                    setValue("currentWardNo", "");
+                  }}
+                >
+                  <option value="">Select District</option>
+                  {getDistricts(currentProvince).map((dist: any) => (
+                    <option key={dist.id} value={dist.name}>
+                      {dist.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
+            {errors.currentDistrict && (
+              <p className="error-message">{errors.currentDistrict.message}</p>
+            )}
+          </div>
+          {/* Municipality */}
+          <div className="form-field">
+            <label className="form-label">
+              {t("step2.currentMunicipality")}{" "}
+              <span className="required">*</span>
+            </label>
+            <Controller
+              name="currentMunicipality"
+              control={control}
+              rules={{ required: t("validation.required") }}
+              render={({ field }) => (
+                <select
+                  {...field}
+                  className="form-input"
+                  disabled={!currentDistrict}
+                  onChange={(e) => {
+                    field.onChange(e.target.value);
+                    setValue("currentWardNo", "");
+                  }}
+                >
+                  <option value="">Select Municipality</option>
+                  {getMunicipalities(currentProvince, currentDistrict).map(
+                    (muni: any) => (
+                      <option key={muni.id} value={muni.name}>
+                        {muni.name}
+                      </option>
+                    )
+                  )}
+                </select>
+              )}
+            />
+            {errors.currentMunicipality && (
+              <p className="error-message">
+                {errors.currentMunicipality.message}
+              </p>
+            )}
+          </div>
+          {/* Ward */}
+          <div className="form-field">
+            <label className="form-label">
+              {t("step2.currentWardNo")} <span className="required">*</span>
+            </label>
+            <Controller
+              name="currentWardNo"
+              control={control}
+              rules={{ required: t("validation.required") }}
+              render={({ field }) => (
+                <select
+                  {...field}
+                  className="form-input"
+                  disabled={!currentMunicipality}
+                >
+                  <option value="">Select Ward</option>
+                  {wardOptions.map((ward) => (
+                    <option key={ward} value={ward}>
+                      {ward}
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
+            {errors.currentWardNo && (
+              <p className="error-message">{errors.currentWardNo.message}</p>
+            )}
+          </div>
+          {/* Tole */}
+          <div className="form-field">
+            <label className="form-label">
+              {t("step2.currentTole")} <span className="required">*</span>
+            </label>
+            <Controller
+              name="currentTole"
+              control={control}
+              rules={{ required: t("validation.required") }}
+              render={({ field }) => (
+                <input {...field} type="text" className="form-input" />
+              )}
+            />
+            {errors.currentTole && (
+              <p className="error-message">{errors.currentTole.message}</p>
+            )}
+          </div>
+          {/* Country */}
+          <div className="form-field">
+            <label className="form-label">
+              {t("step2.currentCountry")} <span className="required">*</span>
+            </label>
+            <Controller
+              name="currentCountry"
+              control={control}
+              rules={{ required: t("validation.required") }}
+              render={({ field }) => (
+                <input
+                  {...field}
+                  type="text"
+                  className="form-input"
+                  value={field.value}
+                />
+              )}
+            />
+            {errors.currentCountry && (
+              <p className="error-message">{errors.currentCountry.message}</p>
+            )}
+          </div>
+        </div>
+
+        <h3 className="subsection-title">{t("step2.contactInfo")}</h3>
+        <div className="grid-2-cols">
+          <div className="form-field">
+            <label className="form-label">
+              {t("step2.contactNumber")} <span className="required">*</span>
+            </label>
+            <Controller
+              name="contactNumber"
+              control={control}
+              rules={{
+                required: t("validation.required"),
+                pattern: {
+                  value: /^[0-9+\-\s()]*$/,
+                  message: t("validation.invalidPhone"),
+                },
+              }}
+              render={({ field }) => (
+                <input {...field} type="tel" className="form-input" />
+              )}
+            />
+            {errors.contactNumber && (
+              <p className="error-message">{errors.contactNumber.message}</p>
+            )}
+          </div>
+          <div className="form-field">
+            <label className="form-label">
+              {t("step2.emailAddress")} <span className="required">*</span>
+            </label>
+            <Controller
+              name="emailAddress"
+              control={control}
+              rules={{
+                required: t("validation.required"),
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: t("validation.invalidEmail"),
+                },
+              }}
+              render={({ field }) => (
+                <input {...field} type="email" className="form-input" />
+              )}
+            />
+            {errors.emailAddress && (
+              <p className="error-message">{errors.emailAddress.message}</p>
+            )}
+          </div>
         </div>
       </div>
     );
   };
+
   const renderStep3 = () => {
     const gender = watch("gender");
     const maritalStatus = watch("maritalStatus");
     const showSpouseField = gender === "Female" && maritalStatus === "Married";
     const showInLawFields = gender === "Female" && maritalStatus === "Married";
+    const showChildrenSection =
+      gender === "Female" && maritalStatus === "Married";
     const childrenNames = watch("childrenNames") || [];
 
     const addChild = () => {
@@ -1845,7 +1872,7 @@ function Form() {
             <p className="error-message">{errors.maritalStatus.message}</p>
           )}
         </div>
-
+          <div className="grid-2-cols">
         <div className="form-field">
           <label className="form-label">
             {t("step3.fatherName")} <span className="required">*</span>
@@ -1893,7 +1920,8 @@ function Form() {
             <p className="error-message">{errors.motherName.message}</p>
           )}
         </div>
-
+          </div>
+          <div className="grid-2-cols">
         <div className="form-field">
           <label className="form-label">
             {t("step3.grandfatherName")} <span className="required">*</span>
@@ -1946,6 +1974,8 @@ function Form() {
             </div>
           </>
         )}
+        </div>
+        <div className="grid-2-cols">
         {showInLawFields && (
           <>
             <div className="form-field">
@@ -2009,67 +2039,59 @@ function Form() {
             </div>
           </>
         )}
+        </div>
 
-        {/* <div className="form-field">
-          <label className="form-label">Spouse's Name</label>
-          <Controller
-            name="spouseName"
-            control={control}
-            render={({ field }) => (
-              <input {...field} type="text" className="form-input" />
-            )}
-          />
-        </div> */}
-
-        <div className="form-field">
-          <label className="form-label">{t("step3.childrenNames")}</label>
-          {childrenNames.map((childName, index) => (
-            <div
-              key={index}
-              style={{
-                display: "flex",
-                gap: "10px",
-                marginBottom: "10px",
-                alignItems: "center",
-              }}
-            >
-              <input
-                type="text"
-                value={childName}
-                onChange={(e) => updateChildName(index, e.target.value)}
-                className="form-input"
-                placeholder={`Child ${index + 1} name`}
-                style={{ flex: 1 }}
-              />
-              <button
-                type="button"
-                onClick={() => removeChild(index)}
-                className="btn btn-secondary"
+        {showChildrenSection && (
+          <div className="form-field">
+            <label className="form-label">{t("step3.childrenNames")}</label>
+            {childrenNames.map((childName, index) => (
+              <div
+                key={index}
                 style={{
-                  backgroundColor: "#ef4444",
-                  color: "white",
-                  padding: "8px 16px",
-                  minWidth: "40px",
+                  display: "flex",
+                  gap: "10px",
+                  marginBottom: "10px",
+                  alignItems: "center",
                 }}
               >
-                -
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addChild}
-            className="btn btn-secondary"
-            style={{
-              backgroundColor: "#10b981",
-              color: "white",
-              padding: "8px 16px",
-              marginTop: "10px",
-            }}
-          >
-            + Add Child
-          </button>
-        </div>
+                <input
+                  type="text"
+                  value={childName}
+                  onChange={(e) => updateChildName(index, e.target.value)}
+                  className="form-input"
+                  placeholder={`Child ${index + 1} name`}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeChild(index)}
+                  className="btn btn-secondary"
+                  style={{
+                    backgroundColor: "#ef4444",
+                    color: "white",
+                    padding: "8px 16px",
+                    minWidth: "40px",
+                  }}
+                >
+                  -
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addChild}
+              className="btn btn-secondary"
+              style={{
+                backgroundColor: "#10b981",
+                color: "white",
+                padding: "8px 16px",
+                marginTop: "10px",
+              }}
+            >
+              + Add Child
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -2109,7 +2131,7 @@ function Form() {
           <p className="error-message">{errors.accountType.message}</p>
         )}
       </div>
-
+        <div className = "grid-2-cols">
       <div className="form-field">
         <label className="form-label">
           {t("step4.accountNumber")} <span className="required">*</span>
@@ -2143,6 +2165,25 @@ function Form() {
           <p className="error-message">{errors.bankName.message}</p>
         )}
       </div>
+      </div>
+
+      <div className="grid-2-cols">
+       <div className="form-field">
+        <label className="form-label">
+          {t("step4.bankBranch")} <span className="required">*</span>
+        </label>
+        <Controller
+          name="bankBranch"
+          control={control}
+          rules={{ required: t("validation.required") }}
+          render={({ field }) => (
+            <input {...field} type="text" className="form-input" />
+          )}
+        />
+        {errors.bankBranch && (
+          <p className="error-message">{errors.bankBranch.message}</p>
+        )}
+      </div>
 
       <div className="form-field">
         <label className="form-label">
@@ -2160,6 +2201,7 @@ function Form() {
           <p className="error-message">{errors.bankAddress.message}</p>
         )}
       </div>
+    </div>
     </div>
   );
 
@@ -2290,7 +2332,7 @@ function Form() {
           </div>
         )}
       </div>
-
+        <div className="grid-2-cols">
       {/* Organization Name */}
       <div className="form-field">
         <label className="form-label">
@@ -2326,8 +2368,10 @@ function Form() {
           <p className="error-message">{errors.organizationAddress.message}</p>
         )}
       </div>
+      </div>
 
       {/* Designation */}
+      <div className="grid-2-cols">
       <div className="form-field">
         <label className="form-label">{t("step5.designation")}</label>
         <Controller
@@ -2357,6 +2401,7 @@ function Form() {
         {errors.employeeId && (
           <p className="error-message">{errors.employeeId.message}</p>
         )}
+      </div>
       </div>
 
       {/* Annual Income */}
@@ -2473,7 +2518,7 @@ function Form() {
             </p>
           </div>
         )}
-
+        <div className="grid-2-cols">
         <div className="form-field">
           <label className="form-label">
             {t("step6.guardianName")} <span className="required">*</span>
@@ -2514,6 +2559,7 @@ function Form() {
           {errors.relationship && (
             <p className="error-message">{errors.relationship.message}</p>
           )}
+        </div>
         </div>
 
         <div className="form-field" style={{ marginBottom: "1rem" }}>
@@ -2590,7 +2636,7 @@ function Form() {
             </div>
           ))}
         </div>
-
+          <div className="grid-2-cols">
         <div className="form-field">
           <label className="form-label">
             {t("step6.mobileNumber")} <span className="required">*</span>
@@ -2646,7 +2692,8 @@ function Form() {
             <p className="error-message">{errors.email.message}</p>
           )}
         </div>
-
+        </div>
+          <div className="grid-2-cols">
         <div className="form-field">
           <label className="form-label">{t("step6.panNumber")}</label>
           <Controller
@@ -2676,6 +2723,7 @@ function Form() {
               {errors.birthRegistrationNumber.message}
             </p>
           )}
+        </div>
         </div>
 
         <div className="form-field">
@@ -2769,7 +2817,7 @@ function Form() {
             <p className="error-message">{errors.issueAuthority.message}</p>
           )}
         </div>
-
+{/* 
         <div className="form-field">
           <label className="form-label">
             {t("step6.guardianSignature")} <span className="required">*</span>
@@ -2806,7 +2854,7 @@ function Form() {
               {t("save")}
             </button>
           </div>
-        </div>
+        </div> */}
       </div>
     );
   };
@@ -3008,7 +3056,7 @@ function Form() {
       <div className="form-section">
         <h2 className="section-title">{t("step8.title")}</h2>
         <p className="section-description">{t("step8.description")}</p>
-
+      <div className="grid-2-cols">
         {/* Citizenship Front */}
         <div className="form-field">
           <label className="form-label">
@@ -3100,7 +3148,8 @@ function Form() {
             </p>
           )}
         </div>
-
+        </div>
+        
         {/* Passport (for NRN) */}
         {watch("nationality") === "Other" && (
           <div className="form-field">
@@ -3143,49 +3192,8 @@ function Form() {
             )}
           </div>
         )}
-
-        {/* Recent Photo */}
-        <div className="form-field">
-          <label className="form-label">
-            {t("step8.photo")} <span className="required">*</span>
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => handleFileUpload(e, "photoImage")}
-            className="form-input"
-          />
-          {watch("photoImage") && (
-            <div className="upload-preview">
-              <div className="upload-status">
-                <span className="upload-success">
-                  ✓ {t("step8.fileUploaded")}
-                </span>
-                <span className="upload-size">
-                  {getFileSize(watch("photoImage"))}
-                </span>
-              </div>
-              <div className="image-preview-container">
-                <img
-                  src={watch("photoImage")}
-                  alt="Photo Preview"
-                  className="image-preview"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => removeImage("photoImage")}
-                className="btn-remove-file"
-              >
-                ✕ {t("remove")}
-              </button>
-            </div>
-          )}
-          {errors.photoImage && (
-            <p className="error-message">{errors.photoImage.message}</p>
-          )}
-        </div>
-
+    
+          <div className="grid-2-cols">
         {/* PAN Card (Optional) */}
         <div className="form-field">
           <label className="form-label">{t("step8.panCard")}</label>
@@ -3266,6 +3274,50 @@ function Form() {
             <p className="error-message">{errors.fingerprintImage.message}</p>
           )}
         </div>
+        </div>
+        <div className="grid-2-cols">
+        {/* Recent Photo */}
+        <div className="form-field">
+          <label className="form-label">
+            {t("step8.photo")} <span className="required">*</span>
+          </label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleFileUpload(e, "photoImage")}
+            className="form-input"
+          />
+          {watch("photoImage") && (
+            <div className="upload-preview">
+              <div className="upload-status">
+                <span className="upload-success">
+                  ✓ {t("step8.fileUploaded")}
+                </span>
+                <span className="upload-size">
+                  {getFileSize(watch("photoImage"))}
+                </span>
+              </div>
+              <div className="image-preview-container">
+                <img
+                  src={watch("photoImage")}
+                  alt="Photo Preview"
+                  className="image-preview"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => removeImage("photoImage")}
+                className="btn-remove-file"
+              >
+                ✕ {t("remove")}
+              </button>
+            </div>
+          )}
+          {errors.photoImage && (
+            <p className="error-message">{errors.photoImage.message}</p>
+          )}
+        </div>
+        
 
         {/* Location Map Image */}
         <div className="form-field">
@@ -3308,7 +3360,8 @@ function Form() {
             <p className="error-message">{errors.locationMapImage.message}</p>
           )}
         </div>
-
+        </div>
+          
         {/* For Minors - Additional Documents */}
         {isMinorByAge && (
           <>
@@ -3439,7 +3492,8 @@ function Form() {
             </div>
           </>
         )}
-      </div>
+        </div>
+      
     );
   };
   const renderStep9 = () => {

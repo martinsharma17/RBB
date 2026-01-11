@@ -44,7 +44,7 @@ const resources = {
       "step1.panNumber": "PAN Number",
       "step1.identificationNo": "Identification No. (In case of NRN)",
       "step1.identificationAddress": "Identification Address (In case of NRN)",
-       // en
+      // en
       "step1.genderOther": "Specify other gender",
       "step1.nationalityOther": "Specify other nationality",
 
@@ -66,7 +66,7 @@ const resources = {
       "validation.invalidEmail": "Invalid email address",
 
       // Step 2 - Address Information
-      "step2.sameAsCurrentAddress": "Same as current address",
+      "step2.sameAsPermanentAddress": "Same as permanent address",
       "step2.currentWardNo": "Current Ward No.",
       "step2.currentMunicipality": "Current Municipality",
       "step2.currentDistrict": "Current District",
@@ -103,6 +103,7 @@ const resources = {
       "step4.accountType.business": "Business",
       "step4.accountNumber": "Account Number",
       "step4.bankName": "Bank Name",
+      "step4.bankBranch": "Bank Branch",
       "step4.bankAddress": "Bank Address",
 
       // Step 5 - Occupation & Finance
@@ -133,7 +134,7 @@ const resources = {
       "step6.notRequired":
         "You are 18 or older - Guardian information is not required.",
       "step6.minorNotice":
-        "You are {{age}} years old - Guardian information is required.",
+        "Guardian information is required.",
       "step6.guardianName": "Guardian Name",
       "step6.relationship": "Relationship",
       "step6.relationship.father": "Father",
@@ -239,7 +240,6 @@ const resources = {
       "step1.panNumber": "प्यान नम्बर",
       "step1.identificationNo": "परिचय नम्बर (NRN को हकमा)",
       "step1.identificationAddress": "परिचय ठेगाना (NRN को हकमा)",
-     
 
       // ne
       "step1.genderOther": "अन्य लिङ्ग उल्लेख गर्नुहोस्",
@@ -261,7 +261,7 @@ const resources = {
       "validation.invalidPhone": "अवैध सम्पर्क नम्बर",
       "validation.invalidEmail": "अवैध इमेल ठेगाना",
 
-      "step2.sameAsCurrentAddress": "हालको ठेगाना जस्तै",
+      "step2.sameAsPermanentAddress": "स्थायी ठेगाना जस्तै",
       "step2.currentWardNo": "हालको वडा नं.",
       "step2.currentMunicipality": "हालको नगरपालिका/गाउँपालिका",
       "step2.currentDistrict": "हालको जिल्ला",
@@ -298,6 +298,7 @@ const resources = {
       "step4.accountType.business": "व्यापार खाता",
       "step4.accountNumber": "खाता नम्बर",
       "step4.bankName": "बैंकको नाम",
+      "step4.bankBranch": "बैंक शाखा",
       "step4.bankAddress": "बैंकको ठेगाना",
 
       // Step 5 - Occupation & Finance
