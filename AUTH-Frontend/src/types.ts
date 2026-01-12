@@ -11,6 +11,7 @@ export interface User {
   name?: string;
   roles: string[];
   picture?: string | null;
+  branchName?: string;
 }
 
 export interface DecodedToken {

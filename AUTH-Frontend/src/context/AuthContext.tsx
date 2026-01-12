@@ -122,10 +122,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     const userId = decodedToken.sub || decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] || '';
                     const userName = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || decodedToken.name || '';
                     const userPicture = decodedToken.picture || decodedToken['urn:google:picture'] || null;
+                    const branchName = (decodedToken as any).branchName || (decodedToken as any).BranchName || '';
 
                     // Update State
                     setToken(urlToken);
-                    setUser({ id: userId, email: userEmail, name: userName, roles: rolesArray, picture: userPicture });
+                    setUser({ id: userId, email: userEmail, name: userName, roles: rolesArray, picture: userPicture, branchName });
+
+                    // [NEW] Fetch full profile to get latest branch info
+                    fetchUserProfile(urlToken);
 
                     // Remove token from URL (security & clean URL)
                     window.history.replaceState({}, document.title, window.location.pathname);
@@ -135,8 +139,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
             else if (token) {
                 // 2. CHECK FOR EXISTING LOCAL TOKEN
-                // If we already had a token in state/storage, we assume it's valid for now.
-                // In a real production app, you might ping an endpoint like /api/auth/me here to verify validity.
+                fetchUserProfile(token);
             } else {
                 // No token found anywhere -> Not logged in.
                 localStorage.removeItem('userRoles');
@@ -182,6 +185,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         } catch (error) {
             console.error('❌ Error fetching permissions:', error);
             setPermissions(null);
+        }
+    }, [apiBase]);
+
+    // --- FETCH USER PROFILE FUNCTION ---
+    const fetchUserProfile = useCallback(async (authToken: string): Promise<void> => {
+        if (!authToken) return;
+
+        try {
+            const response = await fetch(`${apiBase}/api/user/profile`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                },
+            });
+
+            if (response.ok) {
+                const res = await response.json();
+                const profileData = res.data;
+                console.log('📥 User profile received:', profileData);
+
+                setUser(prev => {
+                    if (!prev) return null;
+                    return {
+                        ...prev,
+                        branchName: profileData.branchName,
+                        name: profileData.userName || profileData.name || prev.name
+                    };
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error fetching user profile:', error);
         }
     }, [apiBase]);
 
@@ -257,10 +290,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 const userId = decodedToken.sub || decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] || '';
                 const userName = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || decodedToken.name || '';
                 const userPicture = decodedToken.picture || null;
+                const branchName = (decodedToken as any).branchName || (decodedToken as any).BranchName || '';
 
                 // Update State
                 setToken(authToken);
-                setUser({ id: userId, email: userEmail, name: userName, roles: roles, picture: userPicture });
+                setUser({ id: userId, email: userEmail, name: userName, roles: roles, picture: userPicture, branchName });
+
+                // [NEW] Fetch full profile to get latest branch info
+                fetchUserProfile(authToken);
 
                 // Fetch permissions from backend
                 await fetchPermissions(authToken);

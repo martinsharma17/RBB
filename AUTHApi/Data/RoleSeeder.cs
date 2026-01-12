@@ -66,6 +66,18 @@ namespace AUTHApi.Data
 
             Console.WriteLine("SUPER ADMIN READY ✔");
 
+            // SELF-HEAL: Ensure Password is 'Martin#123' (Dev convenience)
+            // This ensures that even if you forget it, restarting the app resets it for this specific user.
+            if (superAdmin != null)
+            {
+                var token = await userManager.GeneratePasswordResetTokenAsync(superAdmin);
+                var resetResult = await userManager.ResetPasswordAsync(superAdmin, token, password);
+                if (!resetResult.Succeeded)
+                {
+                    Console.WriteLine("Warning: Could not auto-reset SuperAdmin password.");
+                }
+            }
+
             // SELF-HEAL: Ensure ALL users are Active (Migration fix)
             // This fixes the issue where the new column defaults to 0 (Inactive)
             var allUsers = userManager.Users.ToList();

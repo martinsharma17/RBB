@@ -6,6 +6,7 @@ namespace AUTHApi.Entities
 {
     public class KycDocument
     {
+        public const int MaxFileSize = 4 * 1024; // 4 KB
         [Key] public int Id { get; set; }
 
         [Required] public int KycDetailId { get; set; }
@@ -36,5 +37,25 @@ namespace AUTHApi.Entities
 
         // Optional verification status for individual docs
         public bool IsVerified { get; set; } = false;
+
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (Data != null && Data.Length > MaxFileSize)
+            {
+                yield return new ValidationResult(
+                    $"Document size must not exceed {MaxFileSize} bytes (4 KB).",
+                    new[] { nameof(Data) }
+                );
+            }
+
+            if (FileSize > MaxFileSize)
+            {
+                yield return new ValidationResult(
+                    $"FileSize must not exceed {MaxFileSize} bytes (4 KB).",
+                    new[] { nameof(FileSize) }
+                );
+            }
+        }
     }
 }

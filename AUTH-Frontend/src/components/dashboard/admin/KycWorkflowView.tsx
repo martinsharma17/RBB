@@ -5,6 +5,8 @@ interface PendingKyc {
     id: number;
     kycSessionId: number;
     customerEmail: string;
+    customerName?: string;
+    branchName?: string;
     pendingLevel: number;
     totalLevels: number;
     createdAt: string;
@@ -97,6 +99,24 @@ const KycWorkflowView: React.FC = () => {
 
     const handleAction = async (action: 'approve' | 'reject' | 'resubmit' | 'pull-back', returnToPrevious: boolean = false) => {
         if (!selectedKyc) return;
+
+        // Confirmation Alert
+        let actionDescription = "";
+        switch (action) {
+            case 'approve': actionDescription = "approve this application"; break;
+            case 'resubmit': actionDescription = "resubmit this application"; break;
+            case 'pull-back': actionDescription = "pull back this application"; break;
+            case 'reject':
+                actionDescription = returnToPrevious
+                    ? "return this application to the previous reviewer"
+                    : "reject this application back to the customer";
+                break;
+        }
+
+        if (!window.confirm(`Are you sure you want to ${actionDescription}?`)) {
+            return;
+        }
+
         if (action === 'reject' && !remarks) {
             alert("Remarks are required for rejection or returning.");
             return;
@@ -205,8 +225,10 @@ const KycWorkflowView: React.FC = () => {
                                                     {kyc.customerEmail.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <div className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{kyc.customerEmail}</div>
-                                                    <div className="text-[10px] font-mono text-gray-400">SESSION #{kyc.kycSessionId}</div>
+                                                    <div className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{kyc.customerName || kyc.customerEmail}</div>
+                                                    <div className="text-[10px] font-mono text-gray-400">
+                                                        {kyc.customerName ? kyc.customerEmail : `SESSION #${kyc.kycSessionId}`}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
@@ -214,6 +236,9 @@ const KycWorkflowView: React.FC = () => {
                                             <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-lg border border-indigo-100">
                                                 {kyc.currentRoleName || 'N/A'}
                                             </span>
+                                            <div className="mt-1 flex items-center gap-1">
+                                                <span className="text-[10px] font-bold text-gray-400 capitalize bg-gray-50 px-1.5 rounded border border-gray-100">{kyc.branchName || 'Global'}</span>
+                                            </div>
                                             {kyc.status === 4 && (
                                                 <span className="block mt-1 text-[9px] font-black text-red-500 uppercase tracking-tighter ring-1 ring-red-100 w-fit px-1.5 rounded bg-red-50">
                                                     RESUBMISSION REQ.
@@ -286,7 +311,7 @@ const KycWorkflowView: React.FC = () => {
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-black text-gray-900">Application Review</h3>
-                                    <p className="text-xs text-gray-500 font-medium">{detailData?.workflow?.kycSession?.email || 'Loading...'}</p>
+                                    <p className="text-xs text-gray-500 font-medium">{detailData?.workflow?.kycSession?.email || detailData?.details?.email || 'Loading Applicant Info...'}</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -760,8 +785,8 @@ const InfoRow: React.FC<{ label: string, value: any, isEditing?: boolean, type?:
                 />
             )
         ) : (
-            <span className={`text-xs text-gray-900 font-black ${label === 'PEP Status' && value === 'YES' ? 'text-red-600' : ''}`}>
-                {value || 'N/A'}
+            <span className={`text-xs text-gray-900 font-black ${label === 'PEP Status' && (value === 'YES' || value === true) ? 'text-red-600' : ''}`}>
+                {(value !== null && value !== undefined && value !== '') ? String(value) : 'N/A'}
             </span>
         )}
     </div>

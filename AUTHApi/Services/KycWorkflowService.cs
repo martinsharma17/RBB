@@ -145,7 +145,7 @@ namespace AUTHApi.Services
             {
                 KycWorkflowId = workflow.Id,
                 KycSessionId = kycSessionId,
-                UserId = userId == "Public" ? null : userId,
+                UserId = (userId == "Public" || userId == "System") ? null : userId,
                 Action = "Initiated",
                 Remarks = "KYC application submitted and workflow started.",
                 ActionedByRoleId = submittedRoleId,

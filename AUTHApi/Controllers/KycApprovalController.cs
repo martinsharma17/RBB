@@ -124,15 +124,19 @@ namespace AUTHApi.Controllers
             var isGlobalReviewer = roles.Any(r => r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) ||
                                                   r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
 
+            // NEW: Check if user has GlobalSearch specifically via claims/policies
+            var hasGlobalSearch = User.HasClaim(c => c.Type == "Permission" && c.Value == Permissions.Kyc.GlobalSearch);
+
             var query = _context.KycWorkflowMasters
                 .Include(w => w.KycSession)
+                .ThenInclude(s => s.KycDetail)
                 .Where(w => w.Status == KycWorkflowStatus.InReview ||
                             w.Status == KycWorkflowStatus.ResubmissionRequired ||
                             w.Status == KycWorkflowStatus.Rejected);
 
             if (!isGlobalReviewer)
             {
-                // Map role names to IDs
+                // Map role names to IDs for current user to filter items assigned to them
                 var roleIds = await _context.Roles
                     .Where(r => roles.Contains(r.Name))
                     .Select(r => r.Id)
@@ -141,20 +145,25 @@ namespace AUTHApi.Controllers
                 query = query.Where(w => roleIds.Contains(w.CurrentRoleId));
             }
 
-
-            // BRANCH SCOPING: Filter by Branch
-            if (!isGlobalReviewer) // Admins might want to see everything, or maybe they strictly belong to HO?
+            // BRANCH SCOPING
+            if (!isGlobalReviewer)
             {
-                // Check if user has a specific branch
                 if (user.BranchId.HasValue)
                 {
-                    // Staff sees their branch + Global items that need assignment
+                    // Staff WITH a branch: see their branch items OR unassigned global items
                     query = query.Where(w => w.BranchId == user.BranchId.Value || w.BranchId == null);
+                }
+                else
+                {
+                    // Staff WITHOUT a branch: see ONLY global items (Head Office/Unassigned)
+                    // This prevents an empty queue while still hiding other branch's private data
+                    query = query.Where(w => w.BranchId == null);
                 }
             }
 
             var pending = await query
                 .Include(w => w.KycSession)
+                .ThenInclude(s => s.KycDetail)
                 .Include(w => w.Branch) // Include Branch info
                 .OrderByDescending(w => w.CreatedAt)
                 .Select(w => new
@@ -162,6 +171,9 @@ namespace AUTHApi.Controllers
                     w.Id,
                     w.KycSessionId,
                     CustomerEmail = w.KycSession != null ? w.KycSession.Email : "Unknown",
+                    CustomerName = (w.KycSession != null && w.KycSession.KycDetail != null)
+                        ? (w.KycSession.KycDetail.FirstName + " " + w.KycSession.KycDetail.LastName).Trim()
+                        : "Applicant",
                     w.PendingLevel,
                     w.CreatedAt,
                     w.LastRemarks,
@@ -285,12 +297,94 @@ namespace AUTHApi.Controllers
                     .FirstOrDefaultAsync(k => k.SessionId == workflow.KycSessionId);
             }
 
-            var documents = details?.Documents ?? new List<KycDocument>();
+            var documents = details?.Documents?.Select(d => (object)new
+            {
+                d.Id,
+                d.DocumentType,
+                d.OriginalFileName,
+                d.ContentType,
+                d.UploadedAt
+            }).ToList() ?? new List<object>();
 
             return Success(new
             {
-                workflow,
-                details,
+                workflow = new
+                {
+                    workflow.Id,
+                    workflow.KycSessionId,
+                    workflow.Status,
+                    workflow.PendingLevel,
+                    workflow.CreatedAt,
+                    workflow.CurrentRoleId,
+                    KycSession = workflow.KycSession != null
+                        ? new
+                        {
+                            workflow.KycSession.Id,
+                            workflow.KycSession.Email,
+                            workflow.KycSession.FormStatus
+                        }
+                        : null
+                },
+                details = details != null
+                    ? new
+                    {
+                        details.Id,
+                        details.SessionId,
+                        details.FirstName,
+                        details.MiddleName,
+                        details.LastName,
+                        details.Email,
+                        details.MobileNumber,
+                        details.Gender,
+                        details.DateOfBirth,
+                        details.Nationality,
+                        details.CitizenshipNumber,
+                        details.CitizenshipIssuedDistrict,
+                        details.CitizenshipIssuedDate,
+                        details.PanNumber,
+                        details.CurrentState,
+                        details.CurrentDistrict,
+                        details.CurrentMunicipality,
+                        details.CurrentWardNo,
+                        details.CurrentStreet,
+                        details.PermanentState,
+                        details.PermanentDistrict,
+                        details.PermanentMunicipality,
+                        details.PermanentWardNo,
+                        details.PermanentStreet,
+                        details.FatherName,
+                        details.MotherName,
+                        details.GrandFatherName,
+                        details.SpouseName,
+                        details.SonName,
+                        details.DaughterName,
+                        details.BankName,
+                        details.BankBranch,
+                        details.BankAccountNumber,
+                        details.BankAccountType,
+                        details.Occupation,
+                        details.OtherOccupation,
+                        details.ServiceSector,
+                        details.BusinessType,
+                        details.OrganizationName,
+                        details.OrganizationAddress,
+                        details.Designation,
+                        details.EmployeeIdNo,
+                        details.AnnualIncome,
+                        details.IsPep,
+                        details.PepRelation,
+                        details.HasBeneficialOwner,
+                        details.HasCriminalRecord,
+                        details.CriminalRecordDetails,
+                        details.AgreeToTerms,
+                        details.NoOtherFinancialLiability,
+                        details.AllInformationTrue,
+                        details.AgreementDate,
+                        details.TradingLimit,
+                        details.MarginTradingFacility,
+                        details.BranchId
+                    }
+                    : null,
                 documents,
                 logs,
                 approvalChain
@@ -436,6 +530,118 @@ namespace AUTHApi.Controllers
             public int NewBranchId { get; set; }
         }
 
+        /// <summary>
+        /// Search for KYC applications across the system using name, nationality ID, or contact.
+        /// Integrated with Global Search permissions.
+        /// </summary>
+        [HttpGet("search")]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
+        public async Task<IActionResult> SearchKycs([FromQuery] string? query, [FromQuery] int? branchId)
+        {
+            var userId = CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Failure("User not found.");
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var isGlobal = roles.Any(r => r == "SuperAdmin" || r == "Admin") ||
+                           User.HasClaim(c => c.Type == "Permission" && c.Value == Permissions.Kyc.GlobalSearch);
+
+            var q = _context.KycWorkflowMasters
+                .Include(w => w.KycSession)
+                .ThenInclude(s => s.KycDetail)
+                .Include(w => w.Branch)
+                .AsQueryable();
+
+            // Apply Search Query
+            if (!string.IsNullOrEmpty(query))
+            {
+                query = query.ToLower().Trim();
+                q = q.Where(w =>
+                    (w.KycSession.Email.ToLower().Contains(query)) ||
+                    (w.KycSession.KycDetail != null && (
+                        w.KycSession.KycDetail.FirstName.ToLower().Contains(query) ||
+                        w.KycSession.KycDetail.LastName.ToLower().Contains(query) ||
+                        w.KycSession.KycDetail.CitizenshipNumber.Contains(query) ||
+                        w.KycSession.KycDetail.MobileNumber.Contains(query)
+                    ))
+                );
+            }
+
+            // Apply Branch Filter (If restricted)
+            if (!isGlobal)
+            {
+                q = q.Where(w => w.BranchId == user.BranchId);
+            }
+            else if (branchId.HasValue)
+            {
+                q = q.Where(w => w.BranchId == branchId.Value);
+            }
+
+            var results = await q
+                .OrderByDescending(w => w.CreatedAt)
+                .Take(50)
+                .Select(w => new KycUnifiedViewDto
+                {
+                    WorkflowId = w.Id,
+                    Status = w.Status.ToString(),
+                    PendingLevel = w.PendingLevel,
+                    CustomerName = w.KycSession.KycDetail != null
+                        ? $"{w.KycSession.KycDetail.FirstName} {w.KycSession.KycDetail.LastName}"
+                        : "Unknown",
+                    Email = w.KycSession.Email,
+                    MobileNumber = w.KycSession.KycDetail != null ? w.KycSession.KycDetail.MobileNumber : "",
+                    BranchName = w.Branch != null ? w.Branch.Name : "Global",
+                    CreatedAt = w.CreatedAt,
+                    LastRemarks = w.LastRemarks
+                })
+                .ToListAsync();
+
+            return Success(results);
+        }
+
+        /// <summary>
+        /// Support for branch mobility: Pull an application from another branch to the current user's branch.
+        /// </summary>
+        [HttpPost("pull-to-my-branch")]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
+        public async Task<IActionResult> TransferToMyBranch([FromBody] ApprovalModel model)
+        {
+            var userId = CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null || !user.BranchId.HasValue)
+                return Failure("You must be assigned to a branch to perform this action.");
+
+            var workflow = await _context.KycWorkflowMasters.FindAsync(model.WorkflowId);
+            if (workflow == null) return NotFound("Workflow not found.");
+
+            // Update branch
+            workflow.BranchId = user.BranchId.Value;
+            workflow.UpdatedAt = DateTime.UtcNow;
+
+            // Add a log entry for the transfer
+            var log = new KycApprovalLog
+            {
+                KycWorkflowId = workflow.Id,
+                KycSessionId = workflow.KycSessionId,
+                UserId = userId,
+                Action = "BranchTransfer",
+                Remarks = $"Application pulled to {user.BranchId} branch for verification.",
+                ActionedByRoleId = workflow.CurrentRoleId,
+                ClientIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = Request.Headers["User-Agent"].ToString(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.KycApprovalLogs.Add(log);
+            await _context.SaveChangesAsync();
+
+            return Success("Application successfully transferred to your branch.");
+        }
+
         public class ApprovalModel
         {
             public int WorkflowId { get; set; }
@@ -444,5 +650,3 @@ namespace AUTHApi.Controllers
         }
     }
 }
-
-

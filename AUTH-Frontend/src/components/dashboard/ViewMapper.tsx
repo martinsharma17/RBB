@@ -1,21 +1,21 @@
 import React from 'react';
 import AdminDashboardView from './admin/AdminDashboardView';
 import AdminUsersListView from './admin/AdminUsersListView';
-import AdminChartsView from './admin/AdminChartsView';
+
 import AccessManagementView from './AccessManagementView';
 import RolesManagementView from './RolesManagementView';
 import PolicyEditorView from './PolicyEditorView';
-import SettingsView from './SettingsView';
-import NotificationsView from './NotificationsView';
+
+
 import ProjectSettingsView from './ProjectSettingsView';
 import AdminResourceView from './admin/AdminResourceView';
-import TaskListView from './tasks/TaskListView';
-import TaskKanbanView from './tasks/TaskKanbanView';
+
 import KycFormMaster from './user/KycFormMaster';
 import MenuManagementView from './admin/MenuManagementView';
 import KycWorkflowView from './admin/KycWorkflowView';
 import UnifiedKycQueueView from './admin/UnifiedKycQueueView';
 import BranchManagementView from './superadmin/BranchManagementView';
+import KycSearchView from './admin/KycSearchView';
 
 
 // Placeholder for missing component
@@ -42,6 +42,9 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
         case 'kyc_unified_queue':
             return <UnifiedKycQueueView {...props} />;
 
+        case 'kyc_search':
+            return <KycSearchView {...props} />;
+
         case 'support_view':  // This ID must match the 'ViewId' in the backend
             return <SupportComponent />;
 
@@ -61,44 +64,19 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
             return <BranchManagementView {...props} />;
 
         // --- Analytics ---
-        case 'charts':
-            return <AdminChartsView {...props} />;
+
 
         // --- Tasks ---
-        case 'tasks':
-            return <AdminResourceView resourceName="Tasks Overview" {...props} />;
-        case 'task_list':
-            return <TaskListView {...props} />;
-        case 'task_kanban':
-            return <TaskKanbanView {...props} />;
+        // case 'tasks':
+        //     return <AdminResourceView resourceName="Tasks Overview" {...props} />;
+        // case 'task_list':
+        //     return <TaskListView {...props} />;
+        // case 'task_kanban':
+        //     return <TaskKanbanView {...props} />;
 
-        // --- Projects ---
-        case 'projects':
-            return <AdminResourceView resourceName="Projects Overview" {...props} />;
-        case 'my_projects':
-            return <AdminResourceView resourceName="My Projects" {...props} />;
-        case 'project_content':
-            return <AdminResourceView resourceName="Project Content" {...props} />;
-        case 'project_team':
-            return <AdminResourceView resourceName="Team & Workflow" {...props} />;
-        case 'project_settings':
-            return <ProjectSettingsView {...props} />;
 
-        // --- Commons ---
-        case 'settings':
-            return <SettingsView {...props} />;
-        case 'notifications':
-            return <NotificationsView {...props} />;
 
         // --- Placeholders for future modules ---
-        case 'reports':
-            return <div className="p-8 text-center text-gray-500">Reports Module (Coming Soon)</div>;
-        case 'audit':
-            return <div className="p-8 text-center text-gray-500">Audit Logs Module (Coming Soon)</div>;
-        case 'security':
-            return <div className="p-8 text-center text-gray-500">Security Settings Module (Coming Soon)</div>;
-        case 'backup':
-            return <div className="p-8 text-center text-gray-500">Backup & Restore Module (Coming Soon)</div>;
 
         default:
             return (

@@ -125,28 +125,42 @@ const Dashboard = () => {
 
     const handleAddUser = async () => {
         try {
+            const body = {
+                UserName: newUser.name, // Display name fallback
+                Name: newUser.name,     // Explicit Name field
+                Email: newUser.email,
+                Password: newUser.password,
+                Role: newUser.role || "User",
+                BranchId: (newUser.branchId && newUser.branchId !== "") ? parseInt(newUser.branchId) : null
+            };
+
+            console.log("Adding user with body:", body);
+
             const response = await fetch(`${apiBase}/api/User`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({
-                    UserName: newUser.name,
-                    Email: newUser.email,
-                    Password: newUser.password,
-                    Role: newUser.role || "User",
-                    BranchId: newUser.branchId ? parseInt(newUser.branchId) : null
-                })
+                body: JSON.stringify(body)
             });
-            if (response.ok) {
+
+            const resData = await response.json();
+
+            if (response.ok && resData.success) {
                 setShowAddModal(false);
                 setNewUser({ name: "", email: "", password: "", role: "User", branchId: "" });
                 fetchData();
             } else {
-                alert("Failed to add user");
+                console.error("Failed to add user:", resData);
+                const errorMsg = resData.message || "Failed to add user";
+                const validationErrors = resData.errors ? JSON.stringify(resData.errors) : "";
+                alert(`${errorMsg}\n${validationErrors}`);
             }
-        } catch (e) { alert("Error adding user"); }
+        } catch (e) {
+            console.error("Error adding user:", e);
+            alert("Error adding user. Check console for details.");
+        }
     };
 
     const handleDeleteUser = async (userId: string) => {

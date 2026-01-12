@@ -10,6 +10,11 @@ namespace AUTHApi.Data
         public DbSet<Branch> Branches { get; set; }
         public DbSet<ProjectSetting> ProjectSettings { get; set; }
 
+        // --- Address Lookup Tables ---
+        public DbSet<Province> Provinces { get; set; }
+        public DbSet<District> Districts { get; set; }
+        public DbSet<Municipality> Municipalities { get; set; }
+
         // --- Core KYC Session Tables ---
         public DbSet<KycFormSession> KycFormSessions { get; set; }
         public DbSet<KycOtpVerification> KycOtpVerifications { get; set; }

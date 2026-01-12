@@ -28,7 +28,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
      * This list defines the rows in the Policy Editor table.
      * 
      * ➕ HOW TO ADD A NEW RESOURCE ROW:
-     * 1. Add a new object to the `resources` array below.
+    //  * 1. Add a new object to the `resources` array below.
      *    { id: 'new_id', name: 'Display Name' }
      * 
      * 🔗 CONNECTING TO PERMISSIONS:
@@ -44,28 +44,14 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'users', name: 'Users & Admins' },
         { id: 'roles', name: 'Roles & Permissions' },
         { id: 'policies', name: 'Policy Editor' },
-        { id: 'charts', name: 'Charts & Analytics' },
-        { id: 'settings', name: 'Settings' },
         { id: 'branches', name: 'Branch Management' },
-
-        // Projects & Nested Resources
-        { id: 'projects', name: 'Projects (Root)' },
-        { id: 'my_projects', name: 'My Projects', parent: 'projects' },
-        { id: 'project_content', name: 'Project Content', parent: 'my_projects' },
-        { id: 'project_team', name: 'Team & Workflow', parent: 'project_content' },
-        { id: 'project_settings', name: 'Project Settings', parent: 'project_team' },
-
-        { id: 'tasks', name: 'Tasks (Overview)' },
-        { id: 'task_list', name: 'List', parent: 'tasks' }, // Child of tasks
-        { id: 'task_kanban', name: 'Kanban', parent: 'tasks' }, // Child of tasks
-        { id: 'reports', name: 'Reports' },
         { id: 'audit', name: 'Audit Logs' },
-        { id: 'notifications', name: 'Notifications' },
+
         { id: 'kyc', name: 'KYC Verification' },
         { id: 'kyc_workflow', name: 'KYC Approval Queue' },
         { id: 'kyc_unified_queue', name: 'Unified KYC Queue' },
-        { id: 'security', name: 'Security' },
-        { id: 'backup', name: 'Backup & Restore' }
+        { id: 'kyc_search', name: 'Global KYC Search' },
+
     ];
 
     // Available Actions
@@ -183,26 +169,6 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
 
             newRolePolicy[resourceId][actionId] = newVal;
 
-            // Cascading Logic for Sidebar Visibility
-            if (actionId === 'sidebar') {
-                const targetResource = resources.find(r => r.id === resourceId);
-
-                // 1. Parent OFF -> Turn OFF all Children
-                if (newVal === false) {
-                    const children = resources.filter(r => r.parent === resourceId);
-                    children.forEach(child => {
-                        if (!newRolePolicy[child.id]) newRolePolicy[child.id] = {};
-                        newRolePolicy[child.id].sidebar = false;
-                    });
-                }
-
-                // 2. Child ON -> Turn ON Parent
-                if (newVal === true && targetResource?.parent) {
-                    if (!newRolePolicy[targetResource.parent]) newRolePolicy[targetResource.parent] = {};
-                    newRolePolicy[targetResource.parent].sidebar = true;
-                }
-            }
-
             return {
                 ...prev,
                 [roleName]: newRolePolicy
@@ -317,15 +283,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                 </button>
             </div>
 
-            {/* Tip Banner */}
-            <div className="flex-shrink-0">
-                <div className="text-sm text-green-600 bg-green-50 px-4 py-3 rounded-lg border border-green-100 flex items-center gap-2">
-                    <span className="font-semibold text-lg">💡</span>
-                    <span>
-                        Use the <strong>Sidebar</strong> toggle to control menu visibility. Turning off a <strong>Parent</strong> hides its children.
-                    </span>
-                </div>
-            </div>
+
 
             {saveMessage && (
                 <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-2 flex-shrink-0">
@@ -394,56 +352,24 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {resources.map((resource, idx) => {
-                                            // Helper to calculate depth recursively
-                                            const getDepth = (id: string, currentDepth: number = 0): number => {
-                                                const res = resources.find(r => r.id === id);
-                                                if (!res || !res.parent) return currentDepth;
-                                                return getDepth(res.parent, currentDepth + 1);
-                                            };
-
-                                            const depth = getDepth(resource.id);
                                             const rolePolicy = activeRole ? policies[activeRole] : null;
                                             const resPolicy = rolePolicy ? rolePolicy[resource.id] || {} : {};
                                             const isAlt = idx % 2 === 0;
 
                                             return (
                                                 <tr key={resource.id} className={`group hover:bg-gray-50 transition-colors ${isAlt ? 'bg-white' : 'bg-[rgba(249,250,251,0.5)]'}`}>
-                                                    <td className="py-4 px-6 relative">
-                                                        {depth > 0 && (
-                                                            <div
-                                                                className="absolute top-0 bottom-0 w-px bg-gray-200 h-1/2 translate-y-full transform -translate-y-1/2"
-                                                                style={{ left: `${depth * 24 + 24}px` }}
-                                                            ></div>
-                                                        )}
-                                                        <div
-                                                            className="flex items-center gap-3"
-                                                            style={{ paddingLeft: `${depth * 24}px` }}
-                                                        >
-                                                            {depth > 0 && (
-                                                                <span className="text-gray-300 -ml-4">└──</span>
-                                                            )}
-                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors ${depth > 0 ? 'bg-gray-50 scale-90' : 'bg-gray-100'}`}>
+                                                    <td className="py-4 px-6">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 bg-gray-100 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors`}>
                                                                 <span className="text-xs font-bold">{resource.name[0]}</span>
                                                             </div>
                                                             <div>
-                                                                <p className={`font-medium ${depth > 0 ? 'text-gray-600' : 'text-gray-700'}`}>{resource.name}</p>
+                                                                <p className="font-medium text-gray-700">{resource.name}</p>
                                                                 <p className="text-[10px] text-gray-400">id: {resource.id}</p>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     {actions.map(action => {
-                                                        // -----------------------------------------------------------------------
-                                                        // SPECIAL CASE: 'Tasks' and 'Projects' parents only need Sidebar toggle
-                                                        // -----------------------------------------------------------------------
-                                                        const isParentOnly = (resource.id === 'tasks' || resource.id === 'projects' || resource.id === 'my_projects');
-                                                        if (isParentOnly && action.id !== 'sidebar') {
-                                                            return (
-                                                                <td key={action.id} className="py-4 px-4 text-center align-middle">
-                                                                    <span className="text-gray-300 select-none">-</span>
-                                                                </td>
-                                                            );
-                                                        }
-
                                                         const isChecked = resPolicy[action.id] === true;
 
                                                         // Styles based on action type

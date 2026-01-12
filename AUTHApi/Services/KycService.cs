@@ -246,6 +246,14 @@ namespace AUTHApi.Services
         public async Task<KycDocument> UploadDocumentAsync(int sessionId, string documentType, string fileName,
             byte[] content, string contentType)
         {
+            // Validate file size (4MB limit)
+            const long maxFileSize = 4 * 1024 * 1024; // 4MB in bytes
+            if (content.Length > maxFileSize)
+            {
+                throw new ArgumentException(
+                    $"File size exceeds the maximum allowed size of 4MB. File size: {content.Length / 1024.0 / 1024.0:F2}MB");
+            }
+
             var detail = await GetOrCreateDetailAsync(sessionId);
 
             var wwwRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
