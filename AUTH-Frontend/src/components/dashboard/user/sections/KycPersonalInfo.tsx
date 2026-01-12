@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
-import { adToBs } from "bikram-sambat-js"; 
+// import { adToBs } from "bikram-sambat-js"; 
 
 interface KycPersonalInfoProps {
   sessionId: number | null;
