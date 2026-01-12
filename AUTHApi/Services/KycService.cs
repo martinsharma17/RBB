@@ -336,54 +336,66 @@ namespace AUTHApi.Services
             return progress;
         }
 
-        public async Task<KycFormSession> GetOrCreateSessionAsync(string? userId, string? email)
+       public async Task<KycFormSession> GetOrCreateSessionAsync(string? userId, string? email)
+{
+    if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(email))
+        throw new ArgumentException("Both userId and email cannot be null or empty.");
+
+    // 1. Try to find a session for the logged-in user
+    KycFormSession? session = null;
+    if (!string.IsNullOrEmpty(userId))
+    {
+        session = await _context.KycFormSessions
+            .Include(s => s.KycDetail)
+            .Include(s => s.StepCompletions)
+            .FirstOrDefaultAsync(s => s.UserId == userId && !s.IsExpired && (s.FormStatus == 1 || s.FormStatus == 2));
+    }
+
+    // 2. If not found and userId is null (guest/OTP), try by email
+    if (session == null && string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(email))
+    {
+        session = await _context.KycFormSessions
+            .Include(s => s.KycDetail)
+            .Include(s => s.StepCompletions)
+            .FirstOrDefaultAsync(s => s.Email == email && s.UserId == null && !s.IsExpired && (s.FormStatus == 1 || s.FormStatus == 2));
+    }
+
+    // 3. If still not found, create a new session
+    if (session == null)
+    {
+        session = new KycFormSession
         {
-            if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(email))
-                throw new ArgumentException("Both userId and email cannot be null or empty.");
+            UserId = userId,
+            Email = email,
+            SessionExpiryDate = DateTime.UtcNow.AddDays(30),
+            CurrentStep = 1,
+            EmailVerified = false,
+            FormStatus = 1 // In Progress
+        };
+        await _context.KycFormSessions.AddAsync(session);
+        await _context.SaveChangesAsync();
 
-            var session = await _context.KycFormSessions
-                .Include(s => s.KycDetail)
-                .Include(s => s.StepCompletions)
-                .FirstOrDefaultAsync(s =>
-                    (userId != null && s.UserId == userId) || (email != null && s.Email == email));
-
-            if (session == null)
+        var steps = await _context.KycFormSteps.Where(s => s.IsActive).ToListAsync();
+        foreach (var step in steps)
+        {
+            await _context.KycStepCompletions.AddAsync(new KycStepCompletion
             {
-                if (string.IsNullOrEmpty(email))
-                    throw new ArgumentException("Email is required to create a new session.");
-
-                session = new KycFormSession
-                {
-                    UserId = userId,
-                    Email = email,
-                    SessionExpiryDate = DateTime.UtcNow.AddDays(30),
-                    CurrentStep = 1,
-                    EmailVerified = false
-                };
-                await _context.KycFormSessions.AddAsync(session);
-                await _context.SaveChangesAsync();
-
-                var steps = await _context.KycFormSteps.Where(s => s.IsActive).ToListAsync();
-                foreach (var step in steps)
-                {
-                    await _context.KycStepCompletions.AddAsync(new KycStepCompletion
-                    {
-                        SessionId = session.Id,
-                        StepNumber = step.StepNumber
-                    });
-                }
-
-                await _context.SaveChangesAsync();
-            }
-            else if (session.UserId == null && !string.IsNullOrEmpty(userId))
-            {
-                session.UserId = userId;
-                if (!string.IsNullOrEmpty(email)) session.Email = email;
-                await _context.SaveChangesAsync();
-            }
-
-            return session;
+                SessionId = session.Id,
+                StepNumber = step.StepNumber
+            });
         }
+        await _context.SaveChangesAsync();
+    }
+    // 4. If session exists but not linked to user, link it
+    else if (session.UserId == null && !string.IsNullOrEmpty(userId))
+    {
+        session.UserId = userId;
+        if (!string.IsNullOrEmpty(email)) session.Email = email;
+        await _context.SaveChangesAsync();
+    }
+
+    return session;
+}
 
         public async Task<(KycFormSession? session, string? errorMessage)> InitiateUnauthenticatedKycAsync(string email)
         {
