@@ -21,13 +21,13 @@ const KycAddress: React.FC<KycAddressProps> = ({
   const [permProvinces, setPermProvinces] = useState<string[]>([]);
   const [permDistricts, setPermDistricts] = useState<string[]>([]);
   const [permMunicipalities, setPermMunicipalities] = useState<string[]>([]);
-  const [permWards, setPermWards] = useState<number[]>([]);
+  
 
   // Dropdown data for current address
   const [currProvinces, setCurrProvinces] = useState<string[]>([]);
   const [currDistricts, setCurrDistricts] = useState<string[]>([]);
   const [currMunicipalities, setCurrMunicipalities] = useState<string[]>([]);
-  const [currWards, setCurrWards] = useState<number[]>([]);
+ 
 
   // Form data
   const [formData, setFormData] = useState({
@@ -52,7 +52,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
 
   // Fetch provinces for permanent address on mount
   useEffect(() => {
-    fetch(`${apiBase}/api/address/provinces`)
+    fetch(`${apiBase}/api/Address/provinces`)
       .then((res) => res.json())
       .then((data) => setPermProvinces(data))
       .catch(() => setPermProvinces([]));
@@ -62,7 +62,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
   useEffect(() => {
     if (formData.permanentProvince) {
       fetch(
-        `${apiBase}/api/address/districts?province=${formData.permanentProvince}`
+        `${apiBase}/api/Address/districts/${formData.permanentProvince}`
       )
         .then((res) => res.json())
         .then((data) => setPermDistricts(data))
@@ -82,7 +82,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
   useEffect(() => {
     if (formData.permanentDistrict) {
       fetch(
-        `${apiBase}/api/address/municipalities?district=${formData.permanentDistrict}`
+        `${apiBase}/api/Address/municipalities/${formData.permanentDistrict}`
       )
         .then((res) => res.json())
         .then((data) => setPermMunicipalities(data))
@@ -97,27 +97,11 @@ const KycAddress: React.FC<KycAddressProps> = ({
     }));
   }, [formData.permanentDistrict, apiBase]);
 
-  // Fetch wards for permanent address when municipality changes
-  useEffect(() => {
-    if (formData.permanentMunicipality) {
-      fetch(
-        `${apiBase}/api/address/wards?municipality=${formData.permanentMunicipality}`
-      )
-        .then((res) => res.json())
-        .then((data) => setPermWards(data))
-        .catch(() => setPermWards([]));
-    } else {
-      setPermWards([]);
-    }
-    setFormData((prev) => ({
-      ...prev,
-      permanentWardNo: "",
-    }));
-  }, [formData.permanentMunicipality, apiBase]);
+  
 
   // Fetch provinces for current address on mount
   useEffect(() => {
-    fetch(`${apiBase}/api/address/provinces`)
+    fetch(`${apiBase}/api/Address/provinces`)
       .then((res) => res.json())
       .then((data) => setCurrProvinces(data))
       .catch(() => setCurrProvinces([]));
@@ -127,7 +111,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
   useEffect(() => {
     if (formData.currentProvince) {
       fetch(
-        `${apiBase}/api/address/districts?province=${formData.currentProvince}`
+        `${apiBase}/api/Address/districts/${formData.currentProvince}`
       )
         .then((res) => res.json())
         .then((data) => setCurrDistricts(data))
@@ -147,7 +131,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
   useEffect(() => {
     if (formData.currentDistrict) {
       fetch(
-        `${apiBase}/api/address/municipalities?district=${formData.currentDistrict}`
+        `${apiBase}/api/Address/municipalities/${formData.currentDistrict}`
       )
         .then((res) => res.json())
         .then((data) => setCurrMunicipalities(data))
@@ -163,22 +147,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
   }, [formData.currentDistrict, apiBase]);
 
   // Fetch wards for current address when municipality changes
-  useEffect(() => {
-    if (formData.currentMunicipality) {
-      fetch(
-        `${apiBase}/api/address/wards?municipality=${formData.currentMunicipality}`
-      )
-        .then((res) => res.json())
-        .then((data) => setCurrWards(data))
-        .catch(() => setCurrWards([]));
-    } else {
-      setCurrWards([]);
-    }
-    setFormData((prev) => ({
-      ...prev,
-      wardNo: "",
-    }));
-  }, [formData.currentMunicipality, apiBase]);
+  
 
   // Handle input change
   const handleChange = (
