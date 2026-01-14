@@ -10,9 +10,10 @@ const PublicKyc = () => {
     const [mobileNo, setMobileNo] = useState('');
     const [sessionId, setSessionId] = useState<number | null>(null);
     const [isEmailVerified, setIsEmailVerified] = useState(false);
+    const [availableSessions, setAvailableSessions] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [step, setStep] = useState(1); // 1: Initialize, 2: Verify OTP, 3: Form
+    const [step, setStep] = useState(1); // 1: Initialize, 2: Verify OTP, 4: Select Session, 3: Form
 
     const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -20,11 +21,9 @@ const PublicKyc = () => {
     useEffect(() => {
         const queryParams = new URLSearchParams(window.location.search);
         const urlSessionId = queryParams.get('sessionId');
-        const isTargetPort = window.location.port === '3000';
 
         const syncSession = async (sid: number) => {
             try {
-                // Call backend to get real-time status of this session
                 const response = await fetch(`${apiBase}/api/KycSession/progress/${sid}`);
                 if (response.ok) {
                     const res = await response.json();
@@ -32,24 +31,8 @@ const PublicKyc = () => {
                         const verified = res.data.session.emailVerified;
                         setIsEmailVerified(verified);
                         setSessionId(sid);
-
-                        if (verified) {
-                            if (!isTargetPort) {
-                                // On 5173: Move to 3000 - Trigger logic handled in effect or button?
-                                // For session resume, we might want to check again or just stay local if strictly separate
-                                // For now, if verify is true and we're not on port 3000, we stick to logic or offer redirect
-                                // The original code auto-redirected. Let's make it safer.
-                                // We'll just let them stay on step 3 (Local) if they arrived here manually, 
-                                // but technically we should have redirected. 
-                                // Let's just setStep(3) to avoid loops, or user can click verify again.
-                                setStep(3);
-                            } else {
-                                // On 3000: Open the form
-                                setStep(3);
-                            }
-                        } else {
-                            setStep(2); // Still need to verify
-                        }
+                        if (verified) setStep(3);
+                        else setStep(2);
                     }
                 }
             } catch (err) {
@@ -64,23 +47,16 @@ const PublicKyc = () => {
             const savedEmailVerified = localStorage.getItem('kyc_email_verified') === 'true';
 
             if (savedSessionId) {
-                const sid = parseInt(savedSessionId);
-                setSessionId(sid);
+                setSessionId(parseInt(savedSessionId));
                 setIsEmailVerified(savedEmailVerified);
-
-                // If resuming, just show local form to avoid infinite redirect loops or network blocks
-                // The user can always "Handoff" explicitly if we added a button, but for now Auto-Resume = Local
-                if (savedEmailVerified) {
-                    setStep(3);
-                } else {
-                    setStep(2);
-                }
+                if (savedEmailVerified) setStep(3);
+                else setStep(2);
             }
         }
     }, [apiBase]);
 
-    const handleInitialize = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleInitialize = async (e: React.FormEvent, forceNew = false) => {
+        if (e) e.preventDefault();
         setLoading(true);
         setError(null);
 
@@ -92,7 +68,8 @@ const PublicKyc = () => {
                     email,
                     mobileNo,
                     userAgent: navigator.userAgent,
-                    deviceFingerprint: 'browser-public'
+                    deviceFingerprint: 'browser-public',
+                    forceNew: forceNew
                 })
             });
 
@@ -115,36 +92,26 @@ const PublicKyc = () => {
         }
     };
 
-    const handleVerified = async () => {
+    const handleVerified = async (data: any) => {
         setIsEmailVerified(true);
         localStorage.setItem('kyc_email_verified', 'true');
-        setIsRedirecting(true);
 
-        // External URL to redirect to
-        const externalUrl = `http://192.168.100.67:3000/form?sessionId=${sessionId}`;
-
-        try {
-            // Try to ping the external server first (simple fetch with short timeout)
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
-
-            // Note: This fetch might fail with CORS if not configured on port 3000, 
-            // but for "Connection Refused" it will definitely throw.
-            await fetch(`http://192.168.100.67:3000`, {
-                method: 'HEAD',
-                signal: controller.signal,
-                mode: 'no-cors' // We just care if it's reachable, not the content
-            });
-            clearTimeout(timeoutId);
-
-            // If reachable, redirect
-            window.location.href = externalUrl;
-        } catch (err) {
-            console.warn("External form unreachable, falling back to local form.", err);
-            // Fallback: Just open the form locally on this laptop
-            setIsRedirecting(false);
-            setStep(3);
+        if (data.availableSessions && data.availableSessions.length > 0) {
+            setAvailableSessions(data.availableSessions);
+            setStep(4); // Move to selection screen
+        } else {
+            setStep(3); // Go straight to form if no other sessions (shouldn't really happen with new logic)
         }
+    };
+
+    const resumeSession = (sid: number) => {
+        setSessionId(sid);
+        localStorage.setItem('kyc_session_id', sid.toString());
+        setStep(3);
+    };
+
+    const startNewApplication = () => {
+        handleInitialize(null as any, true);
     };
 
     if (isRedirecting) {
@@ -259,6 +226,64 @@ const PublicKyc = () => {
                                 onVerified={handleVerified}
                             />
                         </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (step === 4) {
+        return (
+            <div className="min-h-screen bg-gray-50 py-12 px-4 flex items-center justify-center">
+                <div className="max-w-2xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                    <div className="bg-indigo-600 p-8 text-white text-center">
+                        <h2 className="text-2xl font-bold">Welcome Back!</h2>
+                        <p className="opacity-90 mt-1">We found existing KYC applications for <b>{email}</b>.</p>
+                    </div>
+
+                    <div className="p-8">
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-2">Continue an existing application:</h3>
+                            {availableSessions.map((s) => (
+                                <div key={s.sessionId} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all cursor-pointer group" onClick={() => resumeSession(s.sessionId)}>
+                                    <div className="flex items-center space-x-4">
+                                        <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-100 group-hover:border-indigo-200">
+                                            <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-gray-900 leading-tight">Form #{s.sessionId}</p>
+                                            <p className="text-sm text-gray-500">
+                                                Started: {new Date(s.createdDate).toLocaleDateString()} | Current Page: {s.currentStep || s.CurrentStep || (s.lastSavedStep + 1)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button className="px-5 py-2 bg-white border border-indigo-600 text-indigo-600 font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
+                                        Resume
+                                    </button>
+                                </div>
+                            ))}
+
+                            <div className="pt-6 border-t border-gray-100 mt-6">
+                                <p className="text-sm text-center text-gray-500 mb-4">Or start a completely new application if needed:</p>
+                                <button
+                                    onClick={startNewApplication}
+                                    className="w-full py-4 bg-gray-900 text-white font-bold rounded-xl shadow-lg hover:bg-black active:transform active:scale-[0.98] transition-all text-lg flex items-center justify-center space-x-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    <span>Start Fresh Application</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-50 px-8 py-4 text-center border-t border-gray-100">
+                        <button onClick={() => setStep(1)} className="text-sm text-gray-500 hover:text-indigo-600 hover:underline">
+                            Use a different email address?
+                        </button>
                     </div>
                 </div>
             </div>

@@ -36,7 +36,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({ initialSessionId = null, 
                 let currentSessionId = sessionId;
                 let emailVerified = isEmailVerified;
 
-                // Step 1: Get/Create Session Metadata if not already provided (e.g. for logged in users)
+                // Step 1: Get/Create Session Metadata
                 if (token && !currentSessionId) {
                     const sessionResponse = await fetch(`${apiBase}/api/Kyc/my-session`, {
                         headers: { 'Authorization': `Bearer ${token}` }
@@ -52,6 +52,24 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({ initialSessionId = null, 
                             emailVerified = sess.isEmailVerified;
                             setCurrentStep(sess.currentStep || 1);
                         }
+                    }
+                } else if (currentSessionId) {
+                    // For Public sessions, fetch progress to get the current step
+                    try {
+                        const progressResponse = await fetch(`${apiBase}/api/KycSession/progress/${currentSessionId}`);
+                        if (progressResponse.ok) {
+                            const progressRes = await progressResponse.json();
+                            const sessionData = progressRes.data?.session || progressRes.data?.Session;
+                            if (sessionData) {
+                                const step = sessionData.currentStep ?? sessionData.CurrentStep;
+                                if (step) {
+                                    console.log(`[KYC] Resuming session ${currentSessionId} at step ${step}`);
+                                    setCurrentStep(step);
+                                }
+                            }
+                        }
+                    } catch (pErr) {
+                        console.error("[KYC] Progress fetch failed:", pErr);
                     }
                 }
 

@@ -9,6 +9,7 @@ namespace AUTHApi.DTOs
         public string? IpAddress { get; set; }
         public string? UserAgent { get; set; }
         public string? DeviceFingerprint { get; set; }
+        public bool ForceNew { get; set; } = false;
     }
 
     public class InitiateKycDto
@@ -22,6 +23,22 @@ namespace AUTHApi.DTOs
         public string? Email { get; set; }
         public string? OtpCode { get; set; }
         public int OtpType { get; set; } // 1=Email, 2=Mobile
+    }
+
+    public class VerifyOtpResponseDto
+    {
+        public bool Success { get; set; }
+        public int? SessionId { get; set; } // The ID used for verification
+        public List<KycSessionBriefDto> AvailableSessions { get; set; } = new();
+    }
+
+    public class KycSessionBriefDto
+    {
+        public int SessionId { get; set; }
+        public DateTime CreatedDate { get; set; }
+        public int CurrentStep { get; set; }
+        public int LastSavedStep { get; set; }
+        public byte FormStatus { get; set; }
     }
 
     public class KycSessionResponseDto

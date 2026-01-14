@@ -22,7 +22,7 @@ namespace AUTHApi.Data
             if (!File.Exists(filePath)) return;
 
             var jsonContent = await File.ReadAllTextAsync(filePath);
-            
+
             try
             {
                 // The structure matches: { provinceList: [ ... ] }
@@ -39,10 +39,10 @@ namespace AUTHApi.Data
 
                 foreach (var pDto in data.ProvinceList)
                 {
-                    provinces.Add(new Province 
-                    { 
-                        Id = pDto.Id, 
-                        Name = pDto.Name 
+                    provinces.Add(new Province
+                    {
+                        Id = pDto.Id,
+                        Name = pDto.Name
                     });
 
                     if (pDto.DistrictList != null)
@@ -75,7 +75,7 @@ namespace AUTHApi.Data
                 await _context.Provinces.AddRangeAsync(provinces);
                 await _context.Districts.AddRangeAsync(districts);
                 await _context.Municipalities.AddRangeAsync(municipalities);
-                
+
                 await _context.SaveChangesAsync();
             }
             catch (Exception ex)

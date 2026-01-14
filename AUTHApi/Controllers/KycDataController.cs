@@ -214,8 +214,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 3, model.Data);
-            await UpdateStepProgress(model.SessionId, 3, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 2, model.Data);
+            await UpdateStepProgress(model.SessionId, 2, recordId);
             return Success(new { recordId });
         }
 
@@ -228,8 +228,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 4, model.Data);
-            await UpdateStepProgress(model.SessionId, 4, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 3, model.Data);
+            await UpdateStepProgress(model.SessionId, 3, recordId);
             return Success(new { recordId });
         }
 
@@ -242,8 +242,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 5, model.Data);
-            await UpdateStepProgress(model.SessionId, 5, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 4, model.Data);
+            await UpdateStepProgress(model.SessionId, 4, recordId);
             return Success(new { recordId });
         }
 
@@ -256,8 +256,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 6, model.Data);
-            await UpdateStepProgress(model.SessionId, 6, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 5, model.Data);
+            await UpdateStepProgress(model.SessionId, 5, recordId);
             return Success(new { recordId });
         }
 
@@ -270,8 +270,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 7, model.Data);
-            await UpdateStepProgress(model.SessionId, 7, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 6, model.Data);
+            await UpdateStepProgress(model.SessionId, 6, recordId);
             return Success(new { recordId });
         }
 
@@ -284,8 +284,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 8, model.Data);
-            await UpdateStepProgress(model.SessionId, 8, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 7, model.Data);
+            await UpdateStepProgress(model.SessionId, 7, recordId);
             return Success(new { recordId });
         }
 
@@ -298,8 +298,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 9, model.Data);
-            await UpdateStepProgress(model.SessionId, 9, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 8, model.Data);
+            await UpdateStepProgress(model.SessionId, 8, recordId);
             return Success(new { recordId });
         }
 
@@ -312,8 +312,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 10, model.Data);
-            await UpdateStepProgress(model.SessionId, 10, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 9, model.Data);
+            await UpdateStepProgress(model.SessionId, 9, recordId);
             return Success(new { recordId });
         }
 
@@ -326,8 +326,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 12, model.Data);
-            await UpdateStepProgress(model.SessionId, 12, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 10, model.Data);
+            await UpdateStepProgress(model.SessionId, 10, recordId);
             return Success(new { recordId });
         }
 
@@ -340,8 +340,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 13, model.Data);
-            await UpdateStepProgress(model.SessionId, 13, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 11, model.Data);
+            await UpdateStepProgress(model.SessionId, 11, recordId);
             return Success(new { recordId });
         }
 
@@ -354,8 +354,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 14, model.Data);
-            await UpdateStepProgress(model.SessionId, 14, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 12, model.Data);
+            await UpdateStepProgress(model.SessionId, 12, recordId);
             return Success(new { recordId });
         }
 
@@ -405,7 +405,7 @@ namespace AUTHApi.Controllers
                 // Assuming step 11 is documents
                 try
                 {
-                    await UpdateStepProgress(sessionId, 11, doc.Id);
+                    await UpdateStepProgress(sessionId, 13, doc.Id);
                 }
                 catch
                 {
@@ -470,6 +470,7 @@ namespace AUTHApi.Controllers
             if (session != null)
             {
                 if (session.LastSavedStep < stepNumber) session.LastSavedStep = stepNumber;
+                session.CurrentStep = Math.Max(session.CurrentStep, stepNumber + 1);
                 session.LastActivityDate = DateTime.UtcNow;
             }
 

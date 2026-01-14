@@ -10,13 +10,10 @@ namespace AUTHApi.Entities
         [DatabaseGenerated(DatabaseGeneratedOption.None)] // Using ID from JSON file
         public int Id { get; set; }
 
-        [Required]
-        [MaxLength(100)]
-        public string Name { get; set; } = string.Empty;
+        [Required] [MaxLength(100)] public string Name { get; set; } = string.Empty;
 
         // Navigation
-        [JsonIgnore]
-        public virtual ICollection<District> Districts { get; set; } = new List<District>();
+        [JsonIgnore] public virtual ICollection<District> Districts { get; set; } = new List<District>();
     }
 
     public class District
@@ -25,18 +22,15 @@ namespace AUTHApi.Entities
         [DatabaseGenerated(DatabaseGeneratedOption.None)]
         public int Id { get; set; }
 
-        [Required]
-        [MaxLength(100)]
-        public string Name { get; set; } = string.Empty;
+        [Required] [MaxLength(100)] public string Name { get; set; } = string.Empty;
 
         public int ProvinceId { get; set; }
-        
+
         [ForeignKey("ProvinceId")]
         [JsonIgnore]
         public virtual Province? Province { get; set; }
 
-        [JsonIgnore]
-        public virtual ICollection<Municipality> Municipalities { get; set; } = new List<Municipality>();
+        [JsonIgnore] public virtual ICollection<Municipality> Municipalities { get; set; } = new List<Municipality>();
     }
 
     public class Municipality
@@ -45,9 +39,7 @@ namespace AUTHApi.Entities
         [DatabaseGenerated(DatabaseGeneratedOption.None)]
         public int Id { get; set; }
 
-        [Required]
-        [MaxLength(150)]
-        public string Name { get; set; } = string.Empty;
+        [Required] [MaxLength(150)] public string Name { get; set; } = string.Empty;
 
         public int DistrictId { get; set; }
 
