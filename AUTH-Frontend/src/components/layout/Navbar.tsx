@@ -10,18 +10,6 @@ interface IconProps {
     className?: string;
 }
 
-const HomeIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-    </svg>
-);
-
-const DashboardIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-);
-
 const UserIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -31,12 +19,6 @@ const UserIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
 const LogoutIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-    </svg>
-);
-
-const ShieldIcon: React.FC<IconProps> = ({ className = "h-5 w-5" }) => (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
     </svg>
 );
 
@@ -116,7 +98,7 @@ const Navbar = () => {
 
     if (!user) {
         return (
-            <nav className="bg-gradient-to-r from-blue-600 to-purple-700 shadow-lg sticky top-0 z-50">
+            <nav className="bg-primary-blue shadow-lg sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         {/* Logo */}
@@ -128,7 +110,7 @@ const Navbar = () => {
                                 {settings.logoUrl ? (
                                     <img src={settings.logoUrl} alt="Logo" className="h-full w-full object-contain rounded" />
                                 ) : (
-                                    <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center font-bold text-blue-600">
+                                    <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center font-bold text-primary-blue">
                                         {settings.applicationName.charAt(0)}
                                     </div>
                                 )}
@@ -148,7 +130,7 @@ const Navbar = () => {
                             </Link>
                             <Link
                                 to="/register"
-                                className="px-4 py-2 text-sm font-medium bg-white text-blue-600 rounded-lg hover:bg-gray-100 transition-all duration-200 shadow-sm"
+                                className="px-4 py-2 text-sm font-medium bg-white text-primary-blue rounded-lg hover:bg-gray-100 transition-all duration-200 shadow-sm"
                             >
                                 Get Started
                             </Link>
@@ -160,7 +142,7 @@ const Navbar = () => {
     }
 
     return (
-        <nav className="bg-gradient-to-r from-blue-600 to-purple-700 shadow-lg sticky top-0 z-50">
+        <nav className="bg-primary-blue shadow-lg sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between h-16">
                     {/* Left side - Logo and Navigation */}
@@ -174,7 +156,7 @@ const Navbar = () => {
                                 {settings.logoUrl ? (
                                     <img src={settings.logoUrl} alt="Logo" className="h-full w-full object-contain rounded" />
                                 ) : (
-                                    <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center font-bold text-blue-600">
+                                    <div className="h-8 w-8 bg-white rounded-lg flex items-center justify-center font-bold text-primary-blue">
                                         {settings.applicationName.charAt(0)}
                                     </div>
                                 )}
@@ -184,57 +166,7 @@ const Navbar = () => {
                             </span>
                         </Link>
 
-                        {/* Navigation Links - Only show when logged in */}
-                        <div className="hidden md:flex items-center space-x-1">
-
-
-                            {/* Navigation Links - Only show when logged in */}
-                            {user && (
-                                <div className="hidden md:flex items-center space-x-1">
-                                    {/* Dashboard link for all users */}
-                                    <Link
-                                        to="/dashboard"
-                                        className="flex items-center space-x-1 px-3 py-2 rounded-lg text-white hover:bg-white/10 transition-all duration-200"
-                                    >
-                                        <DashboardIcon className="h-4 w-4" />
-                                        <span className="text-sm font-medium">Dashboard</span>
-                                    </Link>
-
-                                    {/* Home link for all users */}
-                                    <Link
-                                        to="/"
-                                        className="flex items-center space-x-1 px-3 py-2 rounded-lg text-white hover:bg-white/10 transition-all duration-200"
-                                    >
-                                        <HomeIcon className="h-4 w-4" />
-                                        <span className="text-sm font-medium">Home</span>
-                                    </Link>
-
-                                    {/* ADMIN PANEL - Only for Admin and SuperAdmin roles */}
-                                    {(user.roles?.includes('Admin') || user.roles?.includes('SuperAdmin')) && (
-                                        <Link
-                                            to="/admin"
-                                            className="flex items-center space-x-1 px-3 py-2 rounded-lg text-white hover:bg-white/10 transition-all duration-200 bg-white/5"
-                                        >
-                                            <ShieldIcon className="h-4 w-4" />
-                                            <span className="text-sm font-medium">Admin Panel</span>
-                                        </Link>
-                                    )}
-
-                                    {/* SUPER ADMIN PANEL - Only for SuperAdmin role */}
-                                    {user.roles?.includes('SuperAdmin') && (
-                                        <Link
-                                            to="/super-admin"
-                                            className="flex items-center space-x-1 px-3 py-2 rounded-lg text-white hover:bg-white/10 transition-all duration-200 bg-gradient-to-r from-red-500/10 to-orange-500/10"
-                                        >
-                                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <span className="text-sm font-medium">Super Admin</span>
-                                        </Link>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                        {/* Navigation Links - Removed as per request */}
                     </div>
 
                     {/* Right side - User Profile */}
@@ -260,7 +192,7 @@ const Navbar = () => {
                                             }}
                                         />
                                     ) : (
-                                        <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold shadow-md">
+                                        <div className="h-8 w-8 rounded-full bg-gradient-to-r from-primary-gold to-secondary-gold flex items-center justify-center text-white font-bold shadow-md">
                                             {getUserInitial()}
                                         </div>
                                     );
@@ -288,7 +220,7 @@ const Navbar = () => {
                                                     className="h-12 w-12 rounded-full object-cover border-2 border-gray-200"
                                                 />
                                             ) : (
-                                                <div className="h-12 w-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
+                                                <div className="h-12 w-12 rounded-full bg-gradient-to-r from-primary-gold to-secondary-gold flex items-center justify-center text-white font-bold text-lg">
                                                     {getUserInitial()}
                                                 </div>
                                             )}
@@ -304,7 +236,7 @@ const Navbar = () => {
                                             {getUserRoles().map((role, index) => (
                                                 <span
                                                     key={index}
-                                                    className="px-2 py-1 text-xs rounded-full bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 font-medium"
+                                                    className="px-2 py-1 text-xs rounded-full bg-blue-50 text-primary-blue font-medium"
                                                 >
                                                     {role}
                                                 </span>
@@ -352,56 +284,7 @@ const Navbar = () => {
                 </div>
             </div>
 
-            {/* Mobile Navigation */}
-            <div className="md:hidden bg-blue-700/90 backdrop-blur-sm">
-                <div className="max-w-7xl mx-auto px-4 py-2 flex justify-center space-x-6">
-                    {/* Mobile Navigation - Only show when logged in */}
-                    {user && (
-                        <div className="md:hidden bg-blue-700/90 backdrop-blur-sm">
-                            <div className="max-w-7xl mx-auto px-4 py-2 flex justify-center space-x-6">
-                                <Link
-                                    to="/dashboard"
-                                    className="flex items-center space-x-1 px-3 py-1 rounded-lg text-white hover:bg-white/10 transition-all duration-200"
-                                >
-                                    <DashboardIcon className="h-4 w-4" />
-                                    <span className="text-sm">Dashboard</span>
-                                </Link>
-                                <Link
-                                    to="/"
-                                    className="flex items-center space-x-1 px-3 py-1 rounded-lg text-white hover:bg-white/10 transition-all duration-200"
-                                >
-                                    <HomeIcon className="h-4 w-4" />
-                                    <span className="text-sm">Home</span>
-                                </Link>
-
-                                {/* ADMIN Panel for mobile */}
-                                {(user.roles?.includes('Admin') || user.roles?.includes('SuperAdmin')) && (
-                                    <Link
-                                        to="/admin"
-                                        className="flex items-center space-x-1 px-3 py-1 rounded-lg text-white hover:bg-white/10 transition-all duration-200"
-                                    >
-                                        <ShieldIcon className="h-4 w-4" />
-                                        <span className="text-sm">Admin</span>
-                                    </Link>
-                                )}
-
-                                {/* SUPER ADMIN Panel for mobile */}
-                                {user.roles?.includes('SuperAdmin') && (
-                                    <Link
-                                        to="/super-admin"
-                                        className="flex items-center space-x-1 px-3 py-1 rounded-lg text-white hover:bg-white/10 transition-all duration-200"
-                                    >
-                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        <span className="text-sm">Super Admin</span>
-                                    </Link>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
+            {/* Mobile Navigation - Removed */}
 
             <style>{`
                 @keyframes fade-in {

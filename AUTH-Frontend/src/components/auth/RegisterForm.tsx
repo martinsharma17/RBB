@@ -125,13 +125,13 @@ const RegisterForm = () => {
         isValidEmail(email) && password.length >= 6 && passwordsMatch;
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-pink-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-blue/5 via-white to-primary-gold/10 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
                 {/* Animated Background Orbs */}
                 <div className="relative">
-                    <div className="absolute -top-20 -left-20 w-40 h-40 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-                    <div className="absolute -top-20 -right-20 w-40 h-40 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-                    <div className="absolute -bottom-20 left-20 w-40 h-40 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+                    <div className="absolute -top-20 -left-20 w-40 h-40 bg-primary-gold rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+                    <div className="absolute -top-20 -right-20 w-40 h-40 bg-secondary-gold rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+                    <div className="absolute -bottom-20 left-20 w-40 h-40 bg-primary-blue rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
                 </div>
 
                 {/* Card Container */}
@@ -139,10 +139,10 @@ const RegisterForm = () => {
 
                     {/* Header */}
                     <div className="text-center">
-                        <div className="mx-auto h-16 w-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                        <div className="mx-auto h-16 w-16 bg-primary-blue rounded-full flex items-center justify-center mb-4 shadow-lg">
                             <UserIcon className="h-8 w-8 text-white" />
                         </div>
-                        <h2 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                        <h2 className="text-3xl font-bold text-gray-900 text-primary-blue">
                             Join Our Community
                         </h2>
                         <p className="mt-2 text-sm text-gray-600">
@@ -170,7 +170,7 @@ const RegisterForm = () => {
                                         onBlur={handleBlur('name')}
                                         className={`block w-full pl-10 pr-3 py-3 border rounded-xl shadow-sm focus:ring-2 focus:ring-offset-1 focus:outline-none transition-all duration-200 ${touched.name && name.trim()
                                             ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
-                                            : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
+                                            : 'border-gray-300 focus:ring-primary-blue focus:border-primary-blue'
                                             } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                                         placeholder="John Doe"
                                         required
@@ -206,7 +206,7 @@ const RegisterForm = () => {
                                             ? isValidEmail(email)
                                                 ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
                                                 : 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                                            : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
+                                            : 'border-gray-300 focus:ring-primary-blue focus:border-primary-blue'
                                             } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                                         placeholder="you@example.com"
                                         required
@@ -239,7 +239,7 @@ const RegisterForm = () => {
                                             ? password.length >= 6
                                                 ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
                                                 : 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                                            : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
+                                            : 'border-gray-300 focus:ring-primary-blue focus:border-primary-blue'
                                             } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                                         placeholder="At least 6 characters"
                                         minLength={6}
@@ -300,7 +300,7 @@ const RegisterForm = () => {
                                             ? passwordsMatch
                                                 ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
                                                 : 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                                            : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
+                                            : 'border-gray-300 focus:ring-primary-blue focus:border-primary-blue'
                                             } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                                         placeholder="Repeat password"
                                         required
@@ -327,18 +327,18 @@ const RegisterForm = () => {
                                 <input
                                     id="terms"
                                     type="checkbox"
-                                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                                    className="h-4 w-4 text-primary-gold focus:ring-primary-gold border-gray-300 rounded"
                                     required
                                 />
                             </div>
                             <div className="ml-3 text-sm">
                                 <label htmlFor="terms" className="text-gray-700">
                                     I agree to the{' '}
-                                    <Link to="/terms" className="font-medium text-purple-600 hover:text-purple-500">
+                                    <Link to="/terms" className="font-medium text-primary-blue hover:text-primary-blue/80">
                                         Terms of Service
                                     </Link>{' '}
                                     and{' '}
-                                    <Link to="/privacy" className="font-medium text-purple-600 hover:text-purple-500">
+                                    <Link to="/privacy" className="font-medium text-primary-blue hover:text-primary-blue/80">
                                         Privacy Policy
                                     </Link>
                                 </label>
@@ -364,7 +364,7 @@ const RegisterForm = () => {
                             disabled={loading || !isFormValid}
                             className={`group relative w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl ${loading || !isFormValid
                                 ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-80'
-                                : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 focus:ring-purple-500'
+                                : 'bg-primary-blue hover:bg-primary-blue/90 focus:ring-primary-blue'
                                 }`}
                         >
                             {loading ? (
@@ -394,7 +394,7 @@ const RegisterForm = () => {
                         <div className="text-center">
                             <Link
                                 to="/login"
-                                className="inline-flex items-center justify-center w-full py-3 px-4 border-2 border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-all duration-300 transform hover:-translate-y-0.5"
+                                className="inline-flex items-center justify-center w-full py-3 px-4 border-2 border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition-all duration-300 transform hover:-translate-y-0.5"
                             >
                                 Sign in to your account
                             </Link>

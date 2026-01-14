@@ -50,17 +50,17 @@ const LoginForm = () => {
     const isFormValid = email.trim() && password && isValidEmail(email);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-blue/5 via-white to-primary-gold/10 py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-md w-full space-y-8">
                 {/* Card Container */}
                 <div className="bg-white rounded-2xl shadow-xl p-8 sm:p-10 transition-all duration-300 hover:shadow-2xl">
 
                     {/* Header */}
                     <div className="text-center">
-                        <div className="mx-auto h-12 w-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-4">
+                        <div className="mx-auto h-12 w-12 bg-primary-blue rounded-full flex items-center justify-center mb-4">
                             <LockClosedIcon className="h-6 w-6 text-white" />
                         </div>
-                        <h2 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        <h2 className="text-3xl font-bold text-gray-900 text-primary-blue">
                             Welcome Back
                         </h2>
                         <p className="mt-2 text-sm text-gray-600">
@@ -93,7 +93,7 @@ const LoginForm = () => {
                                             ? isValidEmail(email)
                                                 ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
                                                 : 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                                            : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                                            : 'border-gray-300 focus:ring-primary-blue focus:border-primary-blue'
                                             } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                                         placeholder="you@example.com"
                                         required
@@ -121,7 +121,7 @@ const LoginForm = () => {
                                     </label>
                                     <Link
                                         to="/forgot-password"
-                                        className="text-sm font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200"
+                                        className="text-sm font-medium text-primary-blue hover:text-primary-blue/80 transition-colors duration-200"
                                     >
                                         Forgot password?
                                     </Link>
@@ -140,7 +140,7 @@ const LoginForm = () => {
                                             ? password.length >= 6
                                                 ? 'border-green-300 focus:ring-green-500 focus:border-green-500'
                                                 : 'border-red-300 focus:ring-red-500 focus:border-red-500'
-                                            : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                                            : 'border-gray-300 focus:ring-primary-blue focus:border-primary-blue'
                                             } ${loading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'}`}
                                         placeholder="Enter your password"
                                         minLength={6}
@@ -181,7 +181,7 @@ const LoginForm = () => {
                             disabled={loading || !isFormValid}
                             className={`group relative w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 transform hover:-translate-y-0.5 ${loading || !isFormValid
                                 ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-80'
-                                : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:ring-blue-500'
+                                : 'bg-primary-blue hover:bg-primary-blue/90 focus:ring-primary-blue'
                                 }`}
                         >
                             {loading ? (
@@ -232,7 +232,7 @@ const LoginForm = () => {
                         <div className="text-center">
                             <Link
                                 to="/register"
-                                className="inline-flex items-center justify-center w-full py-3 px-4 border-2 border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300 transform hover:-translate-y-0.5"
+                                className="inline-flex items-center justify-center w-full py-3 px-4 border-2 border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition-all duration-300 transform hover:-translate-y-0.5"
                             >
                                 Create a new account
                             </Link>
@@ -241,7 +241,7 @@ const LoginForm = () => {
                         <div className="text-center mt-2">
                             <Link
                                 to="/public-kyc"
-                                className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 underline"
+                                className="text-sm font-semibold text-primary-blue hover:text-primary-blue/80 underline"
                             >
                                 Fill KYC without Login
                             </Link>
@@ -253,11 +253,11 @@ const LoginForm = () => {
                 <div className="text-center">
                     <p className="text-xs text-gray-500">
                         By signing in, you agree to our{' '}
-                        <Link to="/terms" className="text-blue-600 hover:text-blue-500 transition-colors duration-200">
+                        <Link to="/terms" className="text-primary-blue hover:text-primary-blue/80 transition-colors duration-200">
                             Terms of Service
                         </Link>{' '}
                         and{' '}
-                        <Link to="/privacy" className="text-blue-600 hover:text-blue-500 transition-colors duration-200">
+                        <Link to="/privacy" className="text-primary-blue hover:text-primary-blue/80 transition-colors duration-200">
                             Privacy Policy
                         </Link>
                     </p>

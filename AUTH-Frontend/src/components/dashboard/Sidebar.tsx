@@ -42,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     {settings.logoUrl ? (
                         <img src={settings.logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded" />
                     ) : (
-                        <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold">
+                        <div className="w-8 h-8 bg-primary-blue rounded flex items-center justify-center font-bold">
                             {settings.applicationName.charAt(0)}
                         </div>
                     )}
@@ -158,7 +158,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
                 }}
                 disabled={item.disabled}
                 className={`w-full flex items-center justify-between py-2 rounded-lg transition-colors ${isActive
-                    ? "bg-blue-600 text-white"
+                    ? "bg-primary-blue text-white"
                     : item.disabled
                         ? "text-gray-500 cursor-not-allowed"
                         : "text-gray-300 hover:bg-gray-800"
@@ -189,7 +189,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
                             return (
                                 <div className="flex bg-gray-800 rounded px-1 py-0.5">
                                     <PermissionBadge label="Create" active={resourcePerms.create} color="bg-green-600" />
-                                    <PermissionBadge label="Read" active={resourcePerms.read} color="bg-blue-600" />
+                                    <PermissionBadge label="Read" active={resourcePerms.read} color="bg-primary-blue" />
                                     <PermissionBadge label="Update" active={resourcePerms.update} color="bg-yellow-600" />
                                     <PermissionBadge label="Delete" active={resourcePerms.delete} color="bg-red-600" />
                                 </div>

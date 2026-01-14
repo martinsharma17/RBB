@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AUTHApi.Data;
@@ -52,7 +51,7 @@ namespace AUTHApi.Controllers
             if (!isGlobalAdmin && workflow.CurrentRoleId != null)
             {
                 var roleIds = await _context.Roles
-                    .Where(r => userRoles.Contains(r.Name))
+                    .Where(r => userRoles.Contains(r.Name!))
                     .Select(r => r.Id)
                     .ToListAsync();
 
@@ -89,7 +88,7 @@ namespace AUTHApi.Controllers
             if (!isGlobalAdmin && workflow.CurrentRoleId != null)
             {
                 var roleIds = await _context.Roles
-                    .Where(r => userRoles.Contains(r.Name))
+                    .Where(r => userRoles.Contains(r.Name!))
                     .Select(r => r.Id)
                     .ToListAsync();
 
@@ -124,12 +123,10 @@ namespace AUTHApi.Controllers
             var isGlobalReviewer = roles.Any(r => r.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase) ||
                                                   r.Equals("Admin", StringComparison.OrdinalIgnoreCase));
 
-            // NEW: Check if user has GlobalSearch specifically via claims/policies
-            var hasGlobalSearch = User.HasClaim(c => c.Type == "Permission" && c.Value == Permissions.Kyc.GlobalSearch);
 
             var query = _context.KycWorkflowMasters
-                .Include(w => w.KycSession)
-                .ThenInclude(s => s.KycDetail)
+                .Include(w => w.KycSession!)
+                .ThenInclude(s => s.KycDetail!)
                 .Where(w => w.Status == KycWorkflowStatus.InReview ||
                             w.Status == KycWorkflowStatus.ResubmissionRequired ||
                             w.Status == KycWorkflowStatus.Rejected);
@@ -138,11 +135,11 @@ namespace AUTHApi.Controllers
             {
                 // Map role names to IDs for current user to filter items assigned to them
                 var roleIds = await _context.Roles
-                    .Where(r => roles.Contains(r.Name))
+                    .Where(r => roles.Contains(r.Name!))
                     .Select(r => r.Id)
                     .ToListAsync();
 
-                query = query.Where(w => roleIds.Contains(w.CurrentRoleId));
+                query = query.Where(w => roleIds.Contains(w.CurrentRoleId!));
             }
 
             // BRANCH SCOPING
@@ -162,9 +159,9 @@ namespace AUTHApi.Controllers
             }
 
             var pending = await query
-                .Include(w => w.KycSession)
-                .ThenInclude(s => s.KycDetail)
-                .Include(w => w.Branch) // Include Branch info
+                .Include(w => w.KycSession!)
+                .ThenInclude(s => s.KycDetail!)
+                .Include(w => w.Branch!) // Include Branch info
                 .OrderByDescending(w => w.CreatedAt)
                 .Select(w => new
                 {
@@ -201,9 +198,9 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> GetUnifiedList()
         {
             var list = await _context.KycWorkflowMasters
-                .Include(w => w.KycSession)
-                .ThenInclude(s => s.KycDetail)
-                .Include(w => w.Branch)
+                .Include(w => w.KycSession!)
+                .ThenInclude(s => s.KycDetail!)
+                .Include(w => w.Branch!)
                 .OrderByDescending(w => w.CreatedAt)
                 .Select(w => new KycUnifiedViewDto
                 {
@@ -243,9 +240,9 @@ namespace AUTHApi.Controllers
         public async Task<IActionResult> GetKycDetails(int workflowId)
         {
             var workflow = await _context.KycWorkflowMasters
-                .Include(w => w.KycSession)
-                .ThenInclude(s => s.KycDetail)
-                .ThenInclude(d => d.Documents)
+                .Include(w => w.KycSession!)
+                .ThenInclude(s => s.KycDetail!)
+                .ThenInclude(d => d!.Documents!)
                 .FirstOrDefaultAsync(w => w.Id == workflowId);
 
             if (workflow == null) return Failure("Workflow item not found.", 404);
@@ -267,7 +264,7 @@ namespace AUTHApi.Controllers
                         .FirstOrDefault(),
                     ForwardedToRoleName = _context.Roles.Where(r => r.Id == log.ForwardedToRoleId).Select(r => r.Name)
                         .FirstOrDefault(),
-                    UserFullName = log.UserId != null ? log.User.Name : "System/Public"
+                    UserFullName = log.UserId != null ? log.User!.Name : "System/Public"
                 })
                 .ToListAsync();
 
@@ -409,11 +406,11 @@ namespace AUTHApi.Controllers
             if (!isGlobalAdmin && workflow.CurrentRoleId != null)
             {
                 var roleIds = await _context.Roles
-                    .Where(r => userRoles.Contains(r.Name))
+                    .Where(r => userRoles.Contains(r.Name!))
                     .Select(r => r.Id)
                     .ToListAsync();
 
-                if (!roleIds.Contains(workflow.CurrentRoleId))
+                if (!roleIds.Contains(workflow.CurrentRoleId!))
                 {
                     return Failure("Only the person currently assigned to this KYC can resubmit it.", 403);
                 }
@@ -461,11 +458,11 @@ namespace AUTHApi.Controllers
             if (!isGlobalAdmin && workflow.CurrentRoleId != null)
             {
                 var roleIds = await _context.Roles
-                    .Where(r => userRoles.Contains(r.Name))
+                    .Where(r => userRoles.Contains(r.Name!))
                     .Select(r => r.Id)
                     .ToListAsync();
 
-                if (!roleIds.Contains(workflow.CurrentRoleId))
+                if (!roleIds.Contains(workflow.CurrentRoleId!))
                 {
                     return Failure("You are not authorized to update this KYC at its current level.", 403);
                 }
@@ -474,35 +471,144 @@ namespace AUTHApi.Controllers
             // Update allowed fields
             var detail = workflow.KycSession.KycDetail;
             detail.FirstName = model.FirstName ?? detail.FirstName;
+            detail.MiddleName = model.MiddleName ?? detail.MiddleName;
             detail.LastName = model.LastName ?? detail.LastName;
             detail.MobileNumber = model.MobileNumber ?? detail.MobileNumber;
             detail.Gender = model.Gender ?? detail.Gender;
+            detail.DateOfBirth = model.DateOfBirth ?? detail.DateOfBirth;
             detail.Nationality = model.Nationality ?? detail.Nationality;
+            detail.MaritalStatus = model.MaritalStatus ?? detail.MaritalStatus;
             detail.CitizenshipNumber = model.CitizenshipNumber ?? detail.CitizenshipNumber;
+            detail.CitizenshipIssuedDistrict = model.CitizenshipIssuedDistrict ?? detail.CitizenshipIssuedDistrict;
+            detail.CitizenshipIssuedDate = model.CitizenshipIssuedDate ?? detail.CitizenshipIssuedDate;
+
+            // Address
+            detail.PermanentState = model.PermanentState ?? detail.PermanentState;
             detail.PermanentDistrict = model.PermanentDistrict ?? detail.PermanentDistrict;
+            detail.PermanentMunicipality = model.PermanentMunicipality ?? detail.PermanentMunicipality;
+            detail.PermanentWardNo = model.PermanentWardNo?.ToString() ?? detail.PermanentWardNo;
+            detail.PermanentStreet = model.PermanentStreet ?? detail.PermanentStreet;
+
+            detail.CurrentState = model.CurrentState ?? detail.CurrentState;
+            detail.CurrentDistrict = model.CurrentDistrict ?? detail.CurrentDistrict;
+            detail.CurrentMunicipality = model.CurrentMunicipality ?? detail.CurrentMunicipality;
+            detail.CurrentWardNo = model.CurrentWardNo?.ToString() ?? detail.CurrentWardNo;
+            detail.CurrentStreet = model.CurrentStreet ?? detail.CurrentStreet;
+
+            // Family
+            detail.FatherName = model.FatherName ?? detail.FatherName;
+            detail.MotherName = model.MotherName ?? detail.MotherName;
+            detail.GrandFatherName = model.GrandFatherName ?? detail.GrandFatherName;
+            detail.SpouseName = model.SpouseName ?? detail.SpouseName;
+
+            // Bank & Financial
+            detail.BankName = model.BankName ?? detail.BankName;
+            detail.BankAccountNumber = model.BankAccountNumber ?? detail.BankAccountNumber;
+            detail.BankBranch = model.BankBranch ?? detail.BankBranch;
+            detail.BankAccountType = model.BankAccountType ?? detail.BankAccountType;
+            detail.PanNumber = model.PanNumber ?? detail.PanNumber;
+
+            // Occupation
             detail.Occupation = model.Occupation ?? detail.Occupation;
+            detail.OrganizationName = model.OrganizationName ?? detail.OrganizationName;
             detail.AnnualIncome = model.AnnualIncome ?? detail.AnnualIncome;
+
+            // PEP & Status
             detail.IsPep = model.IsPep ?? detail.IsPep;
+            detail.PepRelation = model.PepRelation ?? detail.PepRelation;
+            detail.HasCriminalRecord = model.HasCriminalRecord ?? detail.HasCriminalRecord;
+
             detail.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
+            // IMPORTANT: Explicitly mark the entity as modified to ensure EF tracks changes
+            _context.Entry(detail).State = EntityState.Modified;
 
-            return Success("KYC details updated successfully.");
+            try
+            {
+                var changesSaved = await _context.SaveChangesAsync();
+
+                // Log an audit entry for the KYC edit
+                var auditLog = new KycApprovalLog
+                {
+                    KycWorkflowId = workflow.Id,
+                    KycSessionId = workflow.KycSessionId,
+                    UserId = userId,
+                    Action = "KycDetailsEdited",
+                    Remarks = "KYC details were updated by reviewer.",
+                    ActionedByRoleId = workflow.CurrentRoleId,
+                    ClientIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    UserAgent = Request.Headers.ContainsKey("User-Agent")
+                        ? Request.Headers["User-Agent"].ToString()
+                        : null,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.KycApprovalLogs.Add(auditLog);
+                await _context.SaveChangesAsync();
+
+                return Success(new
+                {
+                    message = "KYC details updated successfully.",
+                    recordsUpdated = changesSaved,
+                    updatedAt = detail.UpdatedAt
+                });
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = $"Failed to save changes: {ex.Message}";
+                if (ex.InnerException != null)
+                {
+                    errorMessage += $" | Inner: {ex.InnerException.Message}";
+                }
+
+                return Failure(errorMessage);
+            }
         }
 
         public class KycUpdateModel
         {
             public int WorkflowId { get; set; }
             public string? FirstName { get; set; }
+            public string? MiddleName { get; set; }
             public string? LastName { get; set; }
             public string? MobileNumber { get; set; }
             public string? Gender { get; set; }
+            public DateTime? DateOfBirth { get; set; }
             public string? Nationality { get; set; }
+            public string? MaritalStatus { get; set; }
             public string? CitizenshipNumber { get; set; }
+            public string? CitizenshipIssuedDistrict { get; set; }
+            public DateTime? CitizenshipIssuedDate { get; set; }
+
+            public string? PermanentState { get; set; }
             public string? PermanentDistrict { get; set; }
+            public string? PermanentMunicipality { get; set; }
+            public int? PermanentWardNo { get; set; }
+            public string? PermanentStreet { get; set; }
+
+            public string? CurrentState { get; set; }
+            public string? CurrentDistrict { get; set; }
+            public string? CurrentMunicipality { get; set; }
+            public int? CurrentWardNo { get; set; }
+            public string? CurrentStreet { get; set; }
+
+            public string? FatherName { get; set; }
+            public string? MotherName { get; set; }
+            public string? GrandFatherName { get; set; }
+            public string? SpouseName { get; set; }
+
+            public string? BankName { get; set; }
+            public string? BankAccountNumber { get; set; }
+            public string? BankBranch { get; set; }
+            public string? BankAccountType { get; set; }
+            public string? PanNumber { get; set; }
+
             public string? Occupation { get; set; }
+            public string? OrganizationName { get; set; }
             public string? AnnualIncome { get; set; }
+
             public bool? IsPep { get; set; }
+            public string? PepRelation { get; set; }
+            public bool? HasCriminalRecord { get; set; }
         }
 
         public class PullBackModel

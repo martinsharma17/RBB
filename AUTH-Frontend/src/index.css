@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+@theme {
+    --color-primary-blue: #022D9B;
+    --color-primary-gold: #A68901;
+    --color-secondary-gold: #D2BC56;
+}
