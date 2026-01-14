@@ -23,8 +23,13 @@ namespace AUTHApi.Controllers
         [HttpPost("initialize")]
         public async Task<IActionResult> InitializeSession([FromBody] KycInitializeDto model)
         {
-            var session = await _context.KycFormSessions
-                .FirstOrDefaultAsync(s => s.Email == model.Email && !s.IsExpired && s.FormStatus < 3);
+            KycFormSession? session = null;
+
+            if (!model.ForceNew)
+            {
+                session = await _context.KycFormSessions
+                    .FirstOrDefaultAsync(s => s.Email == model.Email && !s.IsExpired && s.FormStatus < 3);
+            }
 
             if (session == null)
             {
@@ -177,7 +182,27 @@ namespace AUTHApi.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            return Success(new { sessionId = model.SessionId }, "Verification successful");
+            // After successful verification, find ALL active sessions for this email
+            var email = session?.Email ?? otp.SentToEmail;
+            var availableSessions = await _context.KycFormSessions
+                .Where(s => s.Email == email && s.FormStatus < 3 && !s.IsExpired)
+                .OrderByDescending(s => s.CreatedDate)
+                .Select(s => new KycSessionBriefDto
+                {
+                    SessionId = s.Id,
+                    CreatedDate = s.CreatedDate,
+                    CurrentStep = s.CurrentStep,
+                    LastSavedStep = s.LastSavedStep,
+                    FormStatus = s.FormStatus
+                })
+                .ToListAsync();
+
+            return Success(new VerifyOtpResponseDto
+            {
+                Success = true,
+                SessionId = model.SessionId,
+                AvailableSessions = availableSessions
+            }, "Verification successful");
         }
 
         [HttpGet("progress/{sessionId}")]

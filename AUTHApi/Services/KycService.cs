@@ -200,7 +200,7 @@ namespace AUTHApi.Services
                     detail.CriminalRecordDetails = aml.CriminalRecordDetails;
                     break;
 
-                // Step 12: Location Map
+                // Step 10: Location Map
                 case LocationMapDto l:
                     detail.LocationLandmark = l.Landmark;
                     detail.LocationDistance = l.DistanceFromMainRoad;
@@ -209,13 +209,14 @@ namespace AUTHApi.Services
                     detail.LocationSketchJson = l.CanvasDataJson;
                     break;
 
-                // Step 13: Declarations
+                // Step 11: Declarations
                 case DeclarationsDto d:
                     detail.AgreeToTerms = d.AgreeToTerms;
                     detail.NoOtherFinancialLiability = d.NoOtherFinancialLiability;
                     detail.AllInformationTrue = d.AllInformationTrue;
                     break;
 
+                // Step 12: Agreement
                 case AgreementDto ag:
                     detail.AgreementDate = DateTime.SpecifyKind(ag.AgreementDate, DateTimeKind.Utc);
                     detail.TradingLimit = ag.TradingLimit;
@@ -542,7 +543,7 @@ namespace AUTHApi.Services
             var session = await _context.KycFormSessions.FirstOrDefaultAsync(s => s.Id == sessionId);
             if (session != null)
             {
-                session.CurrentStep = Math.Max(session.CurrentStep, stepNumber);
+                session.CurrentStep = Math.Max(session.CurrentStep, stepNumber + 1);
                 session.LastSavedStep = stepNumber;
 
                 var stepCompletion = await _context.KycStepCompletions

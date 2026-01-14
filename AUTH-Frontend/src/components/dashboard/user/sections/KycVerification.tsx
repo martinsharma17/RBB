@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 interface KycVerificationProps {
     initialEmail?: string;
     sessionId: string | number | null;
-    onVerified: () => void;
+    onVerified: (data: any) => void;
     apiBase: string;
 }
 
@@ -64,7 +64,8 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
             });
 
             if (response.ok) {
-                onVerified(); // Notify parent to unlock the form
+                const data = await response.json();
+                onVerified(data.data); // Notify parent to unlock the form and pass available sessions
             } else {
                 setError('Invalid or expired OTP. Please try again.');
             }
