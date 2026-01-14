@@ -15,6 +15,8 @@ namespace AUTHApi.Data
         public DbSet<District> Districts { get; set; }
         public DbSet<Municipality> Municipalities { get; set; }
 
+        public DbSet<Occupation> Occupations { get; set; }
+
         // --- Core KYC Session Tables ---
         public DbSet<KycFormSession> KycFormSessions { get; set; }
         public DbSet<KycOtpVerification> KycOtpVerifications { get; set; }
