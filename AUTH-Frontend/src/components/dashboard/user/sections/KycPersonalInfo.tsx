@@ -45,12 +45,18 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
 }) => {
   const { token, apiBase } = useAuth();
   const [branches, setBranches] = useState<any[]>([]);
+  const [countries, setCountries] = useState<any[]>([]);
 
   useEffect(() => {
     fetch(`${apiBase}/api/Branch`)
       .then((res) => res.json())
       .then((data) => setBranches(data))
       .catch((err) => console.error("Failed to load branches", err));
+
+    fetch(`${apiBase}/api/Country`)
+      .then((res) => res.json())
+      .then((data) => setCountries(data))
+      .catch((err) => console.error("Failed to load countries", err));
   }, [apiBase]);
 
   // Normalize data from either backend format (Pascal/Camel) or previous frontend format
@@ -192,7 +198,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
       citizenshipIssueDistrict: formData.citizenshipIssueDistrict || null,
       citizenshipIssueDate: formData.citizenshipIssueDate || null,
       panNo: formData.panNo || null,
-      // branchId: formData.branchId ? parseInt(formData.branchId) : null
+      branchId: formData.branchId ? parseInt(formData.branchId.toString()) : null
     };
 
     const headers: any = {
@@ -354,15 +360,22 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
 
         <div className="flex flex-col">
           <label className="text-sm font-semibold text-gray-700 mb-1">
-            Nationality
+            Nationality *
           </label>
-          <input
-            type="text"
+          <select
             name="nationality"
             value={formData.nationality}
             onChange={handleChange}
+            required
             className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
-          />
+          >
+            <option value="">Select Nationality</option>
+            {countries.map((c: any) => (
+              <option key={c.id} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex flex-col">
@@ -424,23 +437,23 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
           />
         </div>
 
-        {/* <div className="flex flex-col">
-                    <label className="text-sm font-semibold text-gray-700 mb-1">Select Branch *</label>
-                    <select
-                        name="branchId"
-                        value={formData.branchId || ""}
-                        onChange={handleChange}
-                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
-                        required
-                    >
-                        <option value="">-- Select Branch --</option>
-                        {branches.map((branch: any) => (
-                            <option key={branch.id} value={branch.id}>
-                                {branch.name} ({branch.code})
-                            </option>
-                        ))}
-                    </select>
-                </div> */}
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">Select Branch *</label>
+          <select
+            name="branchId"
+            value={formData.branchId || ""}
+            onChange={handleChange}
+            className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+            required
+          >
+            <option value="">-- Select Branch --</option>
+            {branches.map((branch: any) => (
+              <option key={branch.id} value={branch.id}>
+                {branch.name} ({branch.code})
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="flex justify-end pt-6">

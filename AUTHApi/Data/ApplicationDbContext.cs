@@ -14,6 +14,7 @@ namespace AUTHApi.Data
         public DbSet<Province> Provinces { get; set; }
         public DbSet<District> Districts { get; set; }
         public DbSet<Municipality> Municipalities { get; set; }
+        public DbSet<Country> Countries { get; set; }
 
         public DbSet<Occupation> Occupations { get; set; }
 

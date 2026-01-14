@@ -28,27 +28,45 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
   onBack,
 }) => {
   const { token, apiBase } = useAuth();
+  const DEFAULT_OCCUPATIONS = [
+    { value: "Salaried", label: "Salaried" },
+    { value: "Self Employed", label: "Self Employed" },
+    { value: "Student", label: "Student" },
+    { value: "Retired", label: "Retired" },
+    { value: "Housewife", label: "Housewife" },
+    { value: "Business", label: "Business" },
+    { value: "Agriculture", label: "Agriculture" },
+    { value: "Others", label: "Others" }
+  ];
+
   const [occupationOptions, setOccupationOptions] = useState<
     { value: string; label: string }[]
-  >([]);
+  >(DEFAULT_OCCUPATIONS);
 
   useEffect(() => {
     fetch(`${apiBase}/api/Occupation`)
       .then((res) => res.json())
       .then((data) => {
-        let options = Array.isArray(data)
-          ? data.map((item) => ({
-              value: item.id?.toString() ?? "",
-              label: item.name ?? "",
-            }))
-          : [];
-        // Always add "Others" at the end
-        options.push({ value: "Others", label: "Others" });
-        setOccupationOptions(options);
+        console.log("[Occupation] Raw data:", data);
+        let items = Array.isArray(data) ? data : (data.success && data.data ? data.data : []);
+
+        if (items.length > 0) {
+          let options: { value: string; label: string }[] = items.map((item: any) => ({
+            value: (item.id ?? item.Id)?.toString() ?? "",
+            label: item.name ?? item.Name ?? "",
+          }));
+
+          // Ensure "Others" is always there
+          if (!options.some(o => o.value === "Others" || o.label === "Others")) {
+            options.push({ value: "Others", label: "Others" });
+          }
+          setOccupationOptions(options);
+        }
       })
-      .catch(() =>
-        setOccupationOptions([{ value: "Others", label: "Others" }])
-      );
+      .catch((err) => {
+        console.error("[Occupation] Fetch failed, using defaults:", err);
+        // keep using DEFAULT_OCCUPATIONS already set in useState
+      });
   }, [apiBase]);
 
   const [formData, setFormData] = useState<KycOccupationData>({
@@ -166,8 +184,7 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
           {/* <select
             name="occupation"
             value={formData.occupation}
-            onChange={handleChange}
-            required
+            onChange={handl
             className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
           >
             <option value="">Select Occupation</option>
@@ -331,9 +348,8 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
         <button
           type="submit"
           disabled={saving}
-          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${
-            saving ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${saving ? "opacity-50 cursor-not-allowed" : ""
+            }`}
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>
