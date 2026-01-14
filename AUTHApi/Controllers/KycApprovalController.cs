@@ -1,6 +1,3 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using AUTHApi.Data;
 using AUTHApi.Entities;
 using AUTHApi.Services;
@@ -11,6 +8,11 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using AUTHApi.Core.Security;
 using AUTHApi.DTOs;
+using System.Collections.Generic;
+using System.Linq;
+using System;
+using System.Threading.Tasks;
+using System.Text;
 
 namespace AUTHApi.Controllers
 {
@@ -65,6 +67,127 @@ namespace AUTHApi.Controllers
             if (!success) return Failure(message);
 
             return Success(message);
+        }
+
+        /// <summary>
+        /// Gets summary statistics for the KYC dashboard, scoped by role and branch.
+        /// </summary>
+        [HttpGet("dashboard-stats")]
+        [Authorize(Policy = Permissions.Kyc.Dashboard)]
+        public async Task<IActionResult> GetDashboardStats([FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
+        {
+            try
+            {
+                var userId = CurrentUserId;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null) return Failure("User not found.");
+
+                var roles = await _userManager.GetRolesAsync(user);
+                var isGlobal = roles.Any(r => r == "SuperAdmin" || r == "Admin");
+
+                var query = _context.KycWorkflowMasters.AsQueryable();
+
+                // Date Filtering (Ensuring UTC Kind for Postgres/Npgsql compatibility)
+                if (fromDate.HasValue)
+                {
+                    var start = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
+                    query = query.Where(w => w.CreatedAt >= start);
+                }
+
+                if (toDate.HasValue)
+                {
+                    var end = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1).AddTicks(-1), DateTimeKind.Utc);
+                    query = query.Where(w => w.CreatedAt <= end);
+                }
+
+                // Role & Branch Scoping
+                if (!isGlobal)
+                {
+                    // Filter by Branch
+                    if (user.BranchId.HasValue)
+                    {
+                        var bid = user.BranchId.Value;
+                        query = query.Where(w => w.BranchId == bid || w.BranchId == null);
+                    }
+                    else
+                    {
+                        query = query.Where(w => w.BranchId == null);
+                    }
+                }
+
+                query = query.AsNoTracking();
+
+                var stats = new KycDashboardDto
+                {
+                    TotalSubmitted = await query.CountAsync(),
+                    PendingApproval = await query.CountAsync(w => w.Status == KycWorkflowStatus.InReview),
+                    Approved = await query.CountAsync(w => w.Status == KycWorkflowStatus.Approved),
+                    Rejected = await query.CountAsync(w => w.Status == KycWorkflowStatus.Rejected),
+                    ResubmissionRequired =
+                        await query.CountAsync(w => w.Status == KycWorkflowStatus.ResubmissionRequired)
+                };
+
+                // Status Distribution for Pie Chart
+                stats.StatusDistribution = new List<KycStatusCountDto>
+                {
+                    new() { Status = "Pending", Count = stats.PendingApproval },
+                    new() { Status = "Approved", Count = stats.Approved },
+                    new() { Status = "Rejected", Count = stats.Rejected },
+                    new() { Status = "Resubmission", Count = stats.ResubmissionRequired }
+                };
+
+                // Trend Calculation (Last 7 Days or Specified Range)
+                var rangeStart =
+                    DateTime.SpecifyKind(fromDate?.Date ?? DateTime.UtcNow.Date.AddDays(-6), DateTimeKind.Utc);
+                var rangeEnd = DateTime.SpecifyKind(toDate?.Date ?? DateTime.UtcNow.Date, DateTimeKind.Utc);
+
+                // Limit trend to max 31 days
+                if ((rangeEnd - rangeStart).TotalDays > 31)
+                {
+                    rangeStart = rangeEnd.AddDays(-30);
+                }
+
+                // [FIX] More robust date grouping
+                var rawTrendData = await query
+                    .Where(w => w.CreatedAt >= rangeStart && w.CreatedAt <= rangeEnd.AddDays(1))
+                    .GroupBy(w => w.CreatedAt.Date)
+                    .Select(g => new
+                    {
+                        Date = g.Key,
+                        Count = g.Count()
+                    })
+                    .ToListAsync();
+
+                // Convert raw data to a lookup dictionary in memory, handling potential dups safely
+                var trendMap = new Dictionary<string, int>();
+                foreach (var item in rawTrendData)
+                {
+                    var key = item.Date.Date.ToString("yyyy-MM-dd");
+                    if (!trendMap.ContainsKey(key))
+                        trendMap[key] = item.Count;
+                    else
+                        trendMap[key] += item.Count;
+                }
+
+                // Fill in missing dates with zero
+                for (var dt = rangeStart; dt <= rangeEnd; dt = dt.AddDays(1))
+                {
+                    var dateStr = dt.ToString("yyyy-MM-dd");
+                    stats.DailyTrend.Add(new KycTrendDto
+                    {
+                        Date = dateStr,
+                        Count = trendMap.TryGetValue(dateStr, out var count) ? count : 0
+                    });
+                }
+
+                return Success(stats);
+            }
+            catch (Exception ex)
+            {
+                return InternalServerError($"Dashboard error: {ex.Message} {ex.InnerException?.Message}");
+            }
         }
 
         /// <summary>
@@ -746,6 +869,120 @@ namespace AUTHApi.Controllers
             await _context.SaveChangesAsync();
 
             return Success("Application successfully transferred to your branch.");
+        }
+
+
+        //download 
+        [HttpGet("export-csv/{workflowId}")]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
+        public async Task<IActionResult> ExportKycCsv(int workflowId)
+        {
+            var workflow = await _context.KycWorkflowMasters
+                .Include(w => w.KycSession!)
+                .ThenInclude(s => s.KycDetail!)
+                .FirstOrDefaultAsync(w => w.Id == workflowId);
+
+            if (workflow == null || workflow.KycSession?.KycDetail == null)
+                return NotFound("KYC record not found.");
+
+            var details = workflow.KycSession.KycDetail;
+            var sb = new StringBuilder();
+
+            // Headers
+            sb.AppendLine("Field Name,Value");
+
+            // Personal Info
+            sb.AppendLine($"Full Name,\"{details.FirstName} {details.MiddleName} {details.LastName}\"");
+            sb.AppendLine($"Email,\"{details.Email}\"");
+            sb.AppendLine($"Mobile,\"{details.MobileNumber}\"");
+            sb.AppendLine($"DOB,\"{details.DateOfBirth?.ToString("yyyy-MM-dd")}\"");
+            sb.AppendLine($"Gender,\"{details.Gender}\"");
+            sb.AppendLine($"Nationality,\"{details.Nationality}\"");
+            sb.AppendLine($"Marital Status,\"{details.MaritalStatus}\"");
+
+            // Address
+            sb.AppendLine(
+                $"Permanent Address,\"{details.PermanentStreet}, {details.PermanentMunicipality}, {details.PermanentDistrict}, {details.PermanentState}\"");
+            sb.AppendLine(
+                $"Current Address,\"{details.CurrentStreet}, {details.CurrentMunicipality}, {details.CurrentDistrict}, {details.CurrentState}\"");
+
+            // Family
+            sb.AppendLine($"Father's Name,\"{details.FatherName}\"");
+            sb.AppendLine($"Mother's Name,\"{details.MotherName}\"");
+            sb.AppendLine($"Grandfather's Name,\"{details.GrandFatherName}\"");
+            sb.AppendLine($"Spouse's Name,\"{details.SpouseName}\"");
+
+            // IDs
+            sb.AppendLine($"Citizenship Number,\"{details.CitizenshipNumber}\"");
+            sb.AppendLine($"Citizenship Issued District,\"{details.CitizenshipIssuedDistrict}\"");
+            sb.AppendLine($"Citizenship Issued Date,\"{details.CitizenshipIssuedDate?.ToString("yyyy-MM-dd")}\"");
+            sb.AppendLine($"PAN Number,\"{details.PanNumber}\"");
+
+            // Occupation
+            sb.AppendLine($"Occupation,\"{details.Occupation}\"");
+            sb.AppendLine($"Organization,\"{details.OrganizationName}\"");
+            sb.AppendLine($"Designation,\"{details.Designation}\"");
+            sb.AppendLine($"Annual Income,\"{details.AnnualIncome}\"");
+
+            // Bank
+            sb.AppendLine($"Bank Name,\"{details.BankName}\"");
+            sb.AppendLine($"Account Number,\"{details.BankAccountNumber}\"");
+            sb.AppendLine($"Branch,\"{details.BankBranch}\"");
+
+            var fileName = $"KYC_Form_{details.FirstName}_{details.LastName}_{DateTime.Now:yyyyMMdd}.csv";
+            return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", fileName);
+        }
+
+
+        //download pending list
+        [HttpGet("export-pending-csv")]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
+        public async Task<IActionResult> ExportPendingCsv()
+        {
+            var userId = CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Failure("User not found.");
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var isGlobal = roles.Any(r => r == "SuperAdmin" || r == "Admin");
+
+            var query = _context.KycWorkflowMasters.AsQueryable();
+
+            if (!isGlobal)
+            {
+                if (user.BranchId.HasValue)
+                {
+                    var bid = user.BranchId.Value;
+                    query = query.Where(w => w.BranchId == bid || w.BranchId == null);
+                }
+                else
+                {
+                    query = query.Where(w => w.BranchId == null);
+                }
+            }
+
+            var list = await query
+                .Include(w => w.KycSession!)
+                .ThenInclude(s => s.KycDetail!)
+                .Where(w => w.Status == KycWorkflowStatus.InReview)
+                .ToListAsync();
+
+            var sb = new StringBuilder();
+            sb.AppendLine("WorkflowID,Applicant Name,Email,Mobile,Citizenship,Status,Submitted At,Branch");
+
+            foreach (var item in list)
+            {
+                var d = item.KycSession?.KycDetail;
+                if (d == null) continue;
+
+                sb.AppendLine(
+                    $"{item.Id},\"{d.FirstName} {d.LastName}\",\"{d.Email}\",\"{d.MobileNumber}\",\"{d.CitizenshipNumber}\",\"{item.Status}\",\"{item.CreatedAt:yyyy-MM-dd HH:mm}\",\"{item.Branch?.Name ?? "Global"}\"");
+            }
+
+            var fileName = $"Pending_KYC_List_{DateTime.Now:yyyyMMdd}.csv";
+            return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", fileName);
         }
 
         public class ApprovalModel

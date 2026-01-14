@@ -129,6 +129,7 @@ export const PERMISSION_CONSTANTS = {
     KYC_SIDEBAR: 'Permissions.Kyc.Sidebar',
     KYC_WORKFLOW: 'Permissions.Kyc.Workflow',
     KYC_SEARCH: 'Permissions.Kyc.GlobalSearch',
+    KYC_DASHBOARD: 'Permissions.Kyc.Dashboard',
 } as const;
 
 /**
@@ -273,6 +274,10 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             update: permSet.has(PERMISSION_CONSTANTS.KYC_UPDATE),
             delete: permSet.has(PERMISSION_CONSTANTS.KYC_DELETE),
             sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_SIDEBAR),
+        },
+        kyc_dashboard: {
+            read: permSet.has(PERMISSION_CONSTANTS.KYC_DASHBOARD),
+            sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_DASHBOARD),
         },
         kyc_workflow: {
             read: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
@@ -476,6 +481,11 @@ export function mapFrontendPermissionsToBackend(frontendPermissions: Permissions
     if (frontendPermissions.kyc_workflow?.read || frontendPermissions.kyc_workflow?.sidebar ||
         frontendPermissions.kyc_unified_queue?.read || frontendPermissions.kyc_unified_queue?.sidebar) {
         pushIfTrue(true, PERMISSION_CONSTANTS.KYC_WORKFLOW);
+    }
+
+    // KYC Dashboard
+    if (frontendPermissions.kyc_dashboard?.read || frontendPermissions.kyc_dashboard?.sidebar) {
+        pushIfTrue(true, PERMISSION_CONSTANTS.KYC_DASHBOARD);
     }
 
     // KYC Search

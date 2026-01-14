@@ -29,6 +29,14 @@ namespace AUTHApi.Data
                 RequiredPolicyId = null, // Dashboard usually open or has special handling
                 Order = 1
             };
+            var kycDashboardItem = new MenuItem
+            {
+                Title = "KYC Dashboard", ViewId = "kyc_dashboard", Icon = "ChartPieIcon",
+                Url = "/kyc-dashboard",
+                Permission = Permissions.Kyc.Dashboard,
+                RequiredPolicyId = GetPolicyId(Permissions.Kyc.Dashboard),
+                Order = 2
+            };
             // var profileItem = new MenuItem
             // {
             //     Title = "My Profile", ViewId = "user_profile", Icon = "UserIcon",
@@ -128,6 +136,7 @@ namespace AUTHApi.Data
             var items = new List<MenuItem>
             {
                 dashboardItem,
+                kycDashboardItem,
                 // profileItem,
                 usersItem,
                 rolesItem,

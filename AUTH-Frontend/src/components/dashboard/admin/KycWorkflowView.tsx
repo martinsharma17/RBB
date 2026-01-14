@@ -17,7 +17,12 @@ interface PendingKyc {
     status: number;
 }
 
-const KycWorkflowView: React.FC = () => {
+interface KycWorkflowViewProps {
+    workflowId?: number | null;
+    onClearActiveId?: () => void;
+}
+
+const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearActiveId }) => {
     const { token, apiBase } = useAuth();
     const [pendingKycs, setPendingKycs] = useState<PendingKyc[]>([]);
     const [loading, setLoading] = useState(true);
@@ -31,6 +36,15 @@ const KycWorkflowView: React.FC = () => {
     useEffect(() => {
         fetchPending();
     }, [token, apiBase]);
+
+    // Automatically open specific KYC if workflowId is passed (e.g. from Dashboard)
+    useEffect(() => {
+        if (workflowId && token && apiBase) {
+            viewDetails(workflowId);
+            // Clear it in the parent context so it doesn't re-trigger wrongly later
+            onClearActiveId?.();
+        }
+    }, [workflowId, token, apiBase]);
 
     const fetchPending = async () => {
         setLoading(true);
@@ -162,6 +176,53 @@ const KycWorkflowView: React.FC = () => {
             setActionLoading(false);
         }
     };
+    const handleDownloadCsv = async (workflowId: number) => {
+        try {
+            const res = await fetch(`${apiBase}/api/KycApproval/export-csv/${workflowId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `KYC_Form_${workflowId}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert("Failed to download CSV.");
+            }
+        } catch (err) {
+            console.error("Download error", err);
+            alert("A network error occurred while downloading the file.");
+        }
+    };
+
+    const handleDownloadBulkCsv = async () => {
+        try {
+            const res = await fetch(`${apiBase}/api/KycApproval/export-pending-csv`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Pending_KYC_List_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert("Failed to download bulk CSV.");
+            }
+        } catch (err) {
+            console.error("Bulk download error", err);
+            alert("A network error occurred while downloading the queue.");
+        }
+    };
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[400px]">
@@ -178,6 +239,16 @@ const KycWorkflowView: React.FC = () => {
                     <p className="text-gray-500 mt-1">Review applicant data and manage workflow transitions.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={handleDownloadBulkCsv}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200"
+                        title="Download entire pending queue as CSV"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Export Queue (CSV)
+                    </button>
                     <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-100 uppercase tracking-wider">
                         Active Tasks: {pendingKycs.length}
                     </span>
@@ -308,6 +379,7 @@ const KycWorkflowView: React.FC = () => {
                 remarks={remarks}
                 setRemarks={setRemarks}
                 onAction={handleAction}
+                onDownloadCsv={handleDownloadCsv}
             />
         </div>
     );

@@ -48,6 +48,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'audit', name: 'Audit Logs' },
 
         { id: 'kyc', name: 'KYC Verification' },
+        { id: 'kyc_dashboard', name: 'KYC Dashboard' },
         { id: 'kyc_workflow', name: 'KYC Approval Queue' },
         { id: 'kyc_unified_queue', name: 'Unified KYC Queue' },
         { id: 'kyc_search', name: 'Global KYC Search' },

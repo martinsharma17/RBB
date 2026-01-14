@@ -62,6 +62,11 @@ export interface Permissions {
   notifications?: PermissionSet;
   security?: PermissionSet;
   backup?: PermissionSet;
+  kyc?: PermissionSet;
+  kyc_dashboard?: PermissionSet;
+  kyc_workflow?: PermissionSet;
+  kyc_unified_queue?: PermissionSet;
+  kyc_search?: PermissionSet;
 
   // Computed permissions
   create_users?: boolean;

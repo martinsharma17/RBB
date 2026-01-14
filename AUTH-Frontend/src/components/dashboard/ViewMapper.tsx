@@ -7,8 +7,8 @@ import RolesManagementView from './RolesManagementView';
 import PolicyEditorView from './PolicyEditorView';
 
 
-import ProjectSettingsView from './ProjectSettingsView';
-import AdminResourceView from './admin/AdminResourceView';
+// import ProjectSettingsView from './ProjectSettingsView';
+// import AdminResourceView from './admin/AdminResourceView';
 
 import KycFormMaster from './user/KycFormMaster';
 import MenuManagementView from './admin/MenuManagementView';
@@ -16,6 +16,7 @@ import KycWorkflowView from './admin/KycWorkflowView';
 import UnifiedKycQueueView from './admin/UnifiedKycQueueView';
 import BranchManagementView from './superadmin/BranchManagementView';
 import KycSearchView from './admin/KycSearchView';
+import KycDashboardView from './KycDashboardView';
 
 
 // Placeholder for missing component
@@ -35,6 +36,9 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
 
         case 'kyc':
             return <KycFormMaster {...props} />;
+
+        case 'kyc_dashboard':
+            return <KycDashboardView {...props} />;
 
         case 'kyc_workflow':
             return <KycWorkflowView {...props} />;

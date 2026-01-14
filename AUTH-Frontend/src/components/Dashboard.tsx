@@ -14,6 +14,7 @@ const Dashboard = () => {
     // 2. Local State
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [activeView, setActiveView] = useState("dashboard");
+    const [activeId, setActiveId] = useState<number | null>(null);
     const [menuItems, setMenuItems] = useState<any[]>([]);
 
     // Data States (shared across views via props)
@@ -200,8 +201,15 @@ const Dashboard = () => {
                         onDelete: handleDeleteUser,
                         onViewUsers: () => setActiveView('users'),
                         onViewCharts: () => setActiveView('charts'),
+                        onViewChange: (view: string, id?: number) => {
+                            setActiveView(view);
+                            if (id) setActiveId(id);
+                            else setActiveId(null);
+                        },
 
                         // Context
+                        workflowId: activeId,
+                        onClearActiveId: () => setActiveId(null),
                         permissions,
                         token,
                         apiBase

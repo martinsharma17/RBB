@@ -14,6 +14,7 @@ interface KycReviewModalProps {
     remarks: string;
     setRemarks: (val: string) => void;
     onAction: (action: 'approve' | 'reject' | 'resubmit' | 'pull-back', returnToPrevious?: boolean) => void;
+    onDownloadCsv: (workflowId: number) => void;
 }
 
 const KycReviewModal: React.FC<KycReviewModalProps> = ({
@@ -29,7 +30,8 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
     actionLoading,
     remarks,
     setRemarks,
-    onAction
+    onAction,
+    onDownloadCsv
 }) => {
     const [activeTab, setActiveTab] = useState('overview');
 
@@ -75,6 +77,16 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                     )}
                                 </button>
                             )}
+                        <button
+                            onClick={() => detailData?.workflow?.id && onDownloadCsv(detailData.workflow.id)}
+                            className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 hover:bg-gray-800 shadow-lg shadow-gray-200"
+                            title="Download CSV for printing hardcopy and bank stamp"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Print Form
+                        </button>
                         <button
                             onClick={() => !actionLoading && onClose()}
                             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
@@ -311,9 +323,9 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                         {detailData.logs?.map((h: any) => (
                                             <div key={h.id} className="flex gap-6 relative group">
                                                 <div className={`w-10 h-10 rounded-full flex-shrink-0 z-10 flex items-center justify-center border-4 border-white shadow-sm transition-transform group-hover:scale-110 ${h.action === 'Approved' ? 'bg-green-500' :
-                                                        h.action === 'Rejected' ? 'bg-red-500' :
-                                                            h.action === 'KycDetailsEdited' ? 'bg-orange-500' :
-                                                                'bg-indigo-500'
+                                                    h.action === 'Rejected' ? 'bg-red-500' :
+                                                        h.action === 'KycDetailsEdited' ? 'bg-orange-500' :
+                                                            'bg-indigo-500'
                                                     }`}>
                                                     {h.action === 'KycDetailsEdited' ? (
                                                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -327,9 +339,9 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                                                         <div className="flex items-center gap-3">
                                                             <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest text-white shadow-sm ${h.action === 'Approved' ? 'bg-green-500' :
-                                                                    h.action === 'Rejected' ? 'bg-red-500' :
-                                                                        h.action === 'KycDetailsEdited' ? 'bg-orange-500' :
-                                                                            'bg-indigo-500'
+                                                                h.action === 'Rejected' ? 'bg-red-500' :
+                                                                    h.action === 'KycDetailsEdited' ? 'bg-orange-500' :
+                                                                        'bg-indigo-500'
                                                                 }`}>
                                                                 {h.action === 'KycDetailsEdited' ? '✏️ EDITED' : h.action}
                                                             </span>
