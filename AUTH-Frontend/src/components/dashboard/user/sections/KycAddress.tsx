@@ -25,11 +25,15 @@ const KycAddress: React.FC<KycAddressProps> = ({
   // Dropdown data
   const [permProvinces, setPermProvinces] = useState<AddressItem[]>([]);
   const [permDistricts, setPermDistricts] = useState<AddressItem[]>([]);
-  const [permMunicipalities, setPermMunicipalities] = useState<AddressItem[]>([]);
+  const [permMunicipalities, setPermMunicipalities] = useState<AddressItem[]>(
+    []
+  );
 
   const [currProvinces, setCurrProvinces] = useState<AddressItem[]>([]);
   const [currDistricts, setCurrDistricts] = useState<AddressItem[]>([]);
-  const [currMunicipalities, setCurrMunicipalities] = useState<AddressItem[]>([]);
+  const [currMunicipalities, setCurrMunicipalities] = useState<AddressItem[]>(
+    []
+  );
 
   // Form data
   const [formData, setFormData] = useState({
@@ -86,7 +90,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
   // Handle Permanent District Change
   useEffect(() => {
     if (formData.permanentDistrictId) {
-      fetch(`${apiBase}/api/Address/municipalities/${formData.permanentDistrictId}`)
+      fetch(
+        `${apiBase}/api/Address/municipalities/${formData.permanentDistrictId}`
+      )
         .then((res) => res.json())
         .then((data) => setPermMunicipalities(data))
         .catch(() => setPermMunicipalities([]));
@@ -119,7 +125,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
   // Handle Current District Change
   useEffect(() => {
     if (formData.currentDistrictId) {
-      fetch(`${apiBase}/api/Address/municipalities/${formData.currentDistrictId}`)
+      fetch(
+        `${apiBase}/api/Address/municipalities/${formData.currentDistrictId}`
+      )
         .then((res) => res.json())
         .then((data) => setCurrMunicipalities(data))
         .catch(() => setCurrMunicipalities([]));
@@ -132,7 +140,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
     }));
   }, [formData.currentDistrictId, apiBase]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -163,13 +173,25 @@ const KycAddress: React.FC<KycAddressProps> = ({
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       // Look up names for Saving (Assuming backend expects names based on previous code)
-      const pProv = permProvinces.find(p => p.id.toString() === formData.permanentProvinceId)?.name;
-      const pDist = permDistricts.find(d => d.id.toString() === formData.permanentDistrictId)?.name;
-      const pMun = permMunicipalities.find(m => m.id.toString() === formData.permanentMunicipalityId)?.name;
+      const pProv = permProvinces.find(
+        (p) => p.id.toString() === formData.permanentProvinceId
+      )?.name;
+      const pDist = permDistricts.find(
+        (d) => d.id.toString() === formData.permanentDistrictId
+      )?.name;
+      const pMun = permMunicipalities.find(
+        (m) => m.id.toString() === formData.permanentMunicipalityId
+      )?.name;
 
-      const cProv = currProvinces.find(p => p.id.toString() === formData.currentProvinceId)?.name;
-      const cDist = currDistricts.find(d => d.id.toString() === formData.currentDistrictId)?.name;
-      const cMun = currMunicipalities.find(m => m.id.toString() === formData.currentMunicipalityId)?.name;
+      const cProv = currProvinces.find(
+        (p) => p.id.toString() === formData.currentProvinceId
+      )?.name;
+      const cDist = currDistricts.find(
+        (d) => d.id.toString() === formData.currentDistrictId
+      )?.name;
+      const cMun = currMunicipalities.find(
+        (m) => m.id.toString() === formData.currentMunicipalityId
+      )?.name;
 
       // Save Permanent Address
       await fetch(`${apiBase}/api/KycData/save-permanent-address`, {
@@ -220,10 +242,14 @@ const KycAddress: React.FC<KycAddressProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
       <div className="border-b border-gray-200 pb-4">
-        <h2 className="text-xl font-bold text-gray-800">Section 2: Address Information</h2>
-        <p className="text-sm text-gray-500">Permanent and Current residence details.</p>
+        <h2 className="text-xl font-bold text-gray-800">
+          Section 2: Address Information
+        </h2>
+        <p className="text-sm text-gray-500">
+          Permanent and Current residence details.
+        </p>
       </div>
 
       {error && (
@@ -238,7 +264,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
         </h3>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Permanent Province *</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent Province *
+          </label>
           <select
             name="permanentProvinceId"
             value={formData.permanentProvinceId}
@@ -248,13 +276,17 @@ const KycAddress: React.FC<KycAddressProps> = ({
           >
             <option value="">Select Province</option>
             {permProvinces.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Permanent District *</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent District *
+          </label>
           <select
             name="permanentDistrictId"
             value={formData.permanentDistrictId}
@@ -264,13 +296,17 @@ const KycAddress: React.FC<KycAddressProps> = ({
           >
             <option value="">Select District</option>
             {permDistricts.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Permanent Municipality *</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent Municipality *
+          </label>
           <select
             name="permanentMunicipalityId"
             value={formData.permanentMunicipalityId}
@@ -280,13 +316,17 @@ const KycAddress: React.FC<KycAddressProps> = ({
           >
             <option value="">Select Municipality</option>
             {permMunicipalities.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Permanent Ward No. *</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent Ward No. *
+          </label>
           <input
             type="text"
             name="permanentWardNo"
@@ -298,7 +338,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Permanent Tole</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent Tole
+          </label>
           <input
             type="text"
             name="permanentTole"
@@ -309,7 +351,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Permanent Country *</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent Country *
+          </label>
           <input
             type="text"
             name="permanentCountry"
@@ -336,7 +380,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Current Province *</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Current Province *
+          </label>
           <select
             name="currentProvinceId"
             value={formData.currentProvinceId}
@@ -346,13 +392,17 @@ const KycAddress: React.FC<KycAddressProps> = ({
           >
             <option value="">Select Province</option>
             {currProvinces.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Current District *</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Current District *
+          </label>
           <select
             name="currentDistrictId"
             value={formData.currentDistrictId}
@@ -362,13 +412,17 @@ const KycAddress: React.FC<KycAddressProps> = ({
           >
             <option value="">Select District</option>
             {currDistricts.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Current Municipality *</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Current Municipality *
+          </label>
           <select
             name="currentMunicipalityId"
             value={formData.currentMunicipalityId}
@@ -378,13 +432,17 @@ const KycAddress: React.FC<KycAddressProps> = ({
           >
             <option value="">Select Municipality</option>
             {currMunicipalities.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Current Ward No. *</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Current Ward No. *
+          </label>
           <input
             type="text"
             name="wardNo"
@@ -396,7 +454,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Current Tole</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Current Tole
+          </label>
           <input
             type="text"
             name="currentTole"
@@ -407,7 +467,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
         </div>
 
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Current Country *</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Current Country *
+          </label>
           <input
             type="text"
             name="currentCountry"
@@ -422,7 +484,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
           Contact Info
         </h3>
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Contact Number</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Contact Number
+          </label>
           <input
             type="text"
             name="contactNumber"
@@ -432,7 +496,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
           />
         </div>
         <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">Email Address</label>
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Email Address
+          </label>
           <input
             type="email"
             name="email"
@@ -455,8 +521,9 @@ const KycAddress: React.FC<KycAddressProps> = ({
         <button
           type="submit"
           disabled={saving}
-          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${saving ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${
+            saving ? "opacity-50 cursor-not-allowed" : ""
+          }`}
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>
