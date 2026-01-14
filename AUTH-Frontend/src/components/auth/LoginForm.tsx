@@ -7,6 +7,8 @@ import {
     ExclamationCircleIcon,
     CheckCircleIcon
 } from '@heroicons/react/24/outline';
+import rbbLogo from './rbb.png'
+
 
 const LoginForm = () => {
     const [email, setEmail] = useState('');
@@ -57,15 +59,18 @@ const LoginForm = () => {
 
                     {/* Header */}
                     <div className="text-center">
-                        <div className="mx-auto h-12 w-12 bg-primary-blue rounded-full flex items-center justify-center mb-4">
-                            <LockClosedIcon className="h-6 w-6 text-white" />
+                        <div className="mx-auto h-20 w-auto flex items-center justify-center mb-6">
+                            <img src={rbbLogo} alt="RBB Logo" className="h-16 w-auto object-contain" />
                         </div>
                         <h2 className="text-3xl font-bold text-gray-900 text-primary-blue">
                             Welcome Back
                         </h2>
-                        <p className="mt-2 text-sm text-gray-600">
+                        <h2 className="text-3xl font-bold text-gray-900 text-primary-gold">
+                            Rastriya Banijya Bank
+                        </h2>
+                        {/* <p className="mt-2 text-sm text-gray-600">
                             Sign in to your account to continue
-                        </p>
+                        </p> */}
                     </div>
 
                     {/* Form */}
@@ -201,13 +206,13 @@ const LoginForm = () => {
 
 
                         {/* Google OAuth Button */}
-                        <button
+                        {/* <button
                             type="button"
                             onClick={() => window.location.href = "http://localhost:3001/api/auth/google-login"}
                             className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 hover:border-gray-400 transition-colors text-gray-700 font-medium"
-                        >
-                            {/* Google G icon SVG */}
-                            <svg className="w-5 h-5" viewBox="0 0 488 512" fill="none">
+                        > */}
+                        {/* Google G icon SVG */}
+                        {/* <svg className="w-5 h-5" viewBox="0 0 488 512" fill="none">
                                 <g>
                                     <path fill="#4285F4" d="M488 261.8c0-17.8-1.5-35-4.3-51.8H249v98h136.5c-5.6 30-22.2 55.5-47.5 72.5v60h76.8c45-41.4 71-102.7 71-178.7z" />
                                     <path fill="#34A853" d="M249 492c64.8 0 119.3-21.5 159.1-58.4l-76.8-60.1c-21.3 14.3-48.3 22.7-82.3 22.7-63.2 0-116.7-42.7-135.8-100.4h-80.3v63.5C72.5 441.8 154.3 492 249 492z" />
@@ -216,27 +221,27 @@ const LoginForm = () => {
                                 </g>
                             </svg>
                             <span>Sign in with Google</span>
-                        </button>
+                        </button> */}
 
                         {/* Divider */}
-                        <div className="relative">
+                        {/* <div className="relative">
                             <div className="absolute inset-0 flex items-center">
                                 <div className="w-full border-t border-gray-300"></div>
                             </div>
                             <div className="relative flex justify-center text-sm">
                                 <span className="px-2 bg-white text-gray-500">New to our platform?</span>
                             </div>
-                        </div>
+                        </div> */}
 
                         {/* Register Link */}
-                        <div className="text-center">
+                        {/* <div className="text-center">
                             <Link
                                 to="/register"
                                 className="inline-flex items-center justify-center w-full py-3 px-4 border-2 border-gray-300 rounded-xl shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-blue transition-all duration-300 transform hover:-translate-y-0.5"
                             >
                                 Create a new account
                             </Link>
-                        </div>
+                        </div> */}
 
                         <div className="text-center mt-2">
                             <Link
@@ -250,8 +255,8 @@ const LoginForm = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="text-center">
-                    <p className="text-xs text-gray-500">
+                <div className="text-center space-y-4">
+                    {/* <p className="text-xs text-gray-500">
                         By signing in, you agree to our{' '}
                         <Link to="/terms" className="text-primary-blue hover:text-primary-blue/80 transition-colors duration-200">
                             Terms of Service
@@ -260,7 +265,15 @@ const LoginForm = () => {
                         <Link to="/privacy" className="text-primary-blue hover:text-primary-blue/80 transition-colors duration-200">
                             Privacy Policy
                         </Link>
-                    </p>
+                    </p> */}
+                    <div className="pt-4 border-t border-gray-100 mt-4">
+                        <p className="text-sm font-medium text-gray-600">
+                            © {new Date().getFullYear()} Naya Code Pvt.Ltd. All rights reserved.
+                        </p>
+                        {/* <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest text-white">
+                           naya code pvt ltd
+                        </p> */}
+                    </div>
                 </div>
             </div>
 
