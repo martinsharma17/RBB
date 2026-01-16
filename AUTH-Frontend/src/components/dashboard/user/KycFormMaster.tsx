@@ -14,6 +14,7 @@ import KycTransaction from "./sections/KycTransaction";
 import KycAml from "./sections/KycAml";
 import KycLocation from "./sections/KycLocation";
 import KycAgreement from "./sections/KycAgreement";
+import FinalReviewModal from "./sections/FinalReviewModel";
 
 interface KycFormMasterProps {
   initialSessionId?: number | null;
@@ -31,6 +32,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isEmailVerified, setIsEmailVerified] = useState(initialEmailVerified);
   const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
+  const [showFinalModal, setShowFinalModal] = useState(false);
 
   // Fetch existing KYC data on load
   useEffect(() => {
@@ -298,7 +300,11 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
               <KycAttachment
                 sessionId={sessionId}
                 onBack={handlePrev}
-                onComplete={() => setCurrentStep(14)}
+                onComplete={(mergedKycData) => {
+                  setKycData(mergedKycData); // update the main kycData state
+                  setCurrentStep(14);
+                }}
+                allKycFormData={kycData}
               />
             )}
 
@@ -323,16 +329,26 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   Application Submitted!
                 </h2>
                 <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
-                  Thank you for completing your KYC. Our team is currently
-                  reviewing your documents. You will be notified once your
-                  account is verified.
+                  Thank you for completing your KYC. Please review your details
+                  and agree to the terms before final submission.
                 </p>
                 <button
-                  onClick={() => window.location.reload()}
+                  onClick={() => setShowFinalModal(true)}
                   className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition-all"
                 >
-                  Back to Dashboard
+                  Final Submit
                 </button>
+                <FinalReviewModal
+                  open={showFinalModal}
+                  onClose={() => setShowFinalModal(false)}
+                  kycData={kycData}
+                  pdfUrl="/terms.pdf"
+                  onFinalSubmit={() => {
+                    setShowFinalModal(false);
+                    // Add your final submit logic here (e.g., API call, show success message, etc.)
+                    window.location.reload();
+                  }}
+                />
               </div>
             )}
           </>
