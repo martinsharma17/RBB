@@ -1,157 +1,255 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+import React, { useState } from "react";
+import { useAuth } from "../../../../context/AuthContext";
+import FinalReviewModal from "./FinalReviewModel";
+import { useNavigate } from "react-router-dom";
 
-interface KycAttachmentProps {
-    sessionId: number | null;
-    onBack: () => void;
-    onComplete: () => void;
+ export interface KycAttachmentProps {
+  sessionId: number | null;
+  onBack: () => void;
+  onComplete?: (mergedKycData:any) => void;
+  onSuccess?: (kycData: any) => void;
+  allKycFormData?: any;
 }
 
-const KycAttachment: React.FC<KycAttachmentProps> = ({ sessionId, onBack, onComplete }) => {
-    const { token, apiBase } = useAuth();
-    const [uploading, setUploading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
+const KycAttachment: React.FC<KycAttachmentProps> = ({
+  sessionId,
+  onBack,
+  onSuccess,
+  allKycFormData,
+}) => {
+  const { token, apiBase } = useAuth();
+  const navigate = useNavigate();
 
-    // Track specific files
-    const [photo, setPhoto] = useState<File | null>(null);
-    const [citFront, setCitFront] = useState<File | null>(null);
-    const [citBack, setCitBack] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const uploadFile = async (file: File, type: number) => {
-        const formData = new FormData();
-        formData.append('sessionId', sessionId?.toString() || '');
-        formData.append('documentType', type.toString());
-        formData.append('file', file);
+  // files
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [citFront, setCitFront] = useState<File | null>(null);
+  const [citBack, setCitBack] = useState<File | null>(null);
 
-        const headers: any = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+  // review modal
+  const [showReview, setShowReview] = useState(false);
+  const [kycReviewData, setKycReviewData] = useState<any>(null);
 
-        const response = await fetch(`${apiBase}/api/KycData/upload-document`, {
-            method: 'POST',
-            headers,
-            body: formData
-        });
+  // thank you message
+  const [showThankYou, setShowThankYou] = useState(false);
 
-        if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.message || `Failed to upload ${file.name}`);
-        }
-    };
+  const parseError = async (res: Response, fallback: string) => {
+    try {
+      const text = await res.text();
+      if (!text) return fallback;
+      return JSON.parse(text).message || fallback;
+    } catch {
+      return fallback;
+    }
+  };
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+  const uploadFile = async (file: File, type: number) => {
+    const formData = new FormData();
+    formData.append("sessionId", sessionId!.toString());
+    formData.append("documentType", type.toString());
+    formData.append("file", file);
 
-        if (!photo || !citFront || !citBack) {
-            setError("Please upload all required documents: Photo, Citizenship Front, and Back.");
-            return;
-        }
+    const headers: any = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
 
-        if (!sessionId) {
-            setError("Session not initialized correctly.");
-            return;
-        }
+    const res = await fetch(`${apiBase}/api/KycData/upload-document`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
 
-        setUploading(true);
-        setError(null);
-        setSuccess(null);
+    if (!res.ok) {
+      throw new Error(await parseError(res, "Upload failed"));
+    }
+  };
 
-        try {
-            // 1. Upload all files
-            await uploadFile(photo, 1); // Photo
-            await uploadFile(citFront, 2); // Cit Front
-            await uploadFile(citBack, 3); // Cit Back
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-            // 2. Finally submit the whole KYC
-            const submitHeaders: any = {};
-            if (token) submitHeaders['Authorization'] = `Bearer ${token}`;
+    if (!photo || !citFront || !citBack) {
+      setError("Please upload all required documents.");
+      return;
+    }
 
-            const submitResponse = await fetch(`${apiBase}/api/Kyc/submit/${sessionId}`, {
-                method: 'POST',
-                headers: submitHeaders
-            });
+    if (!sessionId) {
+      setError("Session not initialized correctly.");
+      return;
+    }
 
-            if (submitResponse.ok) {
-                // Clear local storage for public sessions
-                localStorage.removeItem('kyc_session_id');
-                localStorage.removeItem('kyc_email_verified');
+    setUploading(true);
+    setError(null);
 
-                setSuccess("KYC submitted successfully!");
-                setTimeout(() => onComplete(), 1500);
-            } else {
-                const data = await submitResponse.json();
-                setError(data.message || "Failed to submit KYC for verification.");
-            }
-        } catch (err: any) {
-            setError(err.message || "An error occurred during upload.");
-        } finally {
-            setUploading(false);
-        }
-    };
+    try {
+      await uploadFile(photo, 1);
+      await uploadFile(citFront, 2);
+      await uploadFile(citBack, 3);
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-bold text-gray-800">Section 9: Attachments & Finish</h2>
-                <p className="text-sm text-gray-500">Upload your documents to complete the process.</p>
+      // Merge allKycFormData with backend data
+      let reviewData: any = allKycFormData
+        ? {
+            ...allKycFormData,
+            sessionId,
+            documents: {
+              photo: photo.name,
+              citizenship: {
+                front: citFront.name,
+                back: citBack.name,
+              },
+            },
+          }
+        : {
+            sessionId,
+            documents: {
+              photo: photo.name,
+              citizenship: {
+                front: citFront.name,
+                back: citBack.name,
+              },
+            },
+          };
+
+      try {
+        const res = await fetch(
+          `${apiBase}/api/KycData/get-session/${sessionId}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          }
+        );
+        const backendData = await res.json();
+        reviewData = { ...reviewData, ...backendData };
+      } catch {}
+
+      setKycReviewData(reviewData);
+      setShowReview(true);
+    } catch (err: any) {
+      setError(err.message || "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFinalSubmit = async () => {
+    try {
+      const headers: any = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+
+      const res = await fetch(`${apiBase}/api/Kyc/submit/${sessionId}`, {
+        method: "POST",
+        headers,
+      });
+
+      if (!res.ok) {
+        throw new Error(await parseError(res, "Final submission failed"));
+      }
+
+      localStorage.removeItem("kyc_session_id");
+      localStorage.removeItem("kyc_email_verified");
+
+      setShowReview(false);
+      setShowThankYou(true);
+      if (onSuccess) onSuccess(kycReviewData);
+    } catch (err: any) {
+      setError(err.message || "Final submission failed");
+      setShowReview(false);
+    }
+  };
+
+  return (
+    <>
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+        <div className="border-b pb-4">
+          <h2 className="text-xl font-bold text-gray-800">
+            Section 9: Attachments & Finish
+          </h2>
+          <p className="text-sm text-gray-500">
+            Upload your documents to complete the process.
+          </p>
+        </div>
+
+        {error && (
+          <div className="p-3 bg-red-100 text-red-700 rounded border">
+            {error}
+          </div>
+        )}
+
+        {/* Upload fields */}
+        <div className="grid gap-6">
+          {[
+            ["Passport Size Photo", setPhoto],
+            ["Citizenship Front", setCitFront],
+            ["Citizenship Back", setCitBack],
+          ].map(([label, setter]: any, i) => (
+            <div
+              key={i}
+              className="p-4 border border-dashed rounded hover:border-indigo-400"
+            >
+              <label className="block font-semibold mb-2">{label} *</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setter(e.target.files?.[0] || null)}
+                className="w-full text-sm file:bg-indigo-50 file:text-indigo-700 file:rounded"
+              />
             </div>
+          ))}
+        </div>
 
-            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium border border-red-200">{error}</div>}
-            {success && <div className="p-3 bg-green-100 text-green-700 rounded-lg text-sm font-medium border border-green-200">{success}</div>}
+        <div className="flex justify-between pt-6 border-t">
+          <button
+            type="button"
+            onClick={onBack}
+            className="px-6 py-2 border rounded"
+          >
+            Back
+          </button>
 
-            <div className="grid grid-cols-1 gap-6">
-                <div className="p-4 border border-dashed border-gray-300 rounded-lg hover:border-indigo-400 transition-colors">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Passport Size Photo *</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                    {photo && <p className="mt-2 text-xs text-green-600 font-medium">Selected: {photo.name}</p>}
-                </div>
+          <button
+            type="submit"
+            disabled={uploading}
+            className={`px-10 py-3 bg-green-600 text-white rounded font-bold ${
+              uploading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            {uploading ? "Uploading..." : "Final Submit"}
+          </button>
+        </div>
+      </form>
 
-                <div className="p-4 border border-dashed border-gray-300 rounded-lg hover:border-indigo-400 transition-colors">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Citizenship Front *</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setCitFront(e.target.files?.[0] || null)}
-                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                    {citFront && <p className="mt-2 text-xs text-green-600 font-medium">Selected: {citFront.name}</p>}
-                </div>
+      {/* Final Review Modal */}
+      <FinalReviewModal
+        open={showReview}
+        onClose={() => setShowReview(false)}
+        kycData={kycReviewData}
+        pdfUrl="/terms.pdf"
+        onFinalSubmit={handleFinalSubmit}
+      />
 
-                <div className="p-4 border border-dashed border-gray-300 rounded-lg hover:border-indigo-400 transition-colors">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Citizenship Back *</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => setCitBack(e.target.files?.[0] || null)}
-                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                    />
-                    {citBack && <p className="mt-2 text-xs text-green-600 font-medium">Selected: {citBack.name}</p>}
-                </div>
-            </div>
-
-            <div className="flex justify-between pt-6 border-t border-gray-100">
-                <button
-                    type="button"
-                    onClick={onBack}
-                    className="px-6 py-2 border border-gray-300 text-gray-600 font-semibold rounded hover:bg-gray-100 transition-all"
-                >
-                    Back
-                </button>
-                <button
-                    type="submit"
-                    disabled={uploading}
-                    className={`px-10 py-3 bg-green-600 text-white font-bold rounded shadow-lg hover:bg-green-700 active:transform active:scale-95 transition-all ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                    {uploading ? 'Uploading...' : 'Final Submit'}
-                </button>
-            </div>
-        </form>
-    );
+      {/* Thank You Message */}
+      {showThankYou && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-xl p-8 max-w-md text-center">
+            <h2 className="text-2xl font-bold text-green-700 mb-4">
+              Thank You!
+            </h2>
+            <p className="text-lg text-gray-700 mb-6">
+              Your KYC form has been submitted successfully.
+            </p>
+            <button
+              className="px-6 py-2 bg-indigo-600 text-white rounded font-semibold"
+              onClick={() => {
+                setShowThankYou(false);
+                navigate("/login"); // or "/email-verification"
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
 };
 
 export default KycAttachment;

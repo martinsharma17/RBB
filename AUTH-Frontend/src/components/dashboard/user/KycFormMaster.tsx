@@ -14,6 +14,7 @@ import KycTransaction from "./sections/KycTransaction";
 import KycAml from "./sections/KycAml";
 import KycLocation from "./sections/KycLocation";
 import KycAgreement from "./sections/KycAgreement";
+import FinalReviewModal from "./sections/FinalReviewModel";
 
 interface KycFormMasterProps {
   initialSessionId?: number | null;
@@ -31,6 +32,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isEmailVerified, setIsEmailVerified] = useState(initialEmailVerified);
   const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
+  const [showFinalModal, setShowFinalModal] = useState(false);
 
   // Fetch existing KYC data on load
   useEffect(() => {
@@ -75,7 +77,8 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             if (detailsRes.success && detailsRes.data) {
               setKycData(detailsRes.data);
               // Handle both PascalCase and camelCase for currentStep
-              const stepFromApi = detailsRes.data.CurrentStep || detailsRes.data.currentStep;
+              const stepFromApi =
+                detailsRes.data.CurrentStep || detailsRes.data.currentStep;
               if (stepFromApi) {
                 setCurrentStep(stepFromApi);
               }
@@ -133,6 +136,8 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     "Agreement",
     "Attachments",
   ];
+  const personalInfo = kycData?.personalInfo || {};
+  const familyInitialData = kycData?.family || {};
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-lg border border-gray-100">
@@ -167,12 +172,13 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   disabled={!isClickable}
                   onClick={() => isClickable && setCurrentStep(stepNum)}
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 focus:outline-none
-                        ${isCompleted
-                      ? "bg-indigo-600 text-white cursor-pointer hover:scale-110"
-                      : isActive
-                        ? "bg-white border-2 border-indigo-600 text-indigo-600 scale-110 shadow-md cursor-pointer"
-                        : "bg-gray-200 text-gray-400 cursor-default"
-                    }
+                        ${
+                          isCompleted
+                            ? "bg-indigo-600 text-white cursor-pointer hover:scale-110"
+                            : isActive
+                            ? "bg-white border-2 border-indigo-600 text-indigo-600 scale-110 shadow-md cursor-pointer"
+                            : "bg-gray-200 text-gray-400 cursor-default"
+                        }
                     `}
                   style={{ pointerEvents: isClickable ? "auto" : "none" }}
                   aria-label={`Go to ${label}`}
@@ -180,8 +186,9 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   {isCompleted ? "✓" : stepNum}
                 </button>
                 <span
-                  className={`text-xs mt-2 font-medium hidden md:block ${isActive ? "text-indigo-600" : "text-gray-400"
-                    }`}
+                  className={`text-xs mt-2 font-medium hidden md:block ${
+                    isActive ? "text-indigo-600" : "text-gray-400"
+                  }`}
                 >
                   {label}
                 </span>
@@ -220,9 +227,11 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             {currentStep === 3 && (
               <KycFamily
                 sessionId={sessionId}
-                initialData={kycData?.family}
+                initialData={familyInitialData}
                 onNext={handleNext}
                 onBack={handlePrev}
+                gender={personalInfo.gender}
+                maritalStatus={personalInfo.maritalStatus}
               />
             )}
             {currentStep === 4 && (
@@ -301,7 +310,11 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
               <KycAttachment
                 sessionId={sessionId}
                 onBack={handlePrev}
-                onComplete={() => setCurrentStep(14)}
+                onComplete={(mergedKycData) => {
+                  setKycData(mergedKycData); // update the main kycData state
+                  setCurrentStep(14);
+                }}
+                allKycFormData={kycData}
               />
             )}
 
@@ -326,16 +339,26 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   Application Submitted!
                 </h2>
                 <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
-                  Thank you for completing your KYC. Our team is currently
-                  reviewing your documents. You will be notified once your
-                  account is verified.
+                  Thank you for completing your KYC. Please review your details
+                  and agree to the terms before final submission.
                 </p>
                 <button
-                  onClick={() => window.location.reload()}
+                  onClick={() => setShowFinalModal(true)}
                   className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition-all"
                 >
-                  Back to Dashboard
+                  Final Submit
                 </button>
+                <FinalReviewModal
+                  open={showFinalModal}
+                  onClose={() => setShowFinalModal(false)}
+                  kycData={kycData}
+                  pdfUrl="/terms.pdf"
+                  onFinalSubmit={() => {
+                    setShowFinalModal(false);
+                    // Add your final submit logic here (e.g., API call, show success message, etc.)
+                    window.location.reload();
+                  }}
+                />
               </div>
             )}
           </>

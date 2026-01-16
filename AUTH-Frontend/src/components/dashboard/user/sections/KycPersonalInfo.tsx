@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
-// import { adToBs } from "bikram-sambat-js"; 
+// import { adToBs } from "bikram-sambat-js";
 
 interface KycPersonalInfoProps {
   sessionId: number | null;
@@ -15,6 +15,7 @@ interface KycPersonalInfoData {
   dobAd: string;
   dobBs: string;
   gender: string;
+  maritalStatus: string;
   nationality: string;
   citizenshipNo: string;
   citizenshipIssueDate: string;
@@ -70,19 +71,21 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
       initialData?.gender === 1
         ? "Male"
         : initialData?.gender === 2
-          ? "Female"
-          : initialData?.gender === 3
-            ? "Other"
-            : typeof initialData?.gender === "string"
-              ? initialData.gender
-              : "",
+        ? "Female"
+        : initialData?.gender === 3
+        ? "Other"
+        : typeof initialData?.gender === "string"
+        ? initialData.gender
+        : "",
+    maritalStatus: initialData?.maritalStatus || "",
+
     nationality:
       initialData?.isNepali || initialData?.IsNepali
         ? "Nepali"
         : initialData?.otherNationality ||
-        initialData?.OtherNationality ||
-        initialData?.nationality ||
-        "Nepali",
+          initialData?.OtherNationality ||
+          initialData?.nationality ||
+          "Nepali",
     citizenshipNo:
       initialData?.citizenshipNo || initialData?.CitizenshipNo || "",
     citizenshipIssueDate:
@@ -113,19 +116,21 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
           initialData?.gender === 1
             ? "Male"
             : initialData?.gender === 2
-              ? "Female"
-              : initialData?.gender === 3
-                ? "Other"
-                : typeof initialData?.gender === "string"
-                  ? initialData.gender
-                  : "",
+            ? "Female"
+            : initialData?.gender === 3
+            ? "Other"
+            : typeof initialData?.gender === "string"
+            ? initialData.gender
+            : "",
+        maritalStatus: initialData?.maritalStatus || "", // <-- add this
+
         nationality:
           initialData?.isNepali || initialData?.IsNepali
             ? "Nepali"
             : initialData?.otherNationality ||
-            initialData?.OtherNationality ||
-            initialData?.nationality ||
-            "Nepali",
+              initialData?.OtherNationality ||
+              initialData?.nationality ||
+              "Nepali",
         citizenshipNo:
           initialData?.citizenshipNo || initialData?.CitizenshipNo || "",
         citizenshipIssueDate:
@@ -185,10 +190,10 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
         formData.gender === "Male"
           ? 1
           : formData.gender === "Female"
-            ? 2
-            : formData.gender === "Other"
-              ? 3
-              : null,
+          ? 2
+          : formData.gender === "Other"
+          ? 3
+          : null,
       isNepali: formData.nationality?.toLowerCase() === "nepali",
       otherNationality:
         formData.nationality?.toLowerCase() === "nepali"
@@ -198,7 +203,9 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
       citizenshipIssueDistrict: formData.citizenshipIssueDistrict || null,
       citizenshipIssueDate: formData.citizenshipIssueDate || null,
       panNo: formData.panNo || null,
-      branchId: formData.branchId ? parseInt(formData.branchId.toString()) : null
+      branchId: formData.branchId
+        ? parseInt(formData.branchId.toString())
+        : null,
     };
 
     const headers: any = {
@@ -221,7 +228,11 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
       );
 
       if (response.ok) {
-        onNext({ personalInfo: formData });
+        onNext({
+          personalInfo: formData,
+          gender: formData.gender,
+          maritalStatus: formData.maritalStatus,
+        });
       } else {
         const data = await response.json();
         if (data.errors) {
@@ -437,7 +448,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
           />
         </div>
 
-        <div className="flex flex-col">
+        {/* <div className="flex flex-col">
           <label className="text-sm font-semibold text-gray-700 mb-1">Select Branch *</label>
           <select
             name="branchId"
@@ -453,6 +464,24 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
               </option>
             ))}
           </select>
+        </div> */}
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Marital Status *
+          </label>
+          <select
+            name="maritalStatus"
+            value={formData.maritalStatus}
+            onChange={handleChange}
+            required
+            className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+          >
+            <option value="">Select Marital Status</option>
+            <option value="Single">Single</option>
+            <option value="Married">Married</option>
+            <option value="Divorced">Divorced</option>
+            <option value="Widowed">Widowed</option>
+          </select>
         </div>
       </div>
 
@@ -460,8 +489,9 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
         <button
           type="submit"
           disabled={saving}
-          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${saving ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${
+            saving ? "opacity-50 cursor-not-allowed" : ""
+          }`}
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>
