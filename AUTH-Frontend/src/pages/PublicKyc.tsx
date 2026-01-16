@@ -110,6 +110,31 @@ const PublicKyc = () => {
         setStep(3);
     };
 
+    const handleDeleteSession = async (e: React.MouseEvent, sid: number) => {
+        e.stopPropagation(); // Prevent triggering the resumeSession
+        if (!window.confirm("Are you sure you want to delete this application? This cannot be undone.")) return;
+
+        try {
+            const response = await fetch(`${apiBase}/api/KycSession/${sid}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                setAvailableSessions(prev => prev.filter(s => s.sessionId !== sid));
+                // If the deleted session was the current one in state, reset it
+                if (sessionId === sid) {
+                    setSessionId(null);
+                    localStorage.removeItem('kyc_session_id');
+                }
+            } else {
+                alert("Failed to delete session.");
+            }
+        } catch (err) {
+            console.error("Delete failed:", err);
+            alert("Network error while deleting.");
+        }
+    };
+
     const startNewApplication = () => {
         handleInitialize(null as any, true);
     };
@@ -259,9 +284,20 @@ const PublicKyc = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    <button className="px-5 py-2 bg-white border border-indigo-600 text-indigo-600 font-bold rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
-                                        Resume
-                                    </button>
+                                    <div className="flex items-center space-x-2">
+                                        <button
+                                            onClick={(e) => handleDeleteSession(e, s.sessionId)}
+                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                            title="Delete Application"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                        <button className="px-5 py-2 bg-white border border-indigo-600 text-indigo-600 font-bold rounded-lg group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                                            Resume
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
 

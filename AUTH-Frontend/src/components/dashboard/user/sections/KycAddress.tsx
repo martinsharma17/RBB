@@ -140,6 +140,67 @@ const KycAddress: React.FC<KycAddressProps> = ({
     }));
   }, [formData.currentDistrictId, apiBase]);
 
+  // Sync initialData names to IDs
+  useEffect(() => {
+    if (initialData?.permanentAddress && permProvinces.length > 0) {
+      const p = initialData.permanentAddress;
+      const province = permProvinces.find(pr => pr.name === p.province);
+      if (province) {
+        setFormData(prev => ({ ...prev, permanentProvinceId: province.id.toString(), permanentWardNo: p.wardNo?.toString() || "", permanentTole: p.tole || "" }));
+      }
+    }
+  }, [initialData, permProvinces]);
+
+  useEffect(() => {
+    if (initialData?.permanentAddress && permDistricts.length > 0) {
+      const p = initialData.permanentAddress;
+      const district = permDistricts.find(d => d.name === p.district);
+      if (district) {
+        setFormData(prev => ({ ...prev, permanentDistrictId: district.id.toString() }));
+      }
+    }
+  }, [initialData, permDistricts]);
+
+  useEffect(() => {
+    if (initialData?.permanentAddress && permMunicipalities.length > 0) {
+      const p = initialData.permanentAddress;
+      const mun = permMunicipalities.find(m => m.name === p.municipalityName);
+      if (mun) {
+        setFormData(prev => ({ ...prev, permanentMunicipalityId: mun.id.toString() }));
+      }
+    }
+  }, [initialData, permMunicipalities]);
+
+  useEffect(() => {
+    if (initialData?.currentAddress && currProvinces.length > 0) {
+      const c = initialData.currentAddress;
+      const province = currProvinces.find(pr => pr.name === c.province);
+      if (province) {
+        setFormData(prev => ({ ...prev, currentProvinceId: province.id.toString(), wardNo: c.wardNo?.toString() || "", currentTole: c.tole || "", contactNumber: c.mobileNo || "" }));
+      }
+    }
+  }, [initialData, currProvinces]);
+
+  useEffect(() => {
+    if (initialData?.currentAddress && currDistricts.length > 0) {
+      const c = initialData.currentAddress;
+      const district = currDistricts.find(d => d.name === c.district);
+      if (district) {
+        setFormData(prev => ({ ...prev, currentDistrictId: district.id.toString() }));
+      }
+    }
+  }, [initialData, currDistricts]);
+
+  useEffect(() => {
+    if (initialData?.currentAddress && currMunicipalities.length > 0) {
+      const c = initialData.currentAddress;
+      const mun = currMunicipalities.find(m => m.name === c.municipalityName);
+      if (mun) {
+        setFormData(prev => ({ ...prev, currentMunicipalityId: mun.id.toString() }));
+      }
+    }
+  }, [initialData, currMunicipalities]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
   ) => {
@@ -521,9 +582,8 @@ const KycAddress: React.FC<KycAddressProps> = ({
         <button
           type="submit"
           disabled={saving}
-          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${
-            saving ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${saving ? "opacity-50 cursor-not-allowed" : ""
+            }`}
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>

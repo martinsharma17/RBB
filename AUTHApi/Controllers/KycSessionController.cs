@@ -285,6 +285,30 @@ namespace AUTHApi.Controllers
             await _context.SaveChangesAsync();
             return Success(new { nextStep = model.StepNumber + 1 });
         }
+
+        [HttpDelete("{sessionId}")]
+        public async Task<IActionResult> DeleteSession(int sessionId)
+        {
+            var session = await _context.KycFormSessions
+                .Include(s => s.KycDetail)
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
+
+            if (session == null) return Failure("Session not found", 404);
+
+            // If we have a KycDetail, delete it (this should cascade to Documents based on DbContext config)
+            if (session.KycDetail != null)
+            {
+                _context.KycDetails.Remove(session.KycDetail);
+            }
+
+            // StepCompletions and OtpVerifications should cascade delete from session 
+            // as configured in ApplicationDbContext.
+            _context.KycFormSessions.Remove(session);
+
+            await _context.SaveChangesAsync();
+
+            return Success(true, "Session deleted successfully");
+        }
     }
 
     public class StepCompletionDto
