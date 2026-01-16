@@ -1,25 +1,39 @@
-// src/components/dashboard/admin/AdminResourceView.jsx
+// src/components/dashboard/admin/AdminResourceView.tsx
 import React, { useState } from 'react';
+
+interface AdminResourceViewProps {
+    resourceName: string;
+    canCreate?: boolean;
+    canUpdate?: boolean;
+    canDelete?: boolean;
+}
+
+interface ResourceItem {
+    id: number;
+    title: string;
+    status: string;
+    updated: string;
+}
 
 /**
  * AdminResourceView
  * A generic component to manage resources (Tasks, Projects) 
  * strictly enforcing permissions passed via props.
  */
-const AdminResourceView = ({
+const AdminResourceView: React.FC<AdminResourceViewProps> = ({
     resourceName,
-    canCreate,
-    canUpdate,
-    canDelete
+    canCreate = false, // Default to false for safety
+    canUpdate = false,
+    canDelete = false
 }) => {
     // Mock Data
-    const [items, setItems] = useState([
+    const [items, setItems] = useState<ResourceItem[]>([
         { id: 1, title: `Sample ${resourceName} 1`, status: 'Active', updated: '2 mins ago' },
         { id: 2, title: `Sample ${resourceName} 2`, status: 'Pending', updated: '1 hour ago' },
         { id: 3, title: `Sample ${resourceName} 3`, status: 'Completed', updated: '1 day ago' },
     ]);
 
-    const handleDelete = (id) => {
+    const handleDelete = (id: number) => {
         if (!canDelete) return;
         if (window.confirm(`Are you sure you want to delete this ${resourceName}?`)) {
             setItems(items.filter(item => item.id !== id));
@@ -28,7 +42,7 @@ const AdminResourceView = ({
 
     const handleCreate = () => {
         if (!canCreate) return;
-        const newId = Math.max(...items.map(i => i.id), 0) + 1;
+        const newId = items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1;
         setItems([...items, {
             id: newId,
             title: `New ${resourceName} ${newId}`,
@@ -37,7 +51,7 @@ const AdminResourceView = ({
         }]);
     };
 
-    const handleUpdate = (id) => {
+    const handleUpdate = (id: number) => {
         if (!canUpdate) return;
         alert(`Edit ${resourceName} ${id} (Functionality would open modal)`);
     };
@@ -54,8 +68,8 @@ const AdminResourceView = ({
                 <button
                     onClick={canCreate ? handleCreate : () => alert("Access Denied: You do not have permission to create this resource. Contact your administrator.")}
                     className={`px-4 py-2 rounded-lg shadow-sm transition-colors ${canCreate
-                            ? 'bg-blue-600 text-white hover:bg-blue-700'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                         }`}
                     title={canCreate ? "Create New" : "Access Denied"}
                 >

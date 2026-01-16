@@ -42,7 +42,8 @@ namespace AUTHApi.Controllers
             if (detail == null)
             {
                 // Return empty structure if not created yet
-                return Success(new KycFullDetailsDto { SessionId = sessionId, Email = session!.Email });
+                return Success(new KycFullDetailsDto
+                    { SessionId = sessionId, Email = session!.Email, CurrentStep = session.CurrentStep });
             }
 
             // Map Entity -> DTO
@@ -50,8 +51,12 @@ namespace AUTHApi.Controllers
             {
                 SessionId = sessionId,
                 Email = session!.Email,
+                CurrentStep = session.CurrentStep,
                 PersonalInfo = new PersonalInfoDto
                 {
+                    FirstName = detail.FirstName,
+                    MiddleName = detail.MiddleName,
+                    LastName = detail.LastName,
                     FullName = detail.FirstName + " " +
                                (string.IsNullOrEmpty(detail.MiddleName) ? "" : detail.MiddleName + " ") +
                                detail.LastName,
@@ -62,7 +67,8 @@ namespace AUTHApi.Controllers
                     CitizenshipNo = detail.CitizenshipNumber,
                     CitizenshipIssueDistrict = detail.CitizenshipIssuedDistrict,
                     CitizenshipIssueDate = detail.CitizenshipIssuedDate,
-                    BranchId = detail.BranchId
+                    BranchId = detail.BranchId,
+                    PanNo = detail.PanNumber
                 },
                 CurrentAddress = new AddressDto
                 {

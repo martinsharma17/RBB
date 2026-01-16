@@ -37,7 +37,10 @@ export const branchService = {
             },
             body: JSON.stringify(branch)
         });
-        if (!response.ok) throw new Error('Failed to create branch');
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to create branch');
+        }
         return await response.json() as Branch;
     },
 
@@ -50,7 +53,10 @@ export const branchService = {
             },
             body: JSON.stringify(branch)
         });
-        if (!response.ok) throw new Error('Failed to update branch');
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to update branch');
+        }
     },
 
     delete: async (id: number, apiBase: string, token: string) => {

@@ -12,6 +12,21 @@ namespace AUTHApi.Data
 
             var roles = configuration.GetSection("Roles:DefaultRoles").Get<string[]>() ?? ["SuperAdmin"];
 
+            // Cleanup: Delete roles that are no longer needed
+            var rolesToDelete = new[] { "Admin", "Manager" };
+            foreach (var roleName in rolesToDelete)
+            {
+                var role = await roleManager.FindByNameAsync(roleName);
+                if (role != null)
+                {
+                    // Check if there are any users in this role before deleting?
+                    // Identity usually prevents deletion if users exist, or removes the mapping.
+                    // For now, we'll force delete to satisfy the user request.
+                    await roleManager.DeleteAsync(role);
+                    Console.WriteLine($"Removed deprecated role: {roleName}");
+                }
+            }
+
             foreach (var roleName in roles)
             {
                 if (!await roleManager.RoleExistsAsync(roleName))

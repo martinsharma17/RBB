@@ -1,13 +1,12 @@
-import React from 'react';
 import AdminDashboardView from './admin/AdminDashboardView';
 import AdminUsersListView from './admin/AdminUsersListView';
 
 import AccessManagementView from './AccessManagementView';
 import RolesManagementView from './RolesManagementView';
 import PolicyEditorView from './PolicyEditorView';
+import ProjectSettingsView from './ProjectSettingsView';
 
 
-// import ProjectSettingsView from './ProjectSettingsView';
 // import AdminResourceView from './admin/AdminResourceView';
 
 import KycFormMaster from './user/KycFormMaster';
@@ -16,7 +15,6 @@ import KycWorkflowView from './admin/KycWorkflowView';
 import UnifiedKycQueueView from './admin/UnifiedKycQueueView';
 import BranchManagementView from './superadmin/BranchManagementView';
 import KycSearchView from './admin/KycSearchView';
-import KycDashboardView from './KycDashboardView';
 
 
 // Placeholder for missing component
@@ -31,14 +29,12 @@ const SupportComponent = () => (
 export const getViewComponent = (viewId: string, props: any): React.ReactNode => {
     switch (viewId) {
         // --- Core Dashboards ---
-        case 'dashboard':
-            return <AdminDashboardView {...props} />;
 
         case 'kyc':
             return <KycFormMaster {...props} />;
 
-        case 'kyc_dashboard':
-            return <KycDashboardView {...props} />;
+        case 'dashboard':
+            return <AdminDashboardView {...props} />;
 
         case 'kyc_workflow':
             return <KycWorkflowView {...props} />;
@@ -66,6 +62,8 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
             return <AccessManagementView {...props} />;
         case 'branches':
             return <BranchManagementView {...props} />;
+        case 'system_customization':
+            return <ProjectSettingsView {...props} />;
 
         // --- Analytics ---
 

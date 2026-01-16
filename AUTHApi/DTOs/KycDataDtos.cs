@@ -3,6 +3,9 @@ namespace AUTHApi.DTOs
     public class PersonalInfoDto
     {
         public string FullName { get; set; } = string.Empty;
+        public string? FirstName { get; set; }
+        public string? MiddleName { get; set; }
+        public string? LastName { get; set; }
         public string? DateOfBirthBs { get; set; }
         public DateTime? DateOfBirthAd { get; set; }
         public byte? Gender { get; set; }
@@ -14,6 +17,7 @@ namespace AUTHApi.DTOs
         public string? ClientAccountNo { get; set; }
         public string? ReferenceNo { get; set; }
         public int? BranchId { get; set; }
+        public string? PanNo { get; set; }
     }
 
     public class AddressDto
@@ -135,6 +139,7 @@ namespace AUTHApi.DTOs
     {
         public int SessionId { get; set; }
         public string? Email { get; set; }
+        public int CurrentStep { get; set; }
         public PersonalInfoDto? PersonalInfo { get; set; }
         public AddressDto? CurrentAddress { get; set; }
         public AddressDto? PermanentAddress { get; set; }

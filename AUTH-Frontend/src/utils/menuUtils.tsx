@@ -52,7 +52,7 @@ export const filterDynamicMenus = (items: SidebarItem[], permissions: Permission
         // Sidebar items in DB usually store the boolean key e.g. 'view_users'.
 
         let isPermitted = false;
-        if (!item.permission || item.permission === 'dashboard') {
+        if (!item.permission || item.permission === 'dashboard' || item.permission === 'Permissions.Kyc.Dashboard') {
             isPermitted = true;
         } else {
             // Priority 1: Direct Match (Raw Backend Key)

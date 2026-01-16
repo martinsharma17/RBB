@@ -123,8 +123,10 @@ const BranchManagementView: React.FC = () => {
             setIsModalOpen(false);
             resetForm();
             loadBranches();
-        } catch (error) {
-            toast.error('Failed to save branch');
+        } catch (error: any) {
+            console.error('Save branch error:', error);
+            const errorMsg = error.response?.data || error.message || 'Failed to save branch';
+            toast.error(errorMsg);
         }
     };
 

@@ -1,41 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useProjectSettings } from '../../context/ProjectSettingsContext';
+import { toast } from 'react-hot-toast';
+import { Save, Upload, RefreshCw } from 'lucide-react';
 
 const ProjectSettingsView = () => {
     const { token, apiBase } = useAuth();
     const { settings, refreshSettings } = useProjectSettings();
-    const [name, setName] = useState(settings.applicationName);
-    const [logo, setLogo] = useState<File | null>(null);
-    const [preview, setPreview] = useState<string | null>(settings.logoUrl);
-    const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    const [appName, setAppName] = useState('');
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        setName(settings.applicationName);
-        setPreview(settings.logoUrl);
+        if (settings) {
+            setAppName(settings.applicationName || '');
+            setLogoPreview(settings.logoUrl);
+        }
     }, [settings]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            setLogo(file);
-            setPreview(URL.createObjectURL(file));
+            setLogoFile(file);
+            setLogoPreview(URL.createObjectURL(file));
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        setMessage(null);
-
-        const formData = new FormData();
-        formData.append('applicationName', name);
-        if (logo) {
-            formData.append('logo', logo);
-        }
-
+        setSaving(true);
         try {
+            const formData = new FormData();
+            formData.append('ApplicationName', appName);
+            if (logoFile) {
+                formData.append('Logo', logoFile);
+            }
+
             const response = await fetch(`${apiBase}/api/ProjectSettings/update`, {
                 method: 'POST',
                 headers: {
@@ -44,90 +46,111 @@ const ProjectSettingsView = () => {
                 body: formData
             });
 
-            const res = await response.json();
-            if (res.success) {
-                setMessage({ type: 'success', text: 'Settings updated successfully!' });
+            if (response.ok) {
+                toast.success('Settings updated successfully');
                 await refreshSettings();
+                // Force a hard reload if needed, or rely on context
+                // window.location.reload(); 
             } else {
-                setMessage({ type: 'error', text: res.message || 'Failed to update settings.' });
+                toast.error('Failed to update settings');
             }
         } catch (error) {
-            setMessage({ type: 'error', text: 'Network error. Please try again.' });
+            console.error(error);
+            toast.error('Error saving settings');
         } finally {
-            setLoading(false);
+            setSaving(false);
         }
     };
 
     return (
-        <div className="bg-white rounded-lg shadow p-6 max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold mb-6 text-gray-800">Global Project Settings</h2>
+        <div className="p-6 max-w-4xl mx-auto animate-in fade-in duration-500">
+            <div className="mb-8">
+                <h1 className="text-2xl font-bold text-gray-900">System Customization</h1>
+                <p className="text-gray-500 mt-1">Manage application branding and basic settings.</p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Application Name
-                    </label>
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                        placeholder="e.g. Identity System"
-                        required
-                    />
-                </div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <form onSubmit={handleSave} className="space-y-8">
 
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Application Logo
-                    </label>
-                    <div className="mt-1 flex items-center gap-4">
-                        <div className="h-20 w-20 border rounded-lg flex items-center justify-center bg-gray-50 overflow-hidden">
-                            {preview ? (
-                                <img src={preview} alt="Logo Preview" className="h-full w-full object-contain" />
-                            ) : (
-                                <span className="text-gray-400 text-xs">No Logo</span>
-                            )}
+                    {/* Logo Section */}
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-4">Application Logo</label>
+                        <div className="flex items-start gap-8">
+                            <div className="relative group">
+                                <div className="w-32 h-32 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 overflow-hidden">
+                                    {logoPreview ? (
+                                        <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-contain p-2" />
+                                    ) : (
+                                        <div className="text-4xl text-gray-300 font-bold">Logo</div>
+                                    )}
+                                </div>
+                                <label className="absolute inset-0 cursor-pointer bg-black/0 group-hover:bg-black/10 transition-colors rounded-2xl flex items-center justify-center">
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                                    <div className="opacity-0 group-hover:opacity-100 bg-white/90 px-3 py-1 rounded-full shadow-sm text-xs font-bold text-gray-700">
+                                        Change
+                                    </div>
+                                </label>
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm text-gray-500 mb-4">
+                                    Upload a transparent PNG or SVG for best results. Recommended size: 128x128px.
+                                </p>
+                                <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 cursor-pointer transition-colors font-medium text-sm">
+                                    <Upload size={16} />
+                                    <span>Upload New Image</span>
+                                    <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                                </label>
+                            </div>
                         </div>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleFileChange}
-                            className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
-                        />
                     </div>
-                    <p className="mt-2 text-xs text-gray-500 italic">
-                        Recommended: Square image (256x256), PNG or SVG format.
-                    </p>
-                </div>
 
-                {message && (
-                    <div className={`p-3 rounded-md text-sm ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {message.text}
+                    {/* App Name Section */}
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Application Name</label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={appName}
+                                onChange={(e) => setAppName(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none font-medium text-gray-900"
+                                placeholder="e.g. Identity Management System"
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium bg-white px-2 py-1 rounded border border-gray-100">
+                                Shows in Title
+                            </div>
+                        </div>
                     </div>
-                )}
 
-                <div className="flex justify-end pt-4 border-t">
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className={`px-6 py-2 rounded-md text-white font-medium transition-all ${loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 shadow-md hover:shadow-lg active:scale-95'}`}
-                    >
-                        {loading ? 'Saving...' : 'Save Changes'}
-                    </button>
-                </div>
-            </form>
+                    {/* Actions */}
+                    <div className="pt-6 border-t border-gray-100 flex items-center justify-end gap-3">
+                        <button
+                            type="button"
+                            onClick={refreshSettings}
+                            className="px-4 py-2.5 text-gray-500 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 font-medium flex items-center gap-2 transition-colors"
+                        >
+                            <RefreshCw size={18} />
+                            <span>Reset</span>
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={saving}
+                            className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold flex items-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-70 disabled:cursor-not-allowed transition-all active:scale-95"
+                        >
+                            {saving ? (
+                                <>
+                                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span>Saving...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Save size={18} />
+                                    <span>Save Changes</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
 
-            <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                <h3 className="text-sm font-semibold text-blue-800 flex items-center gap-2 mb-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    SuperAdmin Only
-                </h3>
-                <p className="text-xs text-blue-600 leading-relaxed">
-                    Changes made here will reflect globally across the Sidebar, Navbar, and all user dashboards immediately after saving.
-                </p>
+                </form>
             </div>
         </div>
     );
