@@ -1,5 +1,7 @@
 using AUTHApi.Data;
 using AUTHApi.Entities;
+using AUTHApi.Core.Security;
+using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +29,31 @@ namespace AUTHApi.Controllers
         [HttpGet("all")]
         public async Task<IActionResult> GetAllPolicies()
         {
+            // --- SELF-HEAL ---
+            // Ensure all code-defined permissions exist in DB before returning list
+            var allPermissions = Permissions.GetAllPermissions();
+            bool changesMade = false;
+            foreach (var permKey in allPermissions)
+            {
+                if (!await _context.SystemPolicies.AnyAsync(p => p.PolicyKey == permKey))
+                {
+                    var parts = permKey.Split('.');
+                    string category = parts.Length > 1 ? parts[1] : "General";
+                    string name = parts.Length > 2 ? string.Join(" ", parts.Skip(2).ToArray()) : parts.Last();
+
+                    _context.SystemPolicies.Add(new SystemPolicy
+                    {
+                        PolicyKey = permKey,
+                        Category = category,
+                        DisplayName = $"{category}: {name}",
+                        Description = $"Auto-generated policy for {permKey}"
+                    });
+                    changesMade = true;
+                }
+            }
+
+            if (changesMade) await _context.SaveChangesAsync();
+
             var policies = await _context.SystemPolicies
                 .OrderBy(p => p.Category)
                 .ThenBy(p => p.DisplayName)
@@ -80,6 +107,31 @@ namespace AUTHApi.Controllers
             if (role == null) return Failure("Role not found", 404);
 
             newPolicyKeys = newPolicyKeys ?? new List<string>();
+
+            // --- SELF-HEAL ---
+            // Ensure all code-defined permissions exist in DB before processing update
+            var allPermissions = Permissions.GetAllPermissions();
+            bool changesMade = false;
+            foreach (var permKey in allPermissions)
+            {
+                if (!await _context.SystemPolicies.AnyAsync(p => p.PolicyKey == permKey))
+                {
+                    var parts = permKey.Split('.');
+                    string category = parts.Length > 1 ? parts[1] : "General";
+                    string name = parts.Length > 2 ? string.Join(" ", parts.Skip(2).ToArray()) : parts.Last();
+
+                    _context.SystemPolicies.Add(new SystemPolicy
+                    {
+                        PolicyKey = permKey,
+                        Category = category,
+                        DisplayName = $"{category}: {name}",
+                        Description = $"Auto-generated policy for {permKey}"
+                    });
+                    changesMade = true;
+                }
+            }
+
+            if (changesMade) await _context.SaveChangesAsync();
 
             // 1. Resolve Policy Keys to IDs
             var validPolicies = await _context.SystemPolicies

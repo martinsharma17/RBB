@@ -130,6 +130,7 @@ export const PERMISSION_CONSTANTS = {
     KYC_WORKFLOW: 'Permissions.Kyc.Workflow',
     KYC_SEARCH: 'Permissions.Kyc.GlobalSearch',
     KYC_DASHBOARD: 'Permissions.Kyc.Dashboard',
+    KYC_EXPORT: 'Permissions.Kyc.Export',
 } as const;
 
 /**
@@ -274,22 +275,22 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             update: permSet.has(PERMISSION_CONSTANTS.KYC_UPDATE),
             delete: permSet.has(PERMISSION_CONSTANTS.KYC_DELETE),
             sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_SIDEBAR),
-        },
-        kyc_dashboard: {
-            read: permSet.has(PERMISSION_CONSTANTS.KYC_DASHBOARD),
-            sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_DASHBOARD),
+            export: permSet.has(PERMISSION_CONSTANTS.KYC_EXPORT),
         },
         kyc_workflow: {
             read: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
             sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
+            export: permSet.has(PERMISSION_CONSTANTS.KYC_EXPORT),
         },
         kyc_unified_queue: {
             read: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
             sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
+            export: permSet.has(PERMISSION_CONSTANTS.KYC_EXPORT),
         },
         kyc_search: {
             read: permSet.has(PERMISSION_CONSTANTS.KYC_SEARCH),
             sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_SEARCH),
+            export: permSet.has(PERMISSION_CONSTANTS.KYC_EXPORT),
         },
 
         // Computed permissions for convenience
@@ -483,14 +484,17 @@ export function mapFrontendPermissionsToBackend(frontendPermissions: Permissions
         pushIfTrue(true, PERMISSION_CONSTANTS.KYC_WORKFLOW);
     }
 
-    // KYC Dashboard
-    if (frontendPermissions.kyc_dashboard?.read || frontendPermissions.kyc_dashboard?.sidebar) {
-        pushIfTrue(true, PERMISSION_CONSTANTS.KYC_DASHBOARD);
-    }
-
     // KYC Search
     if (frontendPermissions.kyc_search?.read || frontendPermissions.kyc_search?.sidebar) {
         pushIfTrue(true, PERMISSION_CONSTANTS.KYC_SEARCH);
+    }
+
+    // consolidated KYC Export
+    if (frontendPermissions.kyc?.export ||
+        frontendPermissions.kyc_workflow?.export ||
+        frontendPermissions.kyc_unified_queue?.export ||
+        frontendPermissions.kyc_search?.export) {
+        pushIfTrue(true, PERMISSION_CONSTANTS.KYC_EXPORT);
     }
 
     return permissions;

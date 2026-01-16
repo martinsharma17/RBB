@@ -119,6 +119,8 @@ function AppContent() {
   );
 }
 
+import { Toaster } from 'react-hot-toast';
+
 // ==============================================================================
 // ROOT APP COMPONENT
 // ==============================================================================
@@ -127,6 +129,7 @@ export default function App() {
     // Wrap entire app in AuthProvider to make auth state global
     <AuthProvider>
       <ProjectSettingsProvider>
+        <Toaster position="top-right" />
         <AppContent />
       </ProjectSettingsProvider>
     </AuthProvider>

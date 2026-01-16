@@ -40,6 +40,7 @@ export interface PermissionSet {
   update?: boolean;
   delete?: boolean;
   sidebar?: boolean;
+  export?: boolean;
 }
 
 export interface Permissions {

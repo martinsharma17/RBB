@@ -44,9 +44,9 @@ namespace AUTHApi.Controllers
         [Authorize(Roles = "SuperAdmin,Admin")]
         public async Task<ActionResult<Branch>> CreateBranch(Branch branch)
         {
-            if (_context.Branches.Any(b => b.Code == branch.Code))
+            if (_context.Branches.Any(b => b.Code == branch.Code || b.Name == branch.Name))
             {
-                return BadRequest("Branch code already exists.");
+                return BadRequest("A branch with this name or code already exists.");
             }
 
             _context.Branches.Add(branch);
@@ -63,6 +63,11 @@ namespace AUTHApi.Controllers
             if (id != branch.Id)
             {
                 return BadRequest();
+            }
+
+            if (_context.Branches.Any(b => b.Id != id && (b.Code == branch.Code || b.Name == branch.Name)))
+            {
+                return BadRequest("A branch with this name or code already exists.");
             }
 
             _context.Entry(branch).State = EntityState.Modified;
@@ -101,8 +106,8 @@ namespace AUTHApi.Controllers
             // Optional: Prevent delete if users or KYC exist.
             // For now, let's just delete (Cascade might trigger if configured, or FK error).
             // Usually safe to catch exception.
-            
-            try 
+
+            try
             {
                 _context.Branches.Remove(branch);
                 await _context.SaveChangesAsync();

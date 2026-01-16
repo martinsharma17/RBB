@@ -15,6 +15,7 @@ interface KycReviewModalProps {
     setRemarks: (val: string) => void;
     onAction: (action: 'approve' | 'reject' | 'resubmit' | 'pull-back', returnToPrevious?: boolean) => void;
     onDownloadCsv: (workflowId: number) => void;
+    canExport: boolean;
 }
 
 const KycReviewModal: React.FC<KycReviewModalProps> = ({
@@ -31,7 +32,8 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
     remarks,
     setRemarks,
     onAction,
-    onDownloadCsv
+    onDownloadCsv,
+    canExport
 }) => {
     const [activeTab, setActiveTab] = useState('overview');
 
@@ -56,13 +58,24 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
+                        {isEditing && (
+                            <div className="px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2">
+                                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">Editing Mode Active</span>
+                            </div>
+                        )}
                         {(detailData?.workflow?.status === 4 || detailData?.workflow?.status === "ResubmissionRequired" ||
                             detailData?.workflow?.status === 5 || detailData?.workflow?.status === "InReview" ||
                             detailData?.workflow?.status === 3 || detailData?.workflow?.status === "Rejected") && (
                                 <button
                                     onClick={() => isEditing ? onSave() : setIsEditing(true)}
                                     disabled={actionLoading}
-                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing ? 'bg-green-600 text-white shadow-lg shadow-green-200' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}
+                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing
+                                        ? 'bg-green-600 text-white shadow-lg shadow-green-200 hover:bg-green-700'
+                                        : 'bg-amber-50 text-amber-700 border-2 border-amber-200 hover:bg-amber-100'
+                                        }`}
                                 >
                                     {isEditing ? (
                                         <>
@@ -77,16 +90,18 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                     )}
                                 </button>
                             )}
-                        <button
-                            onClick={() => detailData?.workflow?.id && onDownloadCsv(detailData.workflow.id)}
-                            className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 hover:bg-gray-800 shadow-lg shadow-gray-200"
-                            title="Download CSV for printing hardcopy and bank stamp"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Print Form
-                        </button>
+                        {canExport && (
+                            <button
+                                onClick={() => detailData?.workflow?.id && onDownloadCsv(detailData.workflow.id)}
+                                className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 hover:bg-gray-800 shadow-lg shadow-gray-200"
+                                title="Download CSV for printing hardcopy and bank stamp"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Print Form
+                            </button>
+                        )}
                         <button
                             onClick={() => !actionLoading && onClose()}
                             className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
@@ -523,14 +538,14 @@ const InfoRow: React.FC<{ label: string, value: any, isEditing?: boolean, type?:
                     type="date"
                     value={value || ''}
                     onChange={(e) => onChange?.(e.target.value)}
-                    className="text-xs text-right font-black text-indigo-600 bg-indigo-50/50 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 w-1/2"
+                    className="text-xs text-left font-black text-indigo-600 bg-indigo-50/50 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 w-1/2"
                 />
             ) : (
                 <input
                     type={type}
                     value={value || ''}
                     onChange={(e) => onChange?.(e.target.value)}
-                    className="text-xs text-right font-black text-indigo-600 bg-indigo-50/50 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 w-1/2"
+                    className="text-xs text-left font-black text-indigo-600 bg-indigo-50/50 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 w-1/2"
                 />
             )
         ) : (

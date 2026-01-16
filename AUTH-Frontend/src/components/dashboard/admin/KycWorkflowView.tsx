@@ -23,7 +23,7 @@ interface KycWorkflowViewProps {
 }
 
 const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearActiveId }) => {
-    const { token, apiBase } = useAuth();
+    const { token, apiBase, user, permissions } = useAuth();
     const [pendingKycs, setPendingKycs] = useState<PendingKyc[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedKyc, setSelectedKyc] = useState<number | null>(null);
@@ -32,6 +32,10 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
     const [actionLoading, setActionLoading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editedData, setEditedData] = useState<any>({});
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    // Check if user has export permission
+    const canExport = user?.roles?.some(r => r.toLowerCase() === 'superadmin') || permissions?.kyc?.export || false;
 
     useEffect(() => {
         fetchPending();
@@ -55,6 +59,7 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
             const data = await res.json();
             if (data.success) {
                 setPendingKycs(data.data.pending || []);
+                setSelectedIds([]); // Reset selection on refresh
             }
         } catch (err) {
             console.error("Failed to fetch pending KYCs", err);
@@ -224,6 +229,50 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
         }
     };
 
+    const toggleSelectAll = () => {
+        if (selectedIds.length === pendingKycs.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(pendingKycs.map(k => k.id));
+        }
+    };
+
+    const toggleSelectOne = (id: number) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
+
+    const handleDownloadSelected = async () => {
+        if (selectedIds.length === 0) return;
+        try {
+            // Since we don't have a bulk-specific IDs endpoint yet, we'll download one by one or 
+            // if the backend supports a list of IDs, we should use that.
+            // For now, let's assume we want to download the pending list filtered by these IDs if possible.
+            // Actually, let's just download each individually or inform the user.
+            // A better way is to have a backend endpoint that accepts a list of IDs.
+            // Let's check if export-pending-csv can take a list of IDs.
+            const res = await fetch(`${apiBase}/api/KycApproval/export-pending-csv?ids=${selectedIds.join(',')}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Selected_KYC_List_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert("Failed to download selected CSV.");
+            }
+        } catch (err) {
+            console.error("Download error", err);
+        }
+    };
+
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[400px]">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -239,16 +288,31 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
                     <p className="text-gray-500 mt-1">Review applicant data and manage workflow transitions.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={handleDownloadBulkCsv}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-xs font-bold rounded-xl hover:bg-green-700 transition shadow-lg shadow-green-200"
-                        title="Download entire pending queue as CSV"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Export Queue (CSV)
-                    </button>
+                    {canExport && (
+                        <div className="flex items-center gap-2">
+                            {selectedIds.length > 0 && (
+                                <button
+                                    onClick={handleDownloadSelected}
+                                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:shadow-lg hover:shadow-indigo-500/30 transition-all duration-300"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Export Selected ({selectedIds.length})
+                                </button>
+                            )}
+                            <button
+                                onClick={handleDownloadBulkCsv}
+                                className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:shadow-lg hover:shadow-green-500/30 transition-all duration-300"
+                                title="Download entire pending queue as CSV"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Export Full Queue
+                            </button>
+                        </div>
+                    )}
                     <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-100 uppercase tracking-wider">
                         Active Tasks: {pendingKycs.length}
                     </span>
@@ -279,28 +343,45 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
                         <table className="min-w-full divide-y divide-gray-100">
                             <thead className="bg-gray-50/50">
                                 <tr>
-                                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Applicant</th>
+                                    <th className="px-6 py-4 text-left">
+                                        <input
+                                            type="checkbox"
+                                            checked={pendingKycs.length > 0 && selectedIds.length === pendingKycs.length}
+                                            onChange={toggleSelectAll}
+                                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                        />
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest min-w-[200px]">Customer</th>
                                     <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Current Location</th>
                                     <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Submission Date</th>
+                                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Form</th>
                                     <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Progress</th>
                                     <th className="px-8 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-5">
                                 {pendingKycs.map((kyc) => (
-                                    <tr key={kyc.id} className="hover:bg-indigo-50/30 transition-all group">
-                                        <td className="px-8 py-5">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                                                    {kyc.customerEmail.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{kyc.customerName || kyc.customerEmail}</div>
-                                                    <div className="text-[10px] font-mono text-gray-400">
-                                                        {kyc.customerName ? kyc.customerEmail : `SESSION #${kyc.kycSessionId}`}
-                                                    </div>
+                                    <tr key={kyc.id} className={`hover:bg-indigo-50/30 transition-colors group border-b border-gray-50 last:border-0 ${selectedIds.includes(kyc.id) ? 'bg-indigo-50/50' : ''}`}>
+                                        <td className="px-6 py-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(kyc.id)}
+                                                onChange={() => toggleSelectOne(kyc.id)}
+                                                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </td>
+                                        <td className="px-6 py-4 cursor-pointer" onClick={() => viewDetails(kyc.id)}><div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                                                {kyc.customerEmail.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{kyc.customerName || kyc.customerEmail}</div>
+                                                <div className="text-[10px] font-mono text-gray-400">
+                                                    {kyc.customerName ? kyc.customerEmail : `SESSION #${kyc.kycSessionId}`}
                                                 </div>
                                             </div>
+                                        </div>
                                         </td>
                                         <td className="px-8 py-5">
                                             <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-lg border border-indigo-100">
@@ -335,6 +416,19 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
                                         </td>
                                         <td className="px-8 py-5 text-sm text-gray-500">
                                             {new Date(kyc.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                                        </td>
+                                        <td className="px-8 py-5 text-center">
+                                            {canExport && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDownloadCsv(kyc.id); }}
+                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                    title="Download individual KYC CSV"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                </button>
+                                            )}
                                         </td>
                                         <td className="px-8 py-5">
                                             <div className="flex items-center gap-2">
@@ -380,6 +474,7 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
                 setRemarks={setRemarks}
                 onAction={handleAction}
                 onDownloadCsv={handleDownloadCsv}
+                canExport={canExport}
             />
         </div>
     );

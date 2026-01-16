@@ -48,7 +48,6 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'audit', name: 'Audit Logs' },
 
         { id: 'kyc', name: 'KYC Verification' },
-        { id: 'kyc_dashboard', name: 'KYC Dashboard' },
         { id: 'kyc_workflow', name: 'KYC Approval Queue' },
         { id: 'kyc_unified_queue', name: 'Unified KYC Queue' },
         { id: 'kyc_search', name: 'Global KYC Search' },
@@ -61,7 +60,8 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'read', name: 'Read', color: 'bg-blue-100 text-blue-700' },
         { id: 'update', name: 'Update', color: 'bg-orange-100 text-orange-700' },
         { id: 'delete', name: 'Delete', color: 'bg-red-100 text-red-700' },
-        { id: 'sidebar', name: 'Sidebar', color: 'bg-green-100 text-green-700' }
+        { id: 'sidebar', name: 'Sidebar', color: 'bg-green-100 text-green-700' },
+        { id: 'export', name: 'Export', color: 'bg-blue-100 text-blue-700' }
     ];
 
     const [policies, setPolicies] = useState<Record<string, Record<string, any>>>({});
@@ -148,7 +148,8 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                 read: nestedPerms.read || frontendPermissions[`read_${res.id}`] || frontendPermissions[`view_${res.id}`] || false,
                 update: nestedPerms.update || frontendPermissions[`update_${res.id}`] || false,
                 delete: nestedPerms.delete || frontendPermissions[`delete_${res.id}`] || false,
-                sidebar: nestedPerms.sidebar || frontendPermissions[`sidebar_${res.id}`] || frontendPermissions[`view_${res.id}`] || false
+                sidebar: nestedPerms.sidebar || frontendPermissions[`sidebar_${res.id}`] || frontendPermissions[`view_${res.id}`] || false,
+                export: nestedPerms.export || frontendPermissions[`export_${res.id}`] || false
             };
         });
 
@@ -256,7 +257,8 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                 read: perms.read || false,
                 update: perms.update || false,
                 delete: perms.delete || false,
-                sidebar: perms.sidebar || false
+                sidebar: perms.sidebar || false,
+                export: perms.export || false
             };
         });
 
@@ -408,6 +410,13 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                                                                 shadowClass = 'shadow-lg shadow-emerald-500/40';
                                                                 textColorClass = 'text-emerald-600';
                                                                 icon = <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h7" />;
+                                                                break;
+                                                            case 'export':
+                                                                if (!['kyc', 'kyc_workflow', 'kyc_unified_queue', 'kyc_search'].includes(resource.id)) return <td key={action.id} className="py-4 px-4 text-center align-middle"></td>;
+                                                                gradientClass = 'bg-gradient-to-r from-blue-300 to-indigo-500';
+                                                                shadowClass = 'shadow-lg shadow-blue-400/40';
+                                                                textColorClass = 'text-blue-600';
+                                                                icon = <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />;
                                                                 break;
                                                             default: break;
                                                         }

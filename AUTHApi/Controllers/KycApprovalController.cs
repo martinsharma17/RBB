@@ -73,7 +73,7 @@ namespace AUTHApi.Controllers
         /// Gets summary statistics for the KYC dashboard, scoped by role and branch.
         /// </summary>
         [HttpGet("dashboard-stats")]
-        [Authorize(Policy = Permissions.Kyc.Dashboard)]
+        [Authorize] // Relaxed from specific policy to allow dynamic roles
         public async Task<IActionResult> GetDashboardStats([FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
         {
             try
@@ -86,6 +86,9 @@ namespace AUTHApi.Controllers
 
                 var roles = await _userManager.GetRolesAsync(user);
                 var isGlobal = roles.Any(r => r == "SuperAdmin" || r == "Admin");
+
+                // Check if user has ANY specific permission if we want to be stricter,
+                // but for now, rely on specific scoping below.
 
                 var query = _context.KycWorkflowMasters.AsQueryable();
 
@@ -317,7 +320,7 @@ namespace AUTHApi.Controllers
         /// Ideal for high-level administration dashboards.
         /// </summary>
         [HttpGet("unified-list")]
-        [Authorize(Policy = Permissions.Kyc.Workflow)]
+        [Authorize] // Relaxed
         public async Task<IActionResult> GetUnifiedList()
         {
             var list = await _context.KycWorkflowMasters
@@ -359,7 +362,7 @@ namespace AUTHApi.Controllers
         /// Gets the full KYC details for a specific workflow item.
         /// </summary>
         [HttpGet("details/{workflowId}")]
-        [Authorize(Policy = Permissions.Kyc.Workflow)]
+        [Authorize] // Relaxed
         public async Task<IActionResult> GetKycDetails(int workflowId)
         {
             var workflow = await _context.KycWorkflowMasters
@@ -764,7 +767,7 @@ namespace AUTHApi.Controllers
         /// Integrated with Global Search permissions.
         /// </summary>
         [HttpGet("search")]
-        [Authorize(Policy = Permissions.Kyc.Workflow)]
+        [Authorize] // Relaxed
         public async Task<IActionResult> SearchKycs([FromQuery] string? query, [FromQuery] int? branchId)
         {
             var userId = CurrentUserId;
@@ -874,7 +877,7 @@ namespace AUTHApi.Controllers
 
         //download 
         [HttpGet("export-csv/{workflowId}")]
-        [Authorize(Policy = Permissions.Kyc.Workflow)]
+        [Authorize(Policy = Permissions.Kyc.Export)]
         public async Task<IActionResult> ExportKycCsv(int workflowId)
         {
             var workflow = await _context.KycWorkflowMasters
@@ -936,8 +939,8 @@ namespace AUTHApi.Controllers
 
         //download pending list
         [HttpGet("export-pending-csv")]
-        [Authorize(Policy = Permissions.Kyc.Workflow)]
-        public async Task<IActionResult> ExportPendingCsv()
+        [Authorize(Policy = Permissions.Kyc.Export)]
+        public async Task<IActionResult> ExportPendingCsv([FromQuery] string? ids = null)
         {
             var userId = CurrentUserId;
             if (string.IsNullOrEmpty(userId)) return Unauthorized();
@@ -961,6 +964,12 @@ namespace AUTHApi.Controllers
                 {
                     query = query.Where(w => w.BranchId == null);
                 }
+            }
+
+            if (!string.IsNullOrEmpty(ids))
+            {
+                var idList = ids.Split(',').Select(s => int.Parse(s)).ToList();
+                query = query.Where(w => idList.Contains(w.Id));
             }
 
             var list = await query

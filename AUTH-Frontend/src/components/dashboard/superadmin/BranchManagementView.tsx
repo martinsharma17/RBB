@@ -124,8 +124,31 @@ const BranchManagementView: React.FC = () => {
             resetForm();
             loadBranches();
         } catch (error: any) {
-            console.error('Save branch error:', error);
-            const errorMsg = error.response?.data || error.message || 'Failed to save branch';
+            console.error('Save branch error details:', error);
+
+            // Extract error message reliably
+            let errorMsg = 'Failed to save branch';
+
+            // Check for direct string message (common in simpler APIs)
+            if (typeof error.message === 'string') {
+                errorMsg = error.message;
+            }
+
+            // Check if it's an Error parsing JSON response?
+            if (errorMsg.includes('Unexpected token') || errorMsg.includes('JSON')) {
+                // It might be a raw 400 Bad Request text response, try to access response text if available
+                if (error.response) {
+                    // Depends on HTTP client (axios has .response.data, fetch needs manual parsing)
+                    // Since we use a service wrapper, let's assume the service throws an Error with the message
+                    errorMsg = error.message;
+                }
+            }
+
+            // If the service threw the exact backend text (which it does: `throw new Error(errorText)`),
+            // then `error.message` IS the "A branch with this name..." text.
+            // Let's strip "Error: " prefix if present
+            errorMsg = errorMsg.replace(/^Error:\s*/, '');
+
             toast.error(errorMsg);
         }
     };

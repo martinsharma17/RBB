@@ -12,7 +12,7 @@ interface KycSearchResult {
 }
 
 const KycSearchView: React.FC = () => {
-    const { token, apiBase, user } = useAuth();
+    const { token, apiBase, user, permissions } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedBranchId, setSelectedBranchId] = useState<string>('');
     const [branches, setBranches] = useState<{ id: number, name: string }[]>([]);
@@ -20,6 +20,7 @@ const KycSearchView: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [actionLoading, setActionLoading] = useState<number | null>(null);
     const [message, setMessage] = useState({ text: '', type: '' });
+    const canExport = user?.roles?.some(r => r.toLowerCase() === 'superadmin') || permissions?.kyc?.export || false;
 
     // Fetch branches for the filter
     React.useEffect(() => {
@@ -100,6 +101,33 @@ const KycSearchView: React.FC = () => {
         }
     };
 
+    const handleDownloadCsv = async (workflowId: number) => {
+        setActionLoading(workflowId);
+        try {
+            const res = await fetch(`${apiBase}/api/KycApproval/export-csv/${workflowId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `KYC_Form_${workflowId}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert("Failed to download CSV.");
+            }
+        } catch (err) {
+            console.error("Download error", err);
+            alert("A network error occurred while downloading the file.");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto animate-fade-in">
             <div className="mb-8">
@@ -165,7 +193,8 @@ const KycSearchView: React.FC = () => {
                                 <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Customer</th>
                                 <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Current Branch</th>
                                 <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                                <th className="px-8 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Action</th>
+                                {canExport && <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Export</th>}
+                                <th className="px-8 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Transfer</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -183,6 +212,20 @@ const KycSearchView: React.FC = () => {
                                     <td className="px-8 py-5">
                                         <span className="text-xs font-medium text-orange-600">{res.status}</span>
                                     </td>
+                                    {canExport && (
+                                        <td className="px-8 py-5">
+                                            <button
+                                                onClick={() => handleDownloadCsv(res.workflowId)}
+                                                disabled={actionLoading === res.workflowId}
+                                                className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                title="Download individual KYC CSV"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    )}
                                     <td className="px-8 py-5 text-right flex justify-end gap-2">
                                         {/* Transfer logic for Admin vs Staff */}
                                         {user?.roles?.some(r => r === 'SuperAdmin' || r === 'Admin') ? (

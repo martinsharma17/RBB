@@ -73,8 +73,6 @@ namespace AUTHApi.Data
             if (!await userManager.IsInRoleAsync(superAdmin, "SuperAdmin"))
                 await userManager.AddToRoleAsync(superAdmin, "SuperAdmin");
 
-            if (!await userManager.IsInRoleAsync(superAdmin, "Admin"))
-                await userManager.AddToRoleAsync(superAdmin, "Admin");
 
             if (!await userManager.IsInRoleAsync(superAdmin, "User"))
                 await userManager.AddToRoleAsync(superAdmin, "User");

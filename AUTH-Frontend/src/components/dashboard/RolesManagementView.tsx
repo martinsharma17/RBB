@@ -269,7 +269,8 @@ const RolesManagementView: React.FC<RolesManagementViewProps> = ({ apiBase, toke
                 <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {roles.map((role) => {
-                            const roleName = role.Name || role.name || (typeof role === 'string' ? role : 'Unknown Role');
+                            const roleName = role.name || role.Name || (typeof role === 'string' ? role : 'Unknown Role');
+                            const orderLevel = role.orderLevel ?? role.OrderLevel ?? 0;
                             const isSystemRole = systemRoles.includes(roleName);
                             return (
                                 <div
@@ -279,26 +280,17 @@ const RolesManagementView: React.FC<RolesManagementViewProps> = ({ apiBase, toke
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <h4 className="font-medium text-gray-900">{roleName}</h4>
+                                            {!isSystemRole && (
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200" title="Hierarchy Level">
+                                                    Level {orderLevel}
+                                                </span>
+                                            )}
                                         </div>
                                         {isSystemRole && (
                                             <span className="text-xs text-blue-600">System Role</span>
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {!isSystemRole && (
-                                            <input
-                                                type="number"
-                                                defaultValue={role.OrderLevel ?? 0}
-                                                className="w-12 px-1 py-0.5 text-xs border rounded text-center"
-                                                onBlur={(e) => {
-                                                    const val = parseInt(e.target.value);
-                                                    if (!isNaN(val) && val !== role.OrderLevel) {
-                                                        handleUpdateLevel(roleName, val);
-                                                    }
-                                                }}
-                                                title="Change Level"
-                                            />
-                                        )}
                                         {!isSystemRole && (
                                             <button
                                                 onClick={() => handleDeleteRole(roleName)}
@@ -420,51 +412,91 @@ const RolesManagementView: React.FC<RolesManagementViewProps> = ({ apiBase, toke
             {/* Create Role Modal */}
             {
                 showCreateModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                            <h3 className="text-lg font-semibold mb-4">Create New Role</h3>
-                            <div className="space-y-4">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        {/* Backdrop with blur */}
+                        <div
+                            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+                            onClick={() => setShowCreateModal(false)}
+                        />
+
+                        {/* Modal Content */}
+                        <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-8 transform transition-all animate-in fade-in zoom-in-95 duration-200">
+                            <div className="absolute top-4 right-4">
+                                <button
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div className="mb-6">
+                                <h3 className="text-2xl font-bold text-gray-900">Create New Role</h3>
+                                <p className="text-gray-500 text-sm mt-1">Define a new role and its hierarchy level.</p>
+                            </div>
+
+                            <div className="space-y-5">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Role Name</label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g., Manager, Editor, Viewer"
-                                        value={newRoleName}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewRoleName(e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                        onKeyPress={(e) => {
-                                            if (e.key === 'Enter') handleCreateRole();
-                                        }}
-                                    />
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Role Name</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                            </svg>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g., Regional Manager"
+                                            value={newRoleName}
+                                            onChange={(e) => setNewRoleName(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none font-medium"
+                                            autoFocus
+                                            onKeyPress={(e) => {
+                                                if (e.key === 'Enter') handleCreateRole();
+                                            }}
+                                        />
+                                    </div>
                                 </div>
+
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Hierarchy Level</label>
-                                    <input
-                                        type="number"
-                                        placeholder="0 (Maker), 1 (Checker), etc."
-                                        value={newRoleLevel}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewRoleLevel(e.target.value === "" ? "" : parseInt(e.target.value))}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                                    />
-                                    <p className="mt-1 text-xs text-gray-500">Note: KYC workflow built by sorting roles from Level 0 up.</p>
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                    <p>Note: System roles (SuperAdmin) cannot be deleted and have full control.</p>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Hierarchy Level</label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                                            </svg>
+                                        </div>
+                                        <input
+                                            type="number"
+                                            placeholder="e.g., 10"
+                                            value={newRoleLevel}
+                                            onChange={(e) => setNewRoleLevel(e.target.value === "" ? "" : parseInt(e.target.value))}
+                                            className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none font-medium"
+                                        />
+                                    </div>
+                                    <p className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Higher levels (e.g. 50) have more authority than lower levels (e.g. 10).
+                                    </p>
                                 </div>
                             </div>
-                            <div className="flex justify-end space-x-3 mt-6">
+
+                            <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-gray-100">
                                 <button
                                     onClick={() => {
                                         setShowCreateModal(false);
                                         setNewRoleName("");
                                     }}
-                                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                                    className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-xl transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleCreateRole}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    disabled={!newRoleName.trim()}
+                                    className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Create Role
                                 </button>
