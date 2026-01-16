@@ -21,22 +21,7 @@ namespace AUTHApi.Data
 
             // 1. Define Core Top-Level Items
             // Dashboard - Always accessible
-            var dashboardItem = new MenuItem
-            {
-                Title = "Dashboard", ViewId = "dashboard", Icon = "DashboardIcon",
-                Url = "/dashboard", // URL for navigation
-                Permission = "dashboard",
-                RequiredPolicyId = null, // Dashboard usually open or has special handling
-                Order = 1
-            };
-            var kycDashboardItem = new MenuItem
-            {
-                Title = "KYC Dashboard", ViewId = "kyc_dashboard", Icon = "ChartPieIcon",
-                Url = "/kyc-dashboard",
-                Permission = Permissions.Kyc.Dashboard,
-                RequiredPolicyId = GetPolicyId(Permissions.Kyc.Dashboard),
-                Order = 2
-            };
+            // Dashboard - Always accessible
             // var profileItem = new MenuItem
             // {
             //     Title = "My Profile", ViewId = "user_profile", Icon = "UserIcon",
@@ -49,7 +34,7 @@ namespace AUTHApi.Data
                 Url = "/users",
                 Permission = Permissions.Users.Sidebar,
                 RequiredPolicyId = GetPolicyId(Permissions.Users.Sidebar),
-                Order = 3
+                Order = 2
             };
             var rolesItem = new MenuItem
             {
@@ -57,7 +42,7 @@ namespace AUTHApi.Data
                 Url = "/roles",
                 Permission = Permissions.Roles.Sidebar,
                 RequiredPolicyId = GetPolicyId(Permissions.Roles.Sidebar),
-                Order = 4
+                Order = 3
             };
             var policyItem = new MenuItem
             {
@@ -65,7 +50,7 @@ namespace AUTHApi.Data
                 Url = "/policies",
                 Permission = Permissions.Policies.Sidebar,
                 RequiredPolicyId = GetPolicyId(Permissions.Policies.Sidebar),
-                Order = 5
+                Order = 4
             };
             var branchItem = new MenuItem
             {
@@ -73,7 +58,7 @@ namespace AUTHApi.Data
                 Url = "/branches",
                 Permission = Permissions.Branches.Sidebar,
                 RequiredPolicyId = GetPolicyId(Permissions.Branches.Sidebar),
-                Order = 6
+                Order = 5
             };
 
             var kycItem = new MenuItem
@@ -112,31 +97,19 @@ namespace AUTHApi.Data
                 Order = 9
             };
 
-            // Menu Management - SuperAdmin only (no permission required, role-based)
-            // var menuManagementItem = new MenuItem
-            // {
-            //     Title = "Menu Management", ViewId = "menu_management", Icon = "MenuIcon",
-            //     Url = "/menu-management",
-            //     Permission = null, // SuperAdmin only via controller authorization
-            //     RequiredPolicyId = null,
-            //     Order = 7
-            // };
-
-
-            // var tasksItem = new MenuItem
-            // {
-            //     Title = "Tasks", ViewId = "tasks", Icon = "TaskIcon",
-            //     Url = "/tasks",
-            //     Permission = Permissions.Tasks.Sidebar,
-            //     RequiredPolicyId = GetPolicyId(Permissions.Tasks.Sidebar),
-            //     Order = 8
-            // };
+            var dashboardItem = new MenuItem
+            {
+                Title = "Dashboard", ViewId = "dashboard", Icon = "DashboardIcon",
+                Url = "/dashboard",
+                Permission = Permissions.Kyc.Dashboard, // Keeping permission requirement for stats
+                RequiredPolicyId = GetPolicyId(Permissions.Kyc.Dashboard),
+                Order = 1
+            };
 
             // Remaining Top-Level
             var items = new List<MenuItem>
             {
-                dashboardItem,
-                kycDashboardItem,
+                dashboardItem, // Default
                 // profileItem,
                 usersItem,
                 rolesItem,
@@ -147,15 +120,6 @@ namespace AUTHApi.Data
                 kycUnifiedQueueItem,
                 kycSearchItem,
 
-                // tasksItem,
-                // new MenuItem
-                // {
-                //     Title = "Reports", ViewId = "reports", Icon = "ReportsIcon",
-                //     Url = "/reports",
-                //     Permission = Permissions.Reports.Sidebar,
-                //     RequiredPolicyId = GetPolicyId(Permissions.Reports.Sidebar),
-                //     Order = 9
-                // },
                 new MenuItem
                 {
                     Title = "Audit Logs", ViewId = "audit", Icon = "AuditIcon",
@@ -164,6 +128,14 @@ namespace AUTHApi.Data
                     RequiredPolicyId = GetPolicyId(Permissions.Audit.Sidebar),
                     Order = 10
                 },
+                new MenuItem
+                {
+                    Title = "System Customization", ViewId = "system_customization", Icon = "SettingsIcon",
+                    Url = "/settings",
+                    Permission = Permissions.Settings.Sidebar,
+                    RequiredPolicyId = GetPolicyId(Permissions.Settings.Sidebar),
+                    Order = 11
+                }
             };
 
             // Save Top-Level items first (so they get Database IDs)

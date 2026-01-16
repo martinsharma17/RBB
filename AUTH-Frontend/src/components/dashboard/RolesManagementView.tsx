@@ -268,23 +268,17 @@ const RolesManagementView: React.FC<RolesManagementViewProps> = ({ apiBase, toke
                 </div>
                 <div className="p-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {roles.map((role, index) => {
+                        {roles.map((role) => {
                             const roleName = role.Name || role.name || (typeof role === 'string' ? role : 'Unknown Role');
-                            const roleId = role.Id || role.id || index;
                             const isSystemRole = systemRoles.includes(roleName);
                             return (
                                 <div
-                                    key={roleId}
+                                    key={roleName}
                                     className="border border-gray-200 rounded-lg p-4 flex justify-between items-center"
                                 >
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2">
                                             <h4 className="font-medium text-gray-900">{roleName}</h4>
-                                            {role.OrderLevel !== undefined && role.OrderLevel !== null && (
-                                                <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded font-mono font-bold" title="Hierarchy Level">
-                                                    Lvl {role.OrderLevel}
-                                                </span>
-                                            )}
                                         </div>
                                         {isSystemRole && (
                                             <span className="text-xs text-blue-600">System Role</span>

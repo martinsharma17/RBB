@@ -336,7 +336,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                                     </h3>
                                     <p className="text-xs text-gray-500 mt-1">Configure permissions for {activeRole}</p>
                                 </div>
-                                <div className="text-xs text-gray-400 font-mono">id: {activeRole ? activeRole.toLowerCase().replace(/\s+/g, '_') : ''}</div>
+                                <div className="text-xs text-gray-400 font-mono"></div>
                             </div>
 
                             <div className="p-0 overflow-x-auto">
@@ -366,7 +366,6 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                                                             </div>
                                                             <div>
                                                                 <p className="font-medium text-gray-700">{resource.name}</p>
-                                                                <p className="text-[10px] text-gray-400">id: {resource.id}</p>
                                                             </div>
                                                         </div>
                                                     </td>

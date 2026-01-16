@@ -178,25 +178,6 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
                     {sidebarOpen && <span className="text-sm truncate">{item.label}</span>}
                 </div>
 
-                {/* [NEW] Permission Context Badges */}
-                {sidebarOpen && permissions && item.permission && item.permission.startsWith('view_') && (
-                    <div className="flex items-center ml-auto mr-2">
-                        {(() => {
-                            const resourceKey = item.permission.replace('view_', '');
-                            const resourcePerms = permissions[resourceKey];
-                            if (!resourcePerms) return null;
-
-                            return (
-                                <div className="flex bg-gray-800 rounded px-1 py-0.5">
-                                    <PermissionBadge label="Create" active={resourcePerms.create} color="bg-green-600" />
-                                    <PermissionBadge label="Read" active={resourcePerms.read} color="bg-primary-blue" />
-                                    <PermissionBadge label="Update" active={resourcePerms.update} color="bg-yellow-600" />
-                                    <PermissionBadge label="Delete" active={resourcePerms.delete} color="bg-red-600" />
-                                </div>
-                            );
-                        })()}
-                    </div>
-                )}
 
                 {hasChildren && sidebarOpen && (
                     <svg
@@ -233,20 +214,6 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
     );
 };
 
-interface PermissionBadgeProps {
-    label: string;
-    active: boolean | undefined;
-    color: string;
-}
-
-const PermissionBadge: React.FC<PermissionBadgeProps> = ({ label, active, color }) => {
-    if (!active) return null;
-    return (
-        <span className={`text-[10px] uppercase font-bold px-1 rounded mx-0.5 ${color} text-white opacity-80`} title={label}>
-            {label.charAt(0)}
-        </span>
-    );
-};
 
 export default Sidebar;
 
