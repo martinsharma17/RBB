@@ -15,6 +15,7 @@ interface KycPersonalInfoData {
   dobAd: string;
   dobBs: string;
   gender: string;
+  maritalStatus: string;
   nationality: string;
   citizenshipNo: string;
   citizenshipIssueDate: string;
@@ -76,6 +77,8 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
         : typeof initialData?.gender === "string"
         ? initialData.gender
         : "",
+    maritalStatus: initialData?.maritalStatus || "",
+
     nationality:
       initialData?.isNepali || initialData?.IsNepali
         ? "Nepali"
@@ -119,6 +122,8 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
             : typeof initialData?.gender === "string"
             ? initialData.gender
             : "",
+        maritalStatus: initialData?.maritalStatus || "", // <-- add this
+
         nationality:
           initialData?.isNepali || initialData?.IsNepali
             ? "Nepali"
@@ -223,7 +228,11 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
       );
 
       if (response.ok) {
-        onNext({ personalInfo: formData });
+        onNext({
+          personalInfo: formData,
+          gender: formData.gender,
+          maritalStatus: formData.maritalStatus,
+        });
       } else {
         const data = await response.json();
         if (data.errors) {
@@ -456,6 +465,24 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
             ))}
           </select>
         </div> */}
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Marital Status *
+          </label>
+          <select
+            name="maritalStatus"
+            value={formData.maritalStatus}
+            onChange={handleChange}
+            required
+            className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+          >
+            <option value="">Select Marital Status</option>
+            <option value="Single">Single</option>
+            <option value="Married">Married</option>
+            <option value="Divorced">Divorced</option>
+            <option value="Widowed">Widowed</option>
+          </select>
+        </div>
       </div>
 
       <div className="flex justify-end pt-6">

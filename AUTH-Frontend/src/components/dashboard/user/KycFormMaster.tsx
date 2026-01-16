@@ -77,7 +77,8 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             if (detailsRes.success && detailsRes.data) {
               setKycData(detailsRes.data);
               // Handle both PascalCase and camelCase for currentStep
-              const stepFromApi = detailsRes.data.CurrentStep || detailsRes.data.currentStep;
+              const stepFromApi =
+                detailsRes.data.CurrentStep || detailsRes.data.currentStep;
               if (stepFromApi) {
                 setCurrentStep(stepFromApi);
               }
@@ -135,6 +136,8 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     "Agreement",
     "Attachments",
   ];
+  const personalInfo = kycData?.personalInfo || {};
+  const familyInitialData = kycData?.family || {};
 
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-lg border border-gray-100">
@@ -169,12 +172,13 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   disabled={!isClickable}
                   onClick={() => isClickable && setCurrentStep(stepNum)}
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 focus:outline-none
-                        ${isCompleted
-                      ? "bg-indigo-600 text-white cursor-pointer hover:scale-110"
-                      : isActive
-                        ? "bg-white border-2 border-indigo-600 text-indigo-600 scale-110 shadow-md cursor-pointer"
-                        : "bg-gray-200 text-gray-400 cursor-default"
-                    }
+                        ${
+                          isCompleted
+                            ? "bg-indigo-600 text-white cursor-pointer hover:scale-110"
+                            : isActive
+                            ? "bg-white border-2 border-indigo-600 text-indigo-600 scale-110 shadow-md cursor-pointer"
+                            : "bg-gray-200 text-gray-400 cursor-default"
+                        }
                     `}
                   style={{ pointerEvents: isClickable ? "auto" : "none" }}
                   aria-label={`Go to ${label}`}
@@ -182,8 +186,9 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   {isCompleted ? "✓" : stepNum}
                 </button>
                 <span
-                  className={`text-xs mt-2 font-medium hidden md:block ${isActive ? "text-indigo-600" : "text-gray-400"
-                    }`}
+                  className={`text-xs mt-2 font-medium hidden md:block ${
+                    isActive ? "text-indigo-600" : "text-gray-400"
+                  }`}
                 >
                   {label}
                 </span>
@@ -222,9 +227,11 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             {currentStep === 3 && (
               <KycFamily
                 sessionId={sessionId}
-                initialData={kycData?.family}
+                initialData={familyInitialData}
                 onNext={handleNext}
                 onBack={handlePrev}
+                gender={personalInfo.gender}
+                maritalStatus={personalInfo.maritalStatus}
               />
             )}
             {currentStep === 4 && (
