@@ -132,7 +132,7 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
         },
         body: JSON.stringify({
           sessionId: sessionId,
-          stepNumber: 6, // Adjusted to match backend if necessary, assuming 6 for occupation
+          stepNumber: 6, // Adjusted to match backend
           data: {
             occupationType: formData.occupation,
             otherOccupation: formData.otherOccupation,

@@ -3,10 +3,10 @@ import { useAuth } from "../../../../context/AuthContext";
 import FinalReviewModal from "./FinalReviewModel";
 import { useNavigate } from "react-router-dom";
 
- export interface KycAttachmentProps {
+export interface KycAttachmentProps {
   sessionId: number | null;
   onBack: () => void;
-  onComplete?: (mergedKycData:any) => void;
+  onComplete?: (mergedKycData: any) => void;
   onSuccess?: (kycData: any) => void;
   allKycFormData?: any;
 }
@@ -15,6 +15,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
   sessionId,
   onBack,
   onSuccess,
+  onComplete,
   allKycFormData,
 }) => {
   const { token, apiBase } = useAuth();
@@ -39,7 +40,8 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
     try {
       const text = await res.text();
       if (!text) return fallback;
-      return JSON.parse(text).message || fallback;
+      const data = JSON.parse(text);
+      return data.message || data.Message || fallback;
     } catch {
       return fallback;
     }
@@ -89,37 +91,39 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
       // Merge allKycFormData with backend data
       let reviewData: any = allKycFormData
         ? {
-            ...allKycFormData,
-            sessionId,
-            documents: {
-              photo: photo.name,
-              citizenship: {
-                front: citFront.name,
-                back: citBack.name,
-              },
+          ...allKycFormData,
+          sessionId,
+          documents: {
+            photo: photo.name,
+            citizenship: {
+              front: citFront.name,
+              back: citBack.name,
             },
-          }
+          },
+        }
         : {
-            sessionId,
-            documents: {
-              photo: photo.name,
-              citizenship: {
-                front: citFront.name,
-                back: citBack.name,
-              },
+          sessionId,
+          documents: {
+            photo: photo.name,
+            citizenship: {
+              front: citFront.name,
+              back: citBack.name,
             },
-          };
+          },
+        };
 
       try {
         const res = await fetch(
-          `${apiBase}/api/KycData/get-session/${sessionId}`,
+          `${apiBase}/api/KycData/all-details/${sessionId}`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           }
         );
-        const backendData = await res.json();
-        reviewData = { ...reviewData, ...backendData };
-      } catch {}
+        const backendRes = await res.json();
+        if (backendRes.success) {
+          reviewData = { ...reviewData, ...backendRes.data };
+        }
+      } catch { }
 
       setKycReviewData(reviewData);
       setShowReview(true);
@@ -149,6 +153,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
 
       setShowReview(false);
       setShowThankYou(true);
+      if (onComplete) onComplete(kycReviewData);
       if (onSuccess) onSuccess(kycReviewData);
     } catch (err: any) {
       setError(err.message || "Final submission failed");
@@ -161,7 +166,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         <div className="border-b pb-4">
           <h2 className="text-xl font-bold text-gray-800">
-            Section 9: Attachments & Finish
+            Section 13: Attachments & Finish
           </h2>
           <p className="text-sm text-gray-500">
             Upload your documents to complete the process.
@@ -208,9 +213,8 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
           <button
             type="submit"
             disabled={uploading}
-            className={`px-10 py-3 bg-green-600 text-white rounded font-bold ${
-              uploading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+            className={`px-10 py-3 bg-green-600 text-white rounded font-bold ${uploading ? "opacity-50 cursor-not-allowed" : ""
+              }`}
           >
             {uploading ? "Uploading..." : "Final Submit"}
           </button>

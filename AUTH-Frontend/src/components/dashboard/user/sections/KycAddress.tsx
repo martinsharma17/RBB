@@ -260,7 +260,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
         headers,
         body: JSON.stringify({
           sessionId,
-          stepNumber: 2,
+          stepNumber: 3,
           data: {
             country: formData.permanentCountry,
             province: pProv,
@@ -280,7 +280,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
         headers,
         body: JSON.stringify({
           sessionId,
-          stepNumber: 3,
+          stepNumber: 2,
           data: {
             country: formData.currentCountry,
             province: cProv,

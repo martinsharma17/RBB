@@ -64,7 +64,7 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({
                     sessionId: sessionId,
-                    stepNumber: 13, // Declarations is step 13 in backend
+                    stepNumber: 12, // Declarations is step 12 in backend
                     data: {
                         agreeToTerms: formData.isAgreed,
                         noOtherFinancialLiability: formData.noOtherLiability,

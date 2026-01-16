@@ -18,6 +18,7 @@ namespace AUTHApi.DTOs
         public string? ReferenceNo { get; set; }
         public int? BranchId { get; set; }
         public string? PanNo { get; set; }
+        public string? MaritalStatus { get; set; }
     }
 
     public class AddressDto

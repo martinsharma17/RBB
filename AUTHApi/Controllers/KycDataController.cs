@@ -2,11 +2,8 @@ using AUTHApi.Data;
 using AUTHApi.DTOs;
 using AUTHApi.Entities;
 using AUTHApi.Services;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace AUTHApi.Controllers
@@ -68,7 +65,8 @@ namespace AUTHApi.Controllers
                     CitizenshipIssueDistrict = detail.CitizenshipIssuedDistrict,
                     CitizenshipIssueDate = detail.CitizenshipIssuedDate,
                     BranchId = detail.BranchId,
-                    PanNo = detail.PanNumber
+                    PanNo = detail.PanNumber,
+                    MaritalStatus = detail.MaritalStatus
                 },
                 CurrentAddress = new AddressDto
                 {
@@ -77,7 +75,7 @@ namespace AUTHApi.Controllers
                     MunicipalityName = detail.CurrentMunicipality,
                     WardNo = int.TryParse(detail.CurrentWardNo, out var currentWard) ? currentWard : null,
                     Tole = detail.CurrentStreet,
-                    MobileNo = detail.MobileNumber
+                    MobileNo = detail.MobileNumber ?? string.Empty
                 },
                 PermanentAddress = new AddressDto
                 {
@@ -101,10 +99,7 @@ namespace AUTHApi.Controllers
                     BankName = detail.BankName ?? string.Empty,
                     BankAccountNo = detail.BankAccountNumber ?? string.Empty,
                     BankAddress = detail.BankBranch,
-                    AccountType =
-                        byte.TryParse(detail.BankAccountType, out var accType)
-                            ? accType
-                            : (byte?)null // Attempt to parse back if needed or use logic
+                    AccountType = byte.TryParse(detail.BankAccountType, out var accType) ? accType : null
                 },
                 Occupation = new OccupationDto
                 {
@@ -176,6 +171,33 @@ namespace AUTHApi.Controllers
             return Success(response);
         }
 
+        [HttpGet("reverse-geocode")]
+        public async Task<IActionResult> ReverseGeocode(string lat, string lon)
+        {
+            try
+            {
+                using (var client = new HttpClient())
+                {
+                    // Nominatim requires a User-Agent
+                    client.DefaultRequestHeaders.Add("User-Agent", "AUTH-KYC-App");
+                    var url =
+                        $"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={lat}&lon={lon}&zoom=18&addressdetails=1";
+                    var response = await client.GetAsync(url);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var content = await response.Content.ReadAsStringAsync();
+                        return Content(content, "application/json");
+                    }
+
+                    return Failure("Failed to fetch address from Nominatim", (int)response.StatusCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                return Failure("Error during geocoding: " + ex.Message, 500);
+            }
+        }
+
         // ==========================================
         // SUBMIT ENDPOINTS (CONSOLIDATED)
         // ==========================================
@@ -220,8 +242,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 2, model.Data);
-            await UpdateStepProgress(model.SessionId, 2, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 3, model.Data);
+            await UpdateStepProgress(model.SessionId, 3, recordId);
             return Success(new { recordId });
         }
 
@@ -234,8 +256,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 3, model.Data);
-            await UpdateStepProgress(model.SessionId, 3, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 4, model.Data);
+            await UpdateStepProgress(model.SessionId, 4, recordId);
             return Success(new { recordId });
         }
 
@@ -248,8 +270,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 4, model.Data);
-            await UpdateStepProgress(model.SessionId, 4, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 5, model.Data);
+            await UpdateStepProgress(model.SessionId, 5, recordId);
             return Success(new { recordId });
         }
 
@@ -262,8 +284,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 5, model.Data);
-            await UpdateStepProgress(model.SessionId, 5, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 6, model.Data);
+            await UpdateStepProgress(model.SessionId, 6, recordId);
             return Success(new { recordId });
         }
 
@@ -276,8 +298,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 6, model.Data);
-            await UpdateStepProgress(model.SessionId, 6, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 7, model.Data);
+            await UpdateStepProgress(model.SessionId, 7, recordId);
             return Success(new { recordId });
         }
 
@@ -290,8 +312,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 7, model.Data);
-            await UpdateStepProgress(model.SessionId, 7, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 8, model.Data);
+            await UpdateStepProgress(model.SessionId, 8, recordId);
             return Success(new { recordId });
         }
 
@@ -304,8 +326,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 8, model.Data);
-            await UpdateStepProgress(model.SessionId, 8, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 9, model.Data);
+            await UpdateStepProgress(model.SessionId, 9, recordId);
             return Success(new { recordId });
         }
 
@@ -318,8 +340,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 9, model.Data);
-            await UpdateStepProgress(model.SessionId, 9, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 10, model.Data);
+            await UpdateStepProgress(model.SessionId, 10, recordId);
             return Success(new { recordId });
         }
 
@@ -332,8 +354,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 10, model.Data);
-            await UpdateStepProgress(model.SessionId, 10, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 11, model.Data);
+            await UpdateStepProgress(model.SessionId, 11, recordId);
             return Success(new { recordId });
         }
 
@@ -346,8 +368,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 11, model.Data);
-            await UpdateStepProgress(model.SessionId, 11, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 12, model.Data);
+            await UpdateStepProgress(model.SessionId, 12, recordId);
             return Success(new { recordId });
         }
 
@@ -360,8 +382,8 @@ namespace AUTHApi.Controllers
             var (isValid, msg, _) = await ValidateSessionAsync(model.SessionId);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 12, model.Data);
-            await UpdateStepProgress(model.SessionId, 12, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(model.SessionId, 13, model.Data);
+            await UpdateStepProgress(model.SessionId, 13, recordId);
             return Success(new { recordId });
         }
 
@@ -384,8 +406,7 @@ namespace AUTHApi.Controllers
                 if (file.Length > maxFileSize)
                 {
                     return Failure(
-                        $"File size exceeds the maximum allowed size of 4MB. Your file is {file.Length / 1024.0 / 1024.0:F2}MB",
-                        400);
+                        $"File size exceeds the maximum allowed size of 4MB. Your file is {file.Length / 1024.0 / 1024.0:F2}MB");
                 }
 
                 // Read file bytes
@@ -411,7 +432,7 @@ namespace AUTHApi.Controllers
                 // Assuming step 11 is documents
                 try
                 {
-                    await UpdateStepProgress(sessionId, 13, doc.Id);
+                    await UpdateStepProgress(sessionId, 14, doc.Id);
                 }
                 catch
                 {
@@ -462,15 +483,24 @@ namespace AUTHApi.Controllers
         {
             var progress = await _context.KycStepCompletions
                 .FirstOrDefaultAsync(sc => sc.SessionId == sessionId && sc.StepNumber == stepNumber);
-            if (progress != null)
+
+            if (progress == null)
             {
-                progress.IsSaved = true;
-                progress.SavedDate = DateTime.UtcNow;
-                progress.RecordId = recordId;
-                progress.ModifiedDate = DateTime.UtcNow;
-                progress.IsCompleted = true;
-                progress.CompletedDate = DateTime.UtcNow;
+                progress = new KycStepCompletion
+                {
+                    SessionId = sessionId,
+                    StepNumber = stepNumber,
+                    CreatedDate = DateTime.UtcNow
+                };
+                await _context.KycStepCompletions.AddAsync(progress);
             }
+
+            progress.IsSaved = true;
+            progress.SavedDate = DateTime.UtcNow;
+            progress.RecordId = recordId;
+            progress.ModifiedDate = DateTime.UtcNow;
+            progress.IsCompleted = true;
+            progress.CompletedDate = DateTime.UtcNow;
 
             var session = await _context.KycFormSessions.FindAsync(sessionId);
             if (session != null)

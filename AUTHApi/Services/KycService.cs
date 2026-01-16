@@ -110,6 +110,8 @@ namespace AUTHApi.Services
                         detail.BranchId = p.BranchId.Value;
                     }
 
+                    detail.MaritalStatus = p.MaritalStatus;
+
                     break;
 
                 // Steps 2 & 3: Address Information
@@ -359,7 +361,7 @@ namespace AUTHApi.Services
                     Email = email,
                     SessionExpiryDate = DateTime.UtcNow.AddDays(30),
                     CurrentStep = 1,
-                    EmailVerified = false
+                    EmailVerified = !string.IsNullOrEmpty(userId)
                 };
                 await _context.KycFormSessions.AddAsync(session);
                 await _context.SaveChangesAsync();

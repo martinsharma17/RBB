@@ -58,7 +58,7 @@ const KycAgreement: React.FC<KycAgreementProps> = ({ sessionId, initialData, onN
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({
                     sessionId: sessionId,
-                    stepNumber: 14,
+                    stepNumber: 13,
                     data: {
                         tradingLimit: formData.tradingLimit,
                         marginTradingFacility: formData.marginTradingFacility,

@@ -127,8 +127,8 @@ const KycFamily: React.FC<KycFamilyProps> = ({
 
   // Show in-law, spouse, son, daughter fields only if female & married
   const showInLawAndSpouseFields =
-    gender?.toLowerCase() === "female" &&
-    maritalStatus?.toLowerCase() === "married";
+    String(gender || "").toLowerCase() === "female" &&
+    String(maritalStatus || "").toLowerCase() === "married";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -269,9 +269,8 @@ const KycFamily: React.FC<KycFamilyProps> = ({
         <button
           type="submit"
           disabled={saving}
-          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${
-            saving ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${saving ? "opacity-50 cursor-not-allowed" : ""
+            }`}
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>

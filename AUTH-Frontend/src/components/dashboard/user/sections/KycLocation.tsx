@@ -19,10 +19,10 @@ interface KycLocationData {
   [key: string]: any;
 }
 
-const fetchNearestLandmarkAndRoad = async (lat: string, lng: string) => {
+const fetchNearestLandmarkAndRoad = async (lat: string, lng: string, apiBase: string) => {
   try {
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+      `${apiBase}/api/KycData/reverse-geocode?lat=${lat}&lon=${lng}`
     );
     const data = await response.json();
     // Try to get a landmark or display name
@@ -53,7 +53,7 @@ const LocationPicker: React.FC<{
   setCoords: (lat: string, lng: string) => void;
 }> = ({ setCoords }) => {
   useMapEvents({
-    click(e) {
+    click(e: any) {
       setCoords(e.latlng.lat.toString(), e.latlng.lng.toString());
     },
   });
@@ -104,7 +104,7 @@ const KycLocation: React.FC<KycLocationProps> = ({
       longitude: lng,
     }));
     setAutoFilling(true);
-    const { landmark, road } = await fetchNearestLandmarkAndRoad(lat, lng);
+    const { landmark, road } = await fetchNearestLandmarkAndRoad(lat, lng, apiBase);
     setFormData((prev) => ({
       ...prev,
       landmark: landmark || prev.landmark,
@@ -131,7 +131,7 @@ const KycLocation: React.FC<KycLocationProps> = ({
         },
         body: JSON.stringify({
           sessionId: sessionId,
-          stepNumber: 12,
+          stepNumber: 11,
           data: {
             landmark: formData.landmark,
             distanceFromMainRoad: formData.distanceFromMainRoad,
@@ -212,23 +212,28 @@ const KycLocation: React.FC<KycLocationProps> = ({
           Pin Location on Map
         </label>
         <MapContainer
-          center={defaultPosition}
-          zoom={13}
-          style={{ height: "300px", width: "100%" }}
+          {...({
+            center: defaultPosition,
+            zoom: 13,
+            style: { height: "300px", width: "100%" },
+          } as any)}
         >
           <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap contributors"
+            {...({
+              url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+              attribution:
+                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            } as any)}
           />
           <LocationPicker setCoords={setCoords} />
-          {formData.latitude && formData.longitude && (
+          {formData.latitude && formData.longitude ? (
             <Marker
               position={[
                 parseFloat(formData.latitude),
                 parseFloat(formData.longitude),
               ]}
             />
-          )}
+          ) : null}
         </MapContainer>
         <div className="mt-2 text-xs text-gray-600">
           Click on the map to set your location.
@@ -271,9 +276,8 @@ const KycLocation: React.FC<KycLocationProps> = ({
         <button
           type="submit"
           disabled={saving}
-          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${
-            saving ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+          className={`px-8 py-2 bg-indigo-600 text-white font-bold rounded shadow-md hover:bg-indigo-700 active:transform active:scale-95 transition-all ${saving ? "opacity-50 cursor-not-allowed" : ""
+            }`}
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>
