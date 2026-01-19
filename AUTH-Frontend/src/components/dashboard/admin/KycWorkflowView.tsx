@@ -86,10 +86,32 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
         }
     };
 
-    const handleSaveEdit = async () => {
+    const handleSaveEdit = async (documentFiles?: { [key: number]: File }) => {
         if (!selectedKyc) return;
         setActionLoading(true);
         try {
+            // First, upload any new documents
+            if (documentFiles && Object.keys(documentFiles).length > 0) {
+                for (const [docId, file] of Object.entries(documentFiles)) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('documentId', docId);
+
+                    const uploadRes = await fetch(`${apiBase}/api/KycData/replace-document`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: formData
+                    });
+
+                    if (!uploadRes.ok) {
+                        console.error(`Failed to upload document ${docId}`);
+                    }
+                }
+            }
+
+            // Then save the edited data
             const res = await fetch(`${apiBase}/api/KycApproval/update-details`, {
                 method: 'POST',
                 headers: {
@@ -338,115 +360,98 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
                     <p className="text-gray-500 mt-2 max-w-xs mx-auto">There are no pending KYC applications in your queue at this time.</p>
                 </div>
             ) : (
-                <div className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-100">
+                <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 overflow-hidden border border-slate-100">
                     <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-100">
-                            <thead className="bg-gray-50/50">
-                                <tr>
-                                    <th className="px-6 py-4 text-left">
+                        <table className="min-w-full">
+                            <thead>
+                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                    <th className="px-6 py-5 text-left">
                                         <input
                                             type="checkbox"
                                             checked={pendingKycs.length > 0 && selectedIds.length === pendingKycs.length}
                                             onChange={toggleSelectAll}
-                                            className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                            className="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
                                         />
                                     </th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest min-w-[200px]">Customer</th>
-                                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Current Location</th>
-                                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Submission Date</th>
-                                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Form</th>
-                                    <th className="px-8 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Progress</th>
-                                    <th className="px-8 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-widest">Action</th>
+                                    <th className="px-6 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Applicant Details</th>
+                                    <th className="px-6 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Current Routing</th>
+                                    <th className="px-6 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Submission</th>
+                                    <th className="px-6 py-5 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Inventory</th>
+                                    <th className="px-6 py-5 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Lifecycle</th>
+                                    <th className="px-6 py-5 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-5">
+                            <tbody className="divide-y divide-slate-50">
                                 {pendingKycs.map((kyc) => (
-                                    <tr key={kyc.id} className={`hover:bg-indigo-50/30 transition-colors group border-b border-gray-50 last:border-0 ${selectedIds.includes(kyc.id) ? 'bg-indigo-50/50' : ''}`}>
-                                        <td className="px-6 py-4">
+                                    <tr
+                                        key={kyc.id}
+                                        className={`group hover:bg-slate-50/80 transition-all duration-300 border-b border-slate-50 last:border-0 ${selectedIds.includes(kyc.id) ? 'bg-indigo-50/30' : ''}`}
+                                    >
+                                        <td className="px-6 py-6">
                                             <input
                                                 type="checkbox"
                                                 checked={selectedIds.includes(kyc.id)}
                                                 onChange={() => toggleSelectOne(kyc.id)}
-                                                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                className="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer transition-all"
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                         </td>
-                                        <td className="px-6 py-4 cursor-pointer" onClick={() => viewDetails(kyc.id)}><div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                                                {kyc.customerEmail.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <div className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{kyc.customerName || kyc.customerEmail}</div>
-                                                <div className="text-[10px] font-mono text-gray-400">
-                                                    {kyc.customerName ? kyc.customerEmail : `SESSION #${kyc.kycSessionId}`}
+                                        <td className="px-6 py-6 cursor-pointer" onClick={() => viewDetails(kyc.id)}>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-black text-lg shadow-lg shadow-indigo-100 group-hover:scale-110 transition-transform duration-300">
+                                                    {kyc.customerName?.charAt(0) || kyc.customerEmail.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-black text-slate-900 leading-tight mb-0.5 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{kyc.customerName || 'Pending Profile'}</div>
+                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{kyc.customerEmail}</div>
                                                 </div>
                                             </div>
-                                        </div>
                                         </td>
-                                        <td className="px-8 py-5">
-                                            <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded-lg border border-indigo-100">
-                                                {kyc.currentRoleName || 'N/A'}
-                                            </span>
-                                            <div className="mt-1 flex items-center gap-1">
-                                                <span className="text-[10px] font-bold text-gray-400 capitalize bg-gray-50 px-1.5 rounded border border-gray-100">{kyc.branchName || 'Global'}</span>
-                                            </div>
-                                            {kyc.status === 4 && (
-                                                <span className="block mt-1 text-[9px] font-black text-red-500 uppercase tracking-tighter ring-1 ring-red-100 w-fit px-1.5 rounded bg-red-50">
-                                                    RESUBMISSION REQ.
+                                        <td className="px-6 py-6">
+                                            <div className="flex flex-col gap-1.5">
+                                                <span className="w-fit px-3 py-1 bg-white border-2 border-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-sm">
+                                                    {kyc.currentRoleName || 'STATION #1'}
                                                 </span>
-                                            )}
-                                            {kyc.status === 3 && (
-                                                <span className="block mt-1 text-[9px] font-black text-orange-500 uppercase tracking-tighter ring-1 ring-orange-100 w-fit px-1.5 rounded bg-orange-50">
-                                                    RETURNED / REJECTED
-                                                </span>
-                                            )}
-                                            {kyc.chain && kyc.chain.length > 0 && (
-                                                <div className="mt-2 flex items-center gap-1.5 opacity-50">
-                                                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Path:</span>
-                                                    <div className="flex items-center gap-1 text-[9px] font-bold text-gray-500 uppercase tracking-tighter overflow-hidden whitespace-nowrap mask-fade-right">
-                                                        {kyc.chain.map((role, i) => (
-                                                            <React.Fragment key={i}>
-                                                                <span className={role === kyc.currentRoleName ? 'text-indigo-600 font-extrabold ring-1 ring-indigo-100 px-1 rounded' : ''}>{role}</span>
-                                                                {i < kyc.chain.length - 1 && <span>›</span>}
-                                                            </React.Fragment>
-                                                        ))}
-                                                    </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${kyc.status === 4 ? 'bg-amber-500 animate-pulse' : 'bg-slate-300'}`}></div>
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{kyc.branchName || 'Global HQ'}</span>
                                                 </div>
-                                            )}
+                                            </div>
                                         </td>
-                                        <td className="px-8 py-5 text-sm text-gray-500">
-                                            {new Date(kyc.createdAt).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                                        <td className="px-6 py-6">
+                                            <div className="flex flex-col">
+                                                <span className="text-xs font-black text-slate-700">{new Date(kyc.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{new Date(kyc.createdAt).getFullYear()}</span>
+                                            </div>
                                         </td>
-                                        <td className="px-8 py-5 text-center">
+                                        <td className="px-6 py-6 text-center">
                                             {canExport && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleDownloadCsv(kyc.id); }}
-                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                                    title="Download individual KYC CSV"
+                                                    className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-600 rounded-xl transition-all shadow-sm hover:shadow-md"
+                                                    title="Download Dataset"
                                                 >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                    </svg>
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                                 </button>
                                             )}
                                         </td>
-                                        <td className="px-8 py-5">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                        <td className="px-6 py-6">
+                                            <div className="flex flex-col gap-2">
+                                                <div className="w-28 h-2 bg-slate-100 rounded-full overflow-hidden shadow-inner border border-slate-50">
                                                     <div
-                                                        className="h-full bg-indigo-500 rounded-full"
-                                                        style={{ width: `${((kyc.totalLevels - kyc.pendingLevel) / kyc.totalLevels) * 100}%` }}
+                                                        className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all duration-1000"
+                                                        style={{ width: `${Math.max(15, ((kyc.totalLevels - kyc.pendingLevel) / kyc.totalLevels) * 100)}%` }}
                                                     ></div>
                                                 </div>
-                                                <span className="text-[10px] font-bold text-indigo-600 uppercase italic">
-                                                    Step {kyc.totalLevels - kyc.pendingLevel + 1} of {Math.max(kyc.totalLevels, 1)}
+                                                <span className="text-[9px] font-black text-indigo-600 uppercase tracking-[0.1em] italic">
+                                                    Station {kyc.totalLevels - kyc.pendingLevel + 1} of {Math.max(kyc.totalLevels, 1)}
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-5 text-right">
+                                        <td className="px-6 py-6 text-right">
                                             <button
                                                 onClick={() => viewDetails(kyc.id)}
-                                                className="px-5 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-indigo-600 hover:text-white hover:border-indigo-600 hover:shadow-lg hover:shadow-indigo-200 transition-all duration-300"
+                                                className="h-11 px-8 bg-slate-900 text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-600 hover:shadow-xl hover:shadow-indigo-200 transition-all duration-300 group/btn"
                                             >
                                                 Review Data
                                             </button>

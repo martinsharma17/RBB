@@ -447,6 +447,52 @@ namespace AUTHApi.Controllers
             }
         }
 
+        /// <summary>
+        /// Replace an existing KYC document with a new file.
+        /// </summary>
+        [HttpPost("replace-document")]
+        public async Task<IActionResult> ReplaceDocument([FromForm] int documentId, [FromForm] IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0) return Failure("No file uploaded");
+
+                // Find the existing document
+                var existingDoc = await _context.KycDocuments.FindAsync(documentId);
+                if (existingDoc == null) return Failure("Document not found");
+
+                // Limit file size to 4MB
+                const long maxFileSize = 4 * 1024 * 1024;
+                if (file.Length > maxFileSize)
+                {
+                    return Failure(
+                        $"File size exceeds the maximum allowed size of 4MB. Your file is {file.Length / 1024.0 / 1024.0:F2}MB");
+                }
+
+                // Read new file bytes
+                byte[] content;
+                using (var ms = new MemoryStream())
+                {
+                    await file.CopyToAsync(ms);
+                    content = ms.ToArray();
+                }
+
+                // Update the existing document
+                existingDoc.Data = content;
+                existingDoc.OriginalFileName = file.FileName;
+                existingDoc.ContentType = file.ContentType;
+                existingDoc.FileSize = (int)file.Length;
+                existingDoc.UploadedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                return Success(new { message = "Document replaced successfully", id = existingDoc.Id });
+            }
+            catch (Exception ex)
+            {
+                return Failure($"Replace error: {ex.Message} | {ex.InnerException?.Message}", 500);
+            }
+        }
 
         /// <summary>
         /// Retrieve a document's binary data from the database.

@@ -97,12 +97,21 @@ namespace AUTHApi.Data
                 Order = 9
             };
 
+            var approvedKycItem = new MenuItem
+            {
+                Title = "Approved KYC Records", ViewId = "approved_kyc", Icon = "DownloadIcon",
+                Url = "/approved-kyc",
+                Permission = Permissions.Kyc.ApprovedView,
+                RequiredPolicyId = GetPolicyId(Permissions.Kyc.ApprovedView),
+                Order = 10
+            };
+
             var dashboardItem = new MenuItem
             {
                 Title = "Dashboard", ViewId = "dashboard", Icon = "DashboardIcon",
                 Url = "/dashboard",
-                Permission = Permissions.Kyc.Dashboard, // Keeping permission requirement for stats
-                RequiredPolicyId = GetPolicyId(Permissions.Kyc.Dashboard),
+                Permission = null,
+                RequiredPolicyId = null,
                 Order = 1
             };
 
@@ -119,6 +128,7 @@ namespace AUTHApi.Data
                 kycWorkflowItem,
                 kycUnifiedQueueItem,
                 kycSearchItem,
+                approvedKycItem,
 
                 new MenuItem
                 {
@@ -126,7 +136,7 @@ namespace AUTHApi.Data
                     Url = "/audit",
                     Permission = Permissions.Audit.Sidebar,
                     RequiredPolicyId = GetPolicyId(Permissions.Audit.Sidebar),
-                    Order = 10
+                    Order = 11
                 },
                 new MenuItem
                 {
@@ -134,7 +144,7 @@ namespace AUTHApi.Data
                     Url = "/settings",
                     Permission = Permissions.Settings.Sidebar,
                     RequiredPolicyId = GetPolicyId(Permissions.Settings.Sidebar),
-                    Order = 11
+                    Order = 12
                 }
             };
 

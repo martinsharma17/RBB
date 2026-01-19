@@ -193,22 +193,54 @@ public class UserController : BaseApiController
     [Authorize(Policy = Permissions.Users.Create)]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserModel model)
     {
+        var context = HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+
+        // 1. Validation for Email/Password
+        if (string.IsNullOrWhiteSpace(model.Email)) return Failure("Email is required");
+        if (string.IsNullOrWhiteSpace(model.Password)) return Failure("Password is required");
+
+        // 2. Validate BranchId if provided
+        if (model.BranchId.HasValue)
+        {
+            var branchExists = await context.Branches.AnyAsync(b => b.Id == model.BranchId.Value);
+            if (!branchExists) return Failure($"Branch with ID {model.BranchId} does not exist.");
+        }
+
+        // 3. Prepare User Object
         var user = new ApplicationUser
         {
-            UserName = model.Email, // Use Email as UserName for identity compatibility
+            UserName = model.Email,
             Email = model.Email,
-            Name = model.Name ?? model.UserName, // Map Name property
+            Name = !string.IsNullOrWhiteSpace(model.Name)
+                ? model.Name
+                : (!string.IsNullOrWhiteSpace(model.UserName) ? model.UserName : model.Email),
             BranchId = model.BranchId,
-            EmailConfirmed = true // Auto-confirm for admin created users
+            EmailConfirmed = true
         };
 
+        // 4. Create User
         var result = await _userManager.CreateAsync(user, model.Password);
         if (!result.Succeeded) return Failure("Failed to create user", 400, result.Errors);
 
+        // 5. Handle Role Assignment (Optional)
         if (!string.IsNullOrWhiteSpace(model.Role))
-            await _userManager.AddToRoleAsync(user, model.Role);
+        {
+            var roleExists = await context.Roles.AnyAsync(r => r.Name == model.Role);
+            if (!roleExists)
+            {
+                return Success(new { user.Id, user.UserName, user.Email },
+                    $"User created, but role '{model.Role}' was not found and could not be assigned.");
+            }
 
-        return Success(new { user.Id, user.UserName, user.Email }, "User created");
+            var roleResult = await _userManager.AddToRoleAsync(user, model.Role);
+            if (!roleResult.Succeeded)
+            {
+                return Success(new { user.Id, user.UserName, user.Email },
+                    $"User created, but role assignment failed: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
+            }
+        }
+
+        return Success(new { user.Id, user.UserName, user.Email }, "User created and role assigned successfully");
     }
 
     /// <summary>

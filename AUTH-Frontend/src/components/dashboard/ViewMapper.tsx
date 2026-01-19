@@ -13,11 +13,11 @@ import KycFormMaster from './user/KycFormMaster';
 import MenuManagementView from './admin/MenuManagementView';
 import KycWorkflowView from './admin/KycWorkflowView';
 import UnifiedKycQueueView from './admin/UnifiedKycQueueView';
-import BranchManagementView from './superadmin/BranchManagementView';
 import KycSearchView from './admin/KycSearchView';
-
-
+import ApprovedKycListView from './admin/ApprovedKycListView';
+import BranchManagementView from './superadmin/BranchManagementView';
 // Placeholder for missing component
+
 const SupportComponent = () => (
     <div className="p-8 text-center text-gray-500">Support Module (Coming Soon)</div>
 );
@@ -44,6 +44,9 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
 
         case 'kyc_search':
             return <KycSearchView {...props} />;
+
+        case 'approved_kyc':
+            return <ApprovedKycListView {...props} />;
 
         case 'support_view':  // This ID must match the 'ViewId' in the backend
             return <SupportComponent />;

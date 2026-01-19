@@ -129,7 +129,18 @@ const FinalReviewModal: React.FC<FinalReviewModalProps> = ({
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <tbody>{renderFields(kycData)}</tbody>
+                <tbody>
+                  {(() => {
+                    // Filter kycData for adults to remove guardian info
+                    const birthDate = new Date(kycData.dateOfBirth || kycData.personalInfo?.dobAd);
+                    const age = new Date().getFullYear() - birthDate.getFullYear();
+                    const filteredData = { ...kycData };
+                    if (age >= 18 && filteredData.guardian) {
+                      delete filteredData.guardian;
+                    }
+                    return renderFields(filteredData);
+                  })()}
+                </tbody>
               </table>
             </div>
           </section>
@@ -164,28 +175,27 @@ const FinalReviewModal: React.FC<FinalReviewModalProps> = ({
             </div>
 
             {/* Agreement */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="agree"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                disabled={!canAgree}
-                className="h-4 w-4 accent-indigo-600"
-              />
-              <label
-                htmlFor="agree"
-                className={`text-sm ${
-                  canAgree ? "text-gray-800" : "text-gray-400"
-                }`}
-              >
-                I have read and agree to the Terms & Conditions
-              </label>
-            </div>
+            {scrolledToEnd && (
+              <div className="flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <input
+                  type="checkbox"
+                  id="agree"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="h-4 w-4 accent-indigo-600 cursor-pointer"
+                />
+                <label
+                  htmlFor="agree"
+                  className="text-sm text-gray-800 cursor-pointer"
+                >
+                  I have read and agree to the Terms & Conditions
+                </label>
+              </div>
+            )}
 
-            {!canAgree && (
-              <p className="text-xs text-gray-500">
-                Please scroll to the bottom to enable agreement.
+            {!scrolledToEnd && !pdfError && (
+              <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                <span className="animate-bounce">↓</span> Please scroll to the bottom to view and accept the terms.
               </p>
             )}
           </section>
@@ -197,10 +207,9 @@ const FinalReviewModal: React.FC<FinalReviewModalProps> = ({
             disabled={!canSubmit}
             onClick={onFinalSubmit}
             className={`px-6 py-2 rounded-lg font-semibold transition
-              ${
-                canSubmit
-                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              ${canSubmit
+                ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
               }`}
           >
             Final Submit

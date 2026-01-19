@@ -10,7 +10,7 @@ namespace AUTHApi.Data
             var roleManager = serviceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
             var configuration = serviceProvider.GetRequiredService<IConfiguration>();
 
-            var roles = configuration.GetSection("Roles:DefaultRoles").Get<string[]>() ?? ["SuperAdmin"];
+            var roles = configuration.GetSection("Roles:DefaultRoles").Get<string[]>() ?? ["SuperAdmin", "User"];
 
             // Cleanup: Delete roles that are no longer needed
             var rolesToDelete = new[] { "Admin", "Manager" };

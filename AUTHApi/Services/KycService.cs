@@ -233,6 +233,13 @@ namespace AUTHApi.Services
 
             try
             {
+                var s = await _context.KycFormSessions.FindAsync(sessionId);
+                if (s != null)
+                {
+                    s.ModifiedDate = DateTime.UtcNow;
+                    s.LastActivityDate = DateTime.UtcNow;
+                }
+
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
@@ -344,14 +351,44 @@ namespace AUTHApi.Services
             if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(email))
                 throw new ArgumentException("Both userId and email cannot be null or empty.");
 
+            // 1. Try to find the most recent ACTIVE session (not submitted)
+            // We prioritize userId for security to prevent session sharing by email
             var session = await _context.KycFormSessions
                 .Include(s => s.KycDetail)
                 .Include(s => s.StepCompletions)
+                .OrderByDescending(s => s.LastActivityDate)
                 .FirstOrDefaultAsync(s =>
-                    (userId != null && s.UserId == userId) || (email != null && s.Email == email));
+                    ((userId != null && s.UserId == userId) || (userId == null && email != null && s.Email == email))
+                    && s.FormStatus < 3);
 
             if (session == null)
             {
+                // NO active session found. Check if they have a submitted one recently.
+                var lastSubmitted = await _context.KycFormSessions
+                    .Where(s => (userId != null && s.UserId == userId) || (email != null && s.Email == email))
+                    .OrderByDescending(s => s.ModifiedDate)
+                    .FirstOrDefaultAsync(s => s.FormStatus == 3);
+
+                if (lastSubmitted != null)
+                {
+                    var timeSinceSubmission =
+                        DateTime.UtcNow - (lastSubmitted.ModifiedDate ?? lastSubmitted.CreatedDate);
+
+                    // If submitted less than 5 minutes ago, we return the submitted one (lock-out period)
+                    if (timeSinceSubmission.TotalMinutes < 5)
+                    {
+                        return lastSubmitted;
+                    }
+                    // Else, we fall through and create a NEW session below (allowing new KYC after 5 mins)
+                }
+
+                // If no active session OR submitted > 5 mins ago, create NEW
+                if (string.IsNullOrEmpty(email) && userId != null)
+                {
+                    var user = await _context.Users.FindAsync(userId);
+                    email = user?.Email;
+                }
+
                 if (string.IsNullOrEmpty(email))
                     throw new ArgumentException("Email is required to create a new session.");
 
@@ -361,7 +398,10 @@ namespace AUTHApi.Services
                     Email = email,
                     SessionExpiryDate = DateTime.UtcNow.AddDays(30),
                     CurrentStep = 1,
-                    EmailVerified = !string.IsNullOrEmpty(userId)
+                    EmailVerified = !string.IsNullOrEmpty(userId),
+                    CreatedDate = DateTime.UtcNow,
+                    LastActivityDate = DateTime.UtcNow,
+                    FormStatus = 1 // In Progress
                 };
                 await _context.KycFormSessions.AddAsync(session);
                 await _context.SaveChangesAsync();
@@ -380,8 +420,10 @@ namespace AUTHApi.Services
             }
             else if (session.UserId == null && !string.IsNullOrEmpty(userId))
             {
+                // Link session to logged in user if it was started unauthenticated
                 session.UserId = userId;
-                if (!string.IsNullOrEmpty(email)) session.Email = email;
+                session.ModifiedDate = DateTime.UtcNow;
+                session.LastActivityDate = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
             }
 

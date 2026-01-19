@@ -92,7 +92,7 @@ const Dashboard = () => {
                 });
                 if (roleRes.ok) {
                     const res = await roleRes.json();
-                    setRoles(res.data || []);
+                    setRoles(res.data?.roles || []);
                 }
             }
 
@@ -153,14 +153,50 @@ const Dashboard = () => {
     };
 
     const handleDeleteUser = async (userId: string) => {
-        if (!window.confirm("Delete user?")) return;
+        if (!window.confirm("Delete user? This action cannot be undone.")) return;
         try {
-            await fetch(`${apiBase}/api/users/${userId}`, {
+            const response = await fetch(`${apiBase}/api/User/${userId}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` }
             });
-            fetchData();
-        } catch (e) { }
+            const resData = await response.json();
+            if (response.ok && resData.success) {
+                alert("User deleted successfully");
+                fetchData();
+            } else {
+                alert(resData.message || "Failed to delete user");
+            }
+        } catch (e) {
+            console.error("Error deleting user:", e);
+            alert("An error occurred while deleting the user.");
+        }
+    };
+
+    const handleAssignRole = async (email: string, roleName: string) => {
+        try {
+            const response = await fetch(`${apiBase}/api/Roles/AssignRole`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify({ Email: email, RoleName: roleName })
+            });
+
+            const resData = await response.json();
+
+            if (response.ok && resData.success) {
+                setShowAssignModal(false);
+                setSelectedUserForRole(null);
+                alert("Role assigned successfully");
+                fetchData();
+            } else {
+                alert(resData.message || "Failed to assign role");
+            }
+        } catch (e) {
+            console.error("Error assigning role:", e);
+            alert("Error assigning role. Check console for details.");
+        }
     };
 
     // 7. Render
@@ -198,7 +234,12 @@ const Dashboard = () => {
 
                         // Actions
                         onAddUser: permissions?.create_users ? () => setShowAddModal(true) : null,
-                        onDelete: handleDeleteUser,
+                        onDelete: permissions?.delete_users ? handleDeleteUser : null,
+                        canEdit: !!permissions?.update_users,
+                        onAssignRole: (user: any) => {
+                            setSelectedUserForRole(user);
+                            setShowAssignModal(true);
+                        },
                         onViewUsers: () => setActiveView('users'),
                         onViewCharts: () => setActiveView('charts'),
                         onViewChange: (view: string, id?: number) => {
@@ -225,6 +266,14 @@ const Dashboard = () => {
                 onClose={() => setShowAddModal(false)}
                 onSubmit={handleAddUser}
                 allowRoleSelection={false}
+            />
+
+            <AssignRoleModal
+                show={showAssignModal}
+                user={selectedUserForRole}
+                roles={roles}
+                onClose={() => setShowAssignModal(false)}
+                onAssign={handleAssignRole}
             />
         </div>
     );

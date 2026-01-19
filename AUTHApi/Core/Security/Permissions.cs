@@ -137,6 +137,7 @@ namespace AUTHApi.Core.Security
             public const string GlobalSearch = "Permissions.Kyc.GlobalSearch"; // Cross-branch search
             public const string Dashboard = "Permissions.Kyc.Dashboard";
             public const string Export = "Permissions.Kyc.Export"; // CSV/Excel export
+            public const string ApprovedView = "Permissions.Kyc.ApprovedView"; // For viewing approved records
         }
 
         public static class Branches
@@ -175,7 +176,7 @@ namespace AUTHApi.Core.Security
                 Security.View, Security.Sidebar,
                 Backup.View, Backup.Sidebar,
                 Kyc.View, Kyc.Create, Kyc.Edit, Kyc.Delete, Kyc.Workflow,
-                Kyc.Sidebar, Kyc.GlobalSearch, Kyc.Dashboard, Kyc.Export,
+                Kyc.Sidebar, Kyc.GlobalSearch, Kyc.Dashboard, Kyc.Export, Kyc.ApprovedView,
                 Branches.View, Branches.Create, Branches.Edit, Branches.Delete, Branches.Sidebar
             };
         }

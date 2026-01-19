@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { useAuth } from "../../../../context/AuthContext";
-import FinalReviewModal from "./FinalReviewModel";
 import { useNavigate } from "react-router-dom";
+import KycSummaryReview from "./KycSummaryReview";
+import AgreementModal from "./AgreementModal";
+import { CheckCircle2 } from "lucide-react";
 
 export interface KycAttachmentProps {
   sessionId: number | null;
@@ -29,12 +31,10 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
   const [citFront, setCitFront] = useState<File | null>(null);
   const [citBack, setCitBack] = useState<File | null>(null);
 
-  // review modal
-  const [showReview, setShowReview] = useState(false);
+  // Flow states
+  const [currentStep, setCurrentStep] = useState<'upload' | 'summary' | 'agreement' | 'success'>('upload');
   const [kycReviewData, setKycReviewData] = useState<any>(null);
-
-  // thank you message
-  const [showThankYou, setShowThankYou] = useState(false);
+  const [showAgreementModal, setShowAgreementModal] = useState(false);
 
   const parseError = async (res: Response, fallback: string) => {
     try {
@@ -126,7 +126,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
       } catch { }
 
       setKycReviewData(reviewData);
-      setShowReview(true);
+      setCurrentStep('summary'); // Move to summary view
     } catch (err: any) {
       setError(err.message || "Upload failed");
     } finally {
@@ -134,7 +134,12 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
     }
   };
 
-  const handleFinalSubmit = async () => {
+  const handleNextFromSummary = () => {
+    // Show agreement modal
+    setShowAgreementModal(true);
+  };
+
+  const handleAgree = async () => {
     try {
       const headers: any = {};
       if (token) headers.Authorization = `Bearer ${token}`;
@@ -151,16 +156,72 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
       localStorage.removeItem("kyc_session_id");
       localStorage.removeItem("kyc_email_verified");
 
-      setShowReview(false);
-      setShowThankYou(true);
+      setShowAgreementModal(false);
+      setCurrentStep('success');
       if (onComplete) onComplete(kycReviewData);
       if (onSuccess) onSuccess(kycReviewData);
     } catch (err: any) {
       setError(err.message || "Final submission failed");
-      setShowReview(false);
+      setShowAgreementModal(false);
     }
   };
 
+  // Render based on current step
+  if (currentStep === 'summary') {
+    return (
+      <>
+        <KycSummaryReview
+          kycData={kycReviewData}
+          onNext={handleNextFromSummary}
+          onBack={() => setCurrentStep('upload')}
+        />
+        <AgreementModal
+          open={showAgreementModal}
+          onClose={() => setShowAgreementModal(false)}
+          onAgree={handleAgree}
+          kycData={kycReviewData}
+          sessionId={sessionId}
+        />
+      </>
+    );
+  }
+
+  if (currentStep === 'success') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-50">
+        <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-2xl text-center animate-fade-in">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-200">
+            <CheckCircle2 className="w-14 h-14 text-white" />
+          </div>
+          <h2 className="text-4xl font-black text-slate-800 mb-4">
+            Successfully Submitted!
+          </h2>
+          <p className="text-xl text-slate-600 mb-8 leading-relaxed">
+            Your KYC application has been submitted successfully.<br />
+            Our team will review your application and contact you soon.
+          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-slate-500">
+              Application ID: <span className="font-mono font-bold text-indigo-600">#{sessionId}</span>
+            </p>
+            <p className="text-sm text-slate-500">
+              You will receive a confirmation email shortly.
+            </p>
+          </div>
+          <button
+            className="mt-8 px-10 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:shadow-xl transition-all"
+            onClick={() => {
+              navigate("/login");
+            }}
+          >
+            Return to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Default: Upload step
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
@@ -220,38 +281,6 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
           </button>
         </div>
       </form>
-
-      {/* Final Review Modal */}
-      <FinalReviewModal
-        open={showReview}
-        onClose={() => setShowReview(false)}
-        kycData={kycReviewData}
-        pdfUrl="/terms.pdf"
-        onFinalSubmit={handleFinalSubmit}
-      />
-
-      {/* Thank You Message */}
-      {showThankYou && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl p-8 max-w-md text-center">
-            <h2 className="text-2xl font-bold text-green-700 mb-4">
-              Thank You!
-            </h2>
-            <p className="text-lg text-gray-700 mb-6">
-              Your KYC form has been submitted successfully.
-            </p>
-            <button
-              className="px-6 py-2 bg-indigo-600 text-white rounded font-semibold"
-              onClick={() => {
-                setShowThankYou(false);
-                navigate("/login"); // or "/email-verification"
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </>
   );
 };

@@ -235,7 +235,7 @@ namespace AUTHApi.Controllers
         /// Gets the list of KYCs pending for the current user's role.
         /// </summary>
         [HttpGet("pending")]
-        [Authorize(Policy = Permissions.Kyc.Workflow)]
+        [Authorize] // Scoped by internal logic below
         public async Task<IActionResult> GetPendingKycs()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -317,16 +317,42 @@ namespace AUTHApi.Controllers
 
         /// <summary>
         /// Gets a unified, flattened list of all KYCs and their workflow status.
-        /// Ideal for high-level administration dashboards.
+        /// Filtered by branch unless user has global admin access.
         /// </summary>
         [HttpGet("unified-list")]
         [Authorize] // Relaxed
         public async Task<IActionResult> GetUnifiedList()
         {
-            var list = await _context.KycWorkflowMasters
+            var userId = CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Failure("User not found.");
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var isGlobalAdmin = roles.Any(r => r == "SuperAdmin" || r == "Admin");
+
+            var query = _context.KycWorkflowMasters
                 .Include(w => w.KycSession!)
                 .ThenInclude(s => s.KycDetail!)
                 .Include(w => w.Branch!)
+                .AsQueryable();
+
+            // Apply Branch Filter: Only show same branch KYCs unless user is global admin
+            if (!isGlobalAdmin)
+            {
+                if (user.BranchId.HasValue)
+                {
+                    query = query.Where(w => w.BranchId == user.BranchId.Value);
+                }
+                else
+                {
+                    // User has no branch assigned, show only unassigned KYCs
+                    query = query.Where(w => w.BranchId == null);
+                }
+            }
+
+            var list = await query
                 .OrderByDescending(w => w.CreatedAt)
                 .Select(w => new KycUnifiedViewDto
                 {
@@ -600,6 +626,7 @@ namespace AUTHApi.Controllers
             detail.MiddleName = model.MiddleName ?? detail.MiddleName;
             detail.LastName = model.LastName ?? detail.LastName;
             detail.MobileNumber = model.MobileNumber ?? detail.MobileNumber;
+            detail.Email = model.Email ?? detail.Email;
             detail.Gender = model.Gender ?? detail.Gender;
             detail.DateOfBirth = model.DateOfBirth ?? detail.DateOfBirth;
             detail.Nationality = model.Nationality ?? detail.Nationality;
@@ -643,6 +670,8 @@ namespace AUTHApi.Controllers
             detail.IsPep = model.IsPep ?? detail.IsPep;
             detail.PepRelation = model.PepRelation ?? detail.PepRelation;
             detail.HasCriminalRecord = model.HasCriminalRecord ?? detail.HasCriminalRecord;
+            detail.SourceOfFunds = model.SourceOfFunds ?? detail.SourceOfFunds;
+            detail.HasBeneficialOwner = model.HasBeneficialOwner ?? detail.HasBeneficialOwner;
 
             detail.UpdatedAt = DateTime.UtcNow;
 
@@ -696,6 +725,7 @@ namespace AUTHApi.Controllers
             public string? FirstName { get; set; }
             public string? MiddleName { get; set; }
             public string? LastName { get; set; }
+            public string? Email { get; set; }
             public string? MobileNumber { get; set; }
             public string? Gender { get; set; }
             public DateTime? DateOfBirth { get; set; }
@@ -735,6 +765,8 @@ namespace AUTHApi.Controllers
             public bool? IsPep { get; set; }
             public string? PepRelation { get; set; }
             public bool? HasCriminalRecord { get; set; }
+            public string? SourceOfFunds { get; set; }
+            public bool? HasBeneficialOwner { get; set; }
         }
 
         public class PullBackModel
@@ -850,6 +882,10 @@ namespace AUTHApi.Controllers
             var workflow = await _context.KycWorkflowMasters.FindAsync(model.WorkflowId);
             if (workflow == null) return NotFound("Workflow not found.");
 
+            // Fetch branch name for the log message
+            var branch = await _context.Branches.FindAsync(user.BranchId.Value);
+            var branchName = branch?.Name ?? $"Branch {user.BranchId}";
+
             // Update branch
             workflow.BranchId = user.BranchId.Value;
             workflow.UpdatedAt = DateTime.UtcNow;
@@ -861,7 +897,7 @@ namespace AUTHApi.Controllers
                 KycSessionId = workflow.KycSessionId,
                 UserId = userId,
                 Action = "BranchTransfer",
-                Remarks = $"Application pulled to {user.BranchId} branch for verification.",
+                Remarks = $"Application pulled to {branchName} for verification.",
                 ActionedByRoleId = workflow.CurrentRoleId,
                 ClientIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
                 UserAgent = Request.Headers["User-Agent"].ToString(),
@@ -991,6 +1027,64 @@ namespace AUTHApi.Controllers
             }
 
             var fileName = $"Pending_KYC_List_{DateTime.Now:yyyyMMdd}.csv";
+            return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", fileName);
+        }
+
+        //download approved list
+        [HttpGet("export-approved-csv")]
+        [Authorize(Policy = Permissions.Kyc.Export)]
+        public async Task<IActionResult> ExportApprovedCsv([FromQuery] string? ids = null)
+        {
+            var userId = CurrentUserId;
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return Failure("User not found.");
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var isGlobal = roles.Any(r => r == "SuperAdmin" || r == "Admin");
+
+            var query = _context.KycWorkflowMasters.AsQueryable();
+
+            if (!isGlobal)
+            {
+                if (user.BranchId.HasValue)
+                {
+                    var bid = user.BranchId.Value;
+                    query = query.Where(w => w.BranchId == bid || w.BranchId == null);
+                }
+                else
+                {
+                    query = query.Where(w => w.BranchId == null);
+                }
+            }
+
+            if (!string.IsNullOrEmpty(ids))
+            {
+                var idList = ids.Split(',').Select(s => int.Parse(s)).ToList();
+                query = query.Where(w => idList.Contains(w.Id));
+            }
+
+            var list = await query
+                .Include(w => w.KycSession!)
+                .ThenInclude(s => s.KycDetail!)
+                .Include(w => w.Branch)
+                .Where(w => w.Status == KycWorkflowStatus.Approved)
+                .ToListAsync();
+
+            var sb = new StringBuilder();
+            sb.AppendLine("WorkflowID,Applicant Name,Email,Mobile,Citizenship,Status,Approved At,Branch");
+
+            foreach (var item in list)
+            {
+                var d = item.KycSession?.KycDetail;
+                if (d == null) continue;
+
+                sb.AppendLine(
+                    $"{item.Id},\"{d.FirstName} {d.LastName}\",\"{d.Email}\",\"{d.MobileNumber}\",\"{d.CitizenshipNumber}\",\"{item.Status}\",\"{item.UpdatedAt:yyyy-MM-dd HH:mm}\",\"{item.Branch?.Name ?? "Global"}\"");
+            }
+
+            var fileName = $"Approved_KYC_List_{DateTime.Now:yyyyMMdd}.csv";
             return File(Encoding.UTF8.GetBytes(sb.ToString()), "text/csv", fileName);
         }
 

@@ -131,6 +131,7 @@ export const PERMISSION_CONSTANTS = {
     KYC_SEARCH: 'Permissions.Kyc.GlobalSearch',
     KYC_DASHBOARD: 'Permissions.Kyc.Dashboard',
     KYC_EXPORT: 'Permissions.Kyc.Export',
+    KYC_APPROVED: 'Permissions.Kyc.ApprovedView',
 } as const;
 
 /**
@@ -292,6 +293,11 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_SEARCH),
             export: permSet.has(PERMISSION_CONSTANTS.KYC_EXPORT),
         },
+        approved_kyc: {
+            read: permSet.has(PERMISSION_CONSTANTS.KYC_APPROVED),
+            sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_APPROVED),
+            export: permSet.has(PERMISSION_CONSTANTS.KYC_EXPORT),
+        },
 
         // Computed permissions for convenience
         create_users: permSet.has(PERMISSION_CONSTANTS.USERS_CREATE),
@@ -344,6 +350,7 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
         view_kyc_workflow: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
         view_kyc_unified_queue: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
         view_kyc_search: permSet.has(PERMISSION_CONSTANTS.KYC_SEARCH),
+        view_approved_kyc: permSet.has(PERMISSION_CONSTANTS.KYC_APPROVED),
 
         view_branches: permSet.has(PERMISSION_CONSTANTS.BRANCHES_SIDEBAR),
 
@@ -493,8 +500,14 @@ export function mapFrontendPermissionsToBackend(frontendPermissions: Permissions
     if (frontendPermissions.kyc?.export ||
         frontendPermissions.kyc_workflow?.export ||
         frontendPermissions.kyc_unified_queue?.export ||
-        frontendPermissions.kyc_search?.export) {
+        frontendPermissions.kyc_search?.export ||
+        frontendPermissions.approved_kyc?.export) {
         pushIfTrue(true, PERMISSION_CONSTANTS.KYC_EXPORT);
+    }
+
+    // KYC Approved sidebar
+    if (frontendPermissions.approved_kyc?.read || frontendPermissions.approved_kyc?.sidebar) {
+        pushIfTrue(true, PERMISSION_CONSTANTS.KYC_APPROVED);
     }
 
     return permissions;

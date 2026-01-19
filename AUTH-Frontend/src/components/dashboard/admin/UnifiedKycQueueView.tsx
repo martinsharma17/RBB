@@ -23,6 +23,7 @@ interface KycUnifiedItem {
     createdAt: string;
     lastUpdatedAt: string;
     lastRemarks: string;
+    branchName: string;
 }
 
 const UnifiedKycQueueView: React.FC = () => {
@@ -32,6 +33,8 @@ const UnifiedKycQueueView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+
+
 
     useEffect(() => {
         fetchData();
@@ -81,6 +84,7 @@ const UnifiedKycQueueView: React.FC = () => {
             case 'Approved': return 'bg-green-100 text-green-700 border-green-200';
             case 'Rejected': return 'bg-red-100 text-red-700 border-red-200';
             case 'InProgress': return 'bg-blue-100 text-blue-700 border-blue-200';
+            case 'InReview': return 'bg-blue-100 text-blue-700 border-blue-200';
             default: return 'bg-gray-100 text-gray-700 border-gray-200';
         }
     };
@@ -94,7 +98,7 @@ const UnifiedKycQueueView: React.FC = () => {
                         <Shield className="w-8 h-8 text-blue-600" />
                         Unified KYC Queue
                     </h1>
-                    <p className="text-slate-500 mt-1">Global oversight and tracking of all KYC workflows.</p>
+                    <p className="text-slate-500 mt-1">Branch-scoped oversight and tracking of all KYC workflows.</p>
                 </div>
                 <button
                     onClick={fetchData}
@@ -126,7 +130,7 @@ const UnifiedKycQueueView: React.FC = () => {
                         className="bg-slate-50 border-none px-4 py-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-slate-600 font-medium min-w-[150px]"
                     >
                         <option value="All">All Statuses</option>
-                        <option value="InProgress">In Progress</option>
+                        <option value="InReview">In Review</option>
                         <option value="Approved">Approved</option>
                         <option value="Rejected">Rejected</option>
                     </select>
@@ -144,18 +148,19 @@ const UnifiedKycQueueView: React.FC = () => {
                         <thead>
                             <tr className="bg-slate-50/50 border-b border-slate-100">
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Customer</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Branch</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status & Level</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Current Holder</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Workflow Chain</th>
                                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date Created</th>
-                                <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Action</th>
+                                <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 Array(5).fill(0).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
-                                        <td colSpan={6} className="px-6 py-8">
+                                        <td colSpan={7} className="px-6 py-8">
                                             <div className="h-4 bg-slate-100 rounded w-3/4"></div>
                                         </td>
                                     </tr>
@@ -168,6 +173,11 @@ const UnifiedKycQueueView: React.FC = () => {
                                                 <span className="font-bold text-slate-700 text-base">{item.customerName}</span>
                                                 <span className="text-sm text-slate-500">{item.email}</span>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-100">
+                                                {item.branchName || 'Global'}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col gap-1">
@@ -194,18 +204,20 @@ const UnifiedKycQueueView: React.FC = () => {
                                             {new Date(item.createdAt).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <button
-                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all group-hover:scale-110 active:scale-95"
-                                                title="View Action Details"
-                                            >
-                                                <Eye className="w-6 h-6" />
-                                            </button>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all group-hover:scale-110 active:scale-95"
+                                                    title="View Action Details"
+                                                >
+                                                    <Eye className="w-5 h-5" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center">
+                                    <td colSpan={7} className="px-6 py-12 text-center">
                                         <div className="flex flex-col items-center gap-4">
                                             <div className="bg-slate-50 p-6 rounded-full">
                                                 <Search className="w-12 h-12 text-slate-300" />

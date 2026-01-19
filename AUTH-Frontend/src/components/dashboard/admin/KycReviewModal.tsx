@@ -1,401 +1,505 @@
 import React, { useState } from 'react';
+import {
+    X, FileText, Database,
+    CheckCircle2, AlertCircle, Edit3, Download,
+    Eye, ArrowLeft, ShieldCheck, User,
+    ArrowRightCircle, RotateCcw
+} from 'lucide-react';
 
 interface KycReviewModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    detailData: any;
-    apiBase: string;
-    isEditing: boolean;
-    setIsEditing: (val: boolean) => void;
-    editedData: any;
-    setEditedData: (val: any) => void;
-    onSave: () => void;
-    actionLoading: boolean;
-    remarks: string;
-    setRemarks: (val: string) => void;
-    onAction: (action: 'approve' | 'reject' | 'resubmit' | 'pull-back', returnToPrevious?: boolean) => void;
-    onDownloadCsv: (workflowId: number) => void;
-    canExport: boolean;
+    isOpen: boolean; onClose: () => void; detailData: any; apiBase: string;
+    isEditing: boolean; setIsEditing: (val: boolean) => void;
+    editedData: any; setEditedData: (val: any) => void;
+    onSave: (documentFiles?: { [key: number]: File }) => void; actionLoading: boolean;
+    remarks: string; setRemarks: (val: string) => void;
+    onAction: (action: 'approve' | 'reject' | 'resubmit' | 'pull-back', prev?: boolean) => void;
+    onDownloadCsv: (id: number) => void; canExport: boolean;
 }
 
 const KycReviewModal: React.FC<KycReviewModalProps> = ({
-    isOpen,
-    onClose,
-    detailData,
-    apiBase,
-    isEditing,
-    setIsEditing,
-    editedData,
-    setEditedData,
-    onSave,
-    actionLoading,
-    remarks,
-    setRemarks,
-    onAction,
-    onDownloadCsv,
-    canExport
+    isOpen, onClose, detailData, apiBase, isEditing, setIsEditing,
+    editedData, setEditedData, onSave, actionLoading, remarks, setRemarks,
+    onAction, onDownloadCsv, canExport
 }) => {
     const [activeTab, setActiveTab] = useState('overview');
+    const [previewDoc, setPreviewDoc] = useState<any>(null);
+    const [documentFiles, setDocumentFiles] = useState<{ [key: number]: File }>({});
 
     if (!isOpen) return null;
+    const isCompleted = detailData?.workflow?.status === 'Approved' || detailData?.workflow?.status === 2;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !actionLoading && onClose()}></div>
-            <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col relative animate-scale-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-hidden">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => !actionLoading && onClose()} />
+            <div className="bg-white rounded-[40px] shadow-2xl w-[98vw] h-[98vh] max-w-none overflow-hidden flex flex-col relative animate-in fade-in zoom-in-95 duration-300">
 
-                {/* Modal Header */}
-                <div className="px-8 py-6 border-b flex justify-between items-center bg-white">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                {/* Header */}
+                <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-white z-10">
+                    <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-100">
+                            <FileText className="w-7 h-7" />
                         </div>
                         <div>
-                            <h3 className="text-xl font-black text-gray-900">Application Review</h3>
-                            <p className="text-xs text-gray-500 font-medium">{detailData?.workflow?.kycSession?.email || detailData?.details?.email || 'Loading Applicant Info...'}</p>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Application Review</h3>
+                                <span className="bg-slate-100 px-2 py-0.5 rounded-lg text-[10px] font-black text-slate-500 uppercase">ID: {detailData?.workflow?.id}</span>
+                            </div>
+                            <p className="text-sm text-slate-500 font-medium">{detailData?.workflow?.kycSession?.email || detailData?.details?.email}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        {isEditing && (
-                            <div className="px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2">
-                                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                <span className="text-xs font-bold text-amber-700 uppercase tracking-wide">Editing Mode Active</span>
-                            </div>
-                        )}
-                        {(detailData?.workflow?.status === 4 || detailData?.workflow?.status === "ResubmissionRequired" ||
-                            detailData?.workflow?.status === 5 || detailData?.workflow?.status === "InReview" ||
-                            detailData?.workflow?.status === 3 || detailData?.workflow?.status === "Rejected") && (
-                                <button
-                                    onClick={() => isEditing ? onSave() : setIsEditing(true)}
-                                    disabled={actionLoading}
-                                    className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 ${isEditing
-                                        ? 'bg-green-600 text-white shadow-lg shadow-green-200 hover:bg-green-700'
-                                        : 'bg-amber-50 text-amber-700 border-2 border-amber-200 hover:bg-amber-100'
-                                        }`}
-                                >
-                                    {isEditing ? (
-                                        <>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                                            Save Changes
-                                        </>
-                                    ) : (
-                                        <>
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                            Edit Info
-                                        </>
-                                    )}
-                                </button>
-                            )}
-                        {canExport && (
-                            <button
-                                onClick={() => detailData?.workflow?.id && onDownloadCsv(detailData.workflow.id)}
-                                className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 hover:bg-gray-800 shadow-lg shadow-gray-200"
-                                title="Download CSV for printing hardcopy and bank stamp"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Print Form
+                    <div className="flex items-center gap-4">
+                        {isEditing && <span className="px-4 py-2 bg-amber-50 text-amber-700 text-[10px] font-black uppercase rounded-2xl border border-amber-200 animate-pulse">Editing Mode</span>}
+                        {!isCompleted && (
+                            <button onClick={() => isEditing ? onSave(documentFiles) : setIsEditing(true)} disabled={actionLoading}
+                                className={`h-11 px-6 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all gap-2 flex items-center border-2 ${isEditing ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-white text-slate-700 border-slate-200 hover:border-indigo-600'}`}>
+                                {isEditing ? <CheckCircle2 className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />} {isEditing ? 'Save Changes' : 'Quick Edit'}
                             </button>
                         )}
-                        <button
-                            onClick={() => !actionLoading && onClose()}
-                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
+                        {canExport && <button onClick={() => onDownloadCsv(detailData.workflow.id)} className="h-11 px-6 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2"><Download className="w-4 h-4" /> PDF</button>}
+                        <button onClick={() => !actionLoading && onClose()} className="w-11 h-11 flex items-center justify-center text-slate-400 hover:bg-slate-50 rounded-2xl border border-slate-100"><X className="w-6 h-6" /></button>
                     </div>
                 </div>
 
-                {/* Modal Tabs */}
-                <div className="px-8 border-b bg-gray-50/50 flex gap-8">
-                    <TabButton id="overview" label="Overview" active={activeTab === 'overview'} onClick={setActiveTab} />
-                    <TabButton id="details" label="Full Data" active={activeTab === 'details'} onClick={setActiveTab} />
-                    <TabButton id="documents" label="Documents" active={activeTab === 'documents'} onClick={setActiveTab} />
-                    <TabButton id="history" label="Workflow History" active={activeTab === 'history'} onClick={setActiveTab} />
+                {/* Tabs */}
+                <div className="px-10 border-b border-slate-100 bg-slate-50/40 flex gap-10">
+                    {['overview', 'details', 'documents', 'history', 'pipeline'].map(tab => (
+                        <button key={tab} onClick={() => setActiveTab(tab)} className={`py-6 px-2 text-[11px] font-black uppercase tracking-widest border-b-[4px] transition-all ${activeTab === tab ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-400'}`}>
+                            {tab === 'pipeline' ? 'Approval Pipeline' : tab}
+                        </button>
+                    ))}
                 </div>
 
-                {/* Modal Content */}
-                <div className="flex-1 overflow-y-auto p-8 bg-gray-50/30">
-                    {!detailData ? (
-                        <div className="flex items-center justify-center py-20">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                        </div>
-                    ) : (
-                        <div className="space-y-8 max-w-4xl mx-auto">
+                {/* Content */}
+                <div className="flex-1 bg-white p-0 sm:p-10 overflow-y-auto relative">
+                    {!detailData ? <div className="py-32 text-center opacity-30">Loading...</div> : (
+                        <div className="max-w-5xl mx-auto space-y-10">
 
-                            {/* Workflow Roadmap */}
-                            <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm overflow-hidden relative">
-                                <div className="flex items-center justify-between mb-8 px-2">
-                                    <div>
-                                        <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em]">Approval Pipeline</h4>
-                                        <h2 className="text-xl font-black text-gray-900">Current Progress</h2>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Step: {detailData.workflow.currentRoleId ? (detailData.approvalChain?.find((c: any) => c.roleId === detailData.workflow.currentRoleId)?.roleName || 'Unknown') : 'Finalized'}</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between relative px-10 mb-4">
-                                    {/* Connecting Line */}
-                                    <div className="absolute top-1/2 left-10 right-10 h-1 bg-gray-100 -translate-y-1/2"></div>
-                                    <div
-                                        className="absolute top-1/2 left-10 h-1 bg-indigo-500 -translate-y-1/2 transition-all duration-1000 ease-in-out"
-                                        style={{
-                                            width: detailData.approvalChain?.length > 1
-                                                ? `${(detailData.approvalChain.findIndex((c: any) => c.isCurrent) / (detailData.approvalChain.length - 1)) * 100}%`
-                                                : detailData.approvalChain?.some((c: any) => c.isCompleted) ? '100%' : '0%'
-                                        }}
-                                    ></div>
-
-                                    {detailData.approvalChain?.map((step: any, idx: number) => (
-                                        <div key={idx} className="relative flex flex-col items-center z-10">
-                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 border-4 border-white shadow-lg ${step.isCompleted ? 'bg-green-500 text-white' :
-                                                step.isCurrent ? 'bg-indigo-600 text-white scale-125 ring-8 ring-indigo-50' :
-                                                    'bg-white text-gray-300'
-                                                }`}>
-                                                {step.isCompleted ? (
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                ) : (
-                                                    <span className="font-black text-sm">{idx + 1}</span>
-                                                )}
-                                            </div>
-                                            <span className={`absolute -bottom-8 whitespace-nowrap text-[9px] font-black uppercase tracking-widest ${step.isCurrent ? 'text-indigo-600' : 'text-gray-400'
-                                                }`}>
-                                                {step.roleName}
-                                            </span>
+                            {/* Approval Pipeline Tab */}
+                            {activeTab === 'pipeline' && (
+                                <div className="bg-gradient-to-br from-slate-50 to-white p-12 rounded-[36px] border border-slate-200 shadow-sm">
+                                    <div className="max-w-3xl mx-auto">
+                                        <div className="text-center mb-12">
+                                            <h4 className="text-2xl font-black text-slate-800 mb-2">Approval Pipeline</h4>
+                                            <p className="text-slate-500 text-sm">Track the application's journey through verification stages</p>
                                         </div>
-                                    ))}
-                                </div>
-                                <div className="pt-10 px-2">
-                                    <p className="text-[10px] text-gray-400 font-medium">
-                                        * This application requires <span className="text-gray-900 font-bold">{detailData.approvalChain?.length} levels</span> of verification for final approval.
-                                    </p>
-                                </div>
-                            </div>
 
-                            {activeTab === 'overview' && (
-                                <div className="grid gap-6">
-                                    {detailData.logs && detailData.logs.length > 0 && (
-                                        <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100">
-                                            <h4 className="text-[10px] font-black text-indigo-500 uppercase mb-3 tracking-widest flex items-center gap-2">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
-                                                Latest Feedback
-                                            </h4>
-                                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-indigo-50">
-                                                <p className="text-gray-800 text-sm font-medium italic">
-                                                    "{detailData.logs[0].remarks || 'No remarks provided.'}"
-                                                </p>
-                                                <div className="mt-3 flex items-center justify-between text-[10px] text-gray-400">
-                                                    <span className="font-bold uppercase tracking-wide">By {detailData.logs[0].userFullName || 'System'} ({detailData.logs[0].actionedByRoleName})</span>
-                                                    <span>{new Date(detailData.logs[0].createdAt).toLocaleString()}</span>
+                                        {/* Vertical Timeline */}
+                                        <div className="relative">
+                                            {/* Connecting Line */}
+                                            <div className="absolute left-8 top-0 bottom-0 w-1 bg-gradient-to-b from-slate-200 via-slate-100 to-slate-200"></div>
+
+                                            {/* Pipeline Steps */}
+                                            <div className="space-y-8">
+                                                {detailData.approvalChain?.map((step: any, index: number) => {
+                                                    const isCompleted = step.isCompleted;
+                                                    const isCurrent = step.isCurrent;
+                                                    const isPending = !isCompleted && !isCurrent;
+
+                                                    return (
+                                                        <div key={index} className="relative flex items-start gap-6 group">
+                                                            {/* Step Indicator */}
+                                                            <div className="relative z-10 flex-shrink-0">
+                                                                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 ${isCompleted
+                                                                    ? 'bg-emerald-500 shadow-lg shadow-emerald-200'
+                                                                    : isCurrent
+                                                                        ? 'bg-indigo-600 shadow-xl shadow-indigo-300 ring-4 ring-indigo-100 animate-pulse'
+                                                                        : 'bg-white border-2 border-slate-200'
+                                                                    }`}>
+                                                                    {isCompleted ? (
+                                                                        <CheckCircle2 className="w-8 h-8 text-white" />
+                                                                    ) : isCurrent ? (
+                                                                        <div className="w-3 h-3 rounded-full bg-white"></div>
+                                                                    ) : (
+                                                                        <span className="text-slate-300 font-black text-lg">{index + 1}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Step Content */}
+                                                            <div className={`flex-1 pb-2 pt-2 transition-all ${isCurrent ? 'transform scale-105' : ''}`}>
+                                                                <div className={`p-6 rounded-2xl border-2 transition-all ${isCompleted
+                                                                    ? 'bg-emerald-50 border-emerald-200'
+                                                                    : isCurrent
+                                                                        ? 'bg-indigo-50 border-indigo-300 shadow-lg'
+                                                                        : 'bg-white border-slate-100'
+                                                                    }`}>
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <h5 className={`font-black text-lg ${isCompleted ? 'text-emerald-700' : isCurrent ? 'text-indigo-700' : 'text-slate-400'
+                                                                            }`}>
+                                                                            {step.roleName}
+                                                                        </h5>
+                                                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${isCompleted
+                                                                            ? 'bg-emerald-200 text-emerald-800'
+                                                                            : isCurrent
+                                                                                ? 'bg-indigo-200 text-indigo-800'
+                                                                                : 'bg-slate-100 text-slate-400'
+                                                                            }`}>
+                                                                            {isCompleted ? '✓ Approved' : isCurrent ? '● In Progress' : 'Pending'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className={`text-xs ${isCompleted ? 'text-emerald-600' : isCurrent ? 'text-indigo-600' : 'text-slate-400'
+                                                                        }`}>
+                                                                        {isCompleted
+                                                                            ? 'This stage has been completed successfully'
+                                                                            : isCurrent
+                                                                                ? 'Currently under review at this level'
+                                                                                : 'Awaiting approval from previous stages'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {/* Progress Summary */}
+                                        <div className="mt-12 p-6 bg-white rounded-2xl border border-slate-200">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mb-1">Overall Progress</p>
+                                                    <p className="text-2xl font-black text-slate-800">
+                                                        {detailData.approvalChain?.filter((s: any) => s.isCompleted).length || 0} of {detailData.approvalChain?.length || 0} Stages
+                                                    </p>
+                                                </div>
+                                                <div className="w-24 h-24 relative">
+                                                    <svg className="transform -rotate-90" width="96" height="96">
+                                                        <circle cx="48" cy="48" r="40" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                                                        <circle
+                                                            cx="48"
+                                                            cy="48"
+                                                            r="40"
+                                                            fill="none"
+                                                            stroke="#4f46e5"
+                                                            strokeWidth="8"
+                                                            strokeDasharray={`${2 * Math.PI * 40}`}
+                                                            strokeDashoffset={`${2 * Math.PI * 40 * (1 - ((detailData.approvalChain?.filter((s: any) => s.isCompleted).length || 0) / (detailData.approvalChain?.length || 1)))}`}
+                                                            className="transition-all duration-1000"
+                                                        />
+                                                    </svg>
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <span className="text-lg font-black text-indigo-600">
+                                                            {Math.round(((detailData.approvalChain?.filter((s: any) => s.isCompleted).length || 0) / (detailData.approvalChain?.length || 1)) * 100)}%
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    )}
+                                    </div>
+                                </div>
+                            )}
 
-                                    <div className="grid md:grid-cols-2 gap-6">
-                                        <SectionCard title="Personal Summary">
-                                            <InfoRow label="First Name" value={editedData.firstName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, firstName: v })} />
-                                            <InfoRow label="Last Name" value={editedData.lastName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, lastName: v })} />
-                                            <InfoRow label="Email" value={editedData.email} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, email: v })} />
-                                            <InfoRow label="Mobile" value={editedData.mobileNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, mobileNumber: v })} />
-                                            <InfoRow label="Gender" value={editedData.gender} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, gender: v })} />
-                                            <InfoRow label="Citizenship" value={editedData.citizenshipNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, citizenshipNumber: v })} />
+                            {activeTab === 'overview' && (
+                                <div className="grid gap-8">
+                                    {detailData.logs?.[0] && (
+                                        <div className="bg-indigo-600 rounded-[32px] p-8 text-white shadow-xl">
+                                            <h4 className="text-[10px] font-black text-white/60 uppercase mb-3 tracking-widest">Recent Feedback</h4>
+                                            <p className="text-lg italic leading-relaxed">"{detailData.logs[0].remarks || 'No remarks provided.'}"</p>
+                                            <div className="mt-4 text-[10px] font-black opacity-70">BY {detailData.logs[0].userFullName} • {new Date(detailData.logs[0].createdAt).toLocaleString()}</div>
+                                        </div>
+                                    )}
+                                    <div className="grid md:grid-cols-2 gap-8">
+                                        <SectionCard title="Core Attributes">
+                                            <InfoRow label="NAME" value={`${editedData.firstName} ${editedData.lastName}`} isEditing={isEditing} onChange={v => { const p = v.split(' '); setEditedData({ ...editedData, firstName: p[0], lastName: p[1] || '' }); }} />
+                                            <InfoRow label="EMAIL" value={editedData.email} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, email: v })} />
+                                            <InfoRow label="MOBILE" value={editedData.mobileNumber} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, mobileNumber: v })} />
                                         </SectionCard>
-                                        <SectionCard title="Address & Status">
-                                            <InfoRow label="Province" value={editedData.permanentState} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, permanentState: v })} />
-                                            <InfoRow label="District" value={editedData.permanentDistrict} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, permanentDistrict: v })} />
-                                            <InfoRow label="Occupation" value={editedData.occupation} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, occupation: v })} />
-                                            <InfoRow label="Annual Income" value={editedData.annualIncome} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, annualIncome: v })} />
-                                            <InfoRow label="PEP Status" value={editedData.isPep ? 'YES' : 'NO'} isEditing={isEditing} type="checkbox" onChange={(v) => setEditedData({ ...editedData, isPep: v })} />
+                                        <SectionCard title="Risk Controls">
+                                            <InfoRow label="PEP STATUS" value={editedData.isPep ? 'HIGH RISK' : 'NO RISK'} color={editedData.isPep ? 'text-rose-600' : 'text-emerald-600'} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, isPep: v })} />
+                                            <InfoRow label="CRIMINAL RECORD" value={editedData.hasCriminalRecord ? 'YES' : 'NONE'} color={editedData.hasCriminalRecord ? 'text-rose-600' : 'text-emerald-600'} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, hasCriminalRecord: v })} />
                                         </SectionCard>
                                     </div>
                                 </div>
                             )}
 
                             {activeTab === 'details' && (
-                                <div className="grid gap-6">
-                                    <div className="columns-1 lg:columns-2 gap-6 space-y-6">
-                                        <SectionCard title="1. Personal Information">
-                                            <InfoRow label="First Name" value={editedData.firstName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, firstName: v })} />
-                                            <InfoRow label="Middle Name" value={editedData.middleName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, middleName: v })} />
-                                            <InfoRow label="Last Name" value={editedData.lastName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, lastName: v })} />
-                                            <InfoRow label="Date of Birth" value={editedData.dateOfBirth ? new Date(editedData.dateOfBirth).toLocaleDateString("en-CA") : ''} isEditing={isEditing} type="date" onChange={(v) => setEditedData({ ...editedData, dateOfBirth: v })} />
-                                            <InfoRow label="Gender" value={editedData.gender} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, gender: v })} />
-                                            <InfoRow label="Nationality" value={editedData.nationality} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, nationality: v })} />
-                                            <InfoRow label="Marital Status" value={editedData.maritalStatus} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, maritalStatus: v })} />
-                                            <InfoRow label="Email Address" value={editedData.email} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, email: v })} />
-                                            <InfoRow label="Mobile Number" value={editedData.mobileNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, mobileNumber: v })} />
-                                            <InfoRow label="Citizenship No" value={editedData.citizenshipNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, citizenshipNumber: v })} />
-                                            <InfoRow label="Issue District" value={editedData.citizenshipIssuedDistrict} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, citizenshipIssuedDistrict: v })} />
-                                            <InfoRow label="Issue Date" value={editedData.citizenshipIssuedDate ? new Date(editedData.citizenshipIssuedDate).toLocaleDateString("en-CA") : ''} isEditing={isEditing} type="date" onChange={(v) => setEditedData({ ...editedData, citizenshipIssuedDate: v })} />
-                                        </SectionCard>
+                                <div className="max-w-5xl mx-auto space-y-16 pb-20">
+                                    {/* 01. PERSONAL INFORMATION */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><User className="w-4 h-4" /></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">01. Personal Information</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-8">
+                                            <DetailField label="First Name" value={editedData.firstName || editedData.personalInfo?.firstName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, firstName: v })} />
+                                            <DetailField label="Middle Name" value={editedData.middleName || editedData.personalInfo?.middleName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, middleName: v })} />
+                                            <DetailField label="Last Name" value={editedData.lastName || editedData.personalInfo?.lastName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, lastName: v })} />
+                                            <DetailField label="Gender" value={editedData.gender || editedData.personalInfo?.gender} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, gender: v })} />
+                                            <DetailField label="Date of Birth (AD)" value={editedData.dateOfBirthAd || editedData.personalInfo?.dateOfBirthAd} isEditing={isEditing} type="date" onChange={v => setEditedData({ ...editedData, dateOfBirthAd: v })} />
+                                            <DetailField label="Date of Birth (BS)" value={editedData.dateOfBirthBs || editedData.personalInfo?.dateOfBirthBs} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, dateOfBirthBs: v })} />
+                                            <DetailField label="Marital Status" value={editedData.maritalStatus || editedData.personalInfo?.maritalStatus} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, maritalStatus: v })} />
+                                            <DetailField label="Is Nepali?" value={editedData.isNepali || editedData.personalInfo?.isNepali} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, isNepali: v })} />
+                                            <DetailField label="Citizenship No" value={editedData.citizenshipNo || editedData.personalInfo?.citizenshipNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, citizenshipNo: v })} />
+                                            <DetailField label="Issue District" value={editedData.citizenshipIssueDistrict || editedData.personalInfo?.citizenshipIssueDistrict} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, citizenshipIssueDistrict: v })} />
+                                            <DetailField label="Issue Date" value={editedData.citizenshipIssueDate || editedData.personalInfo?.citizenshipIssueDate} isEditing={isEditing} type="date" onChange={v => setEditedData({ ...editedData, citizenshipIssueDate: v })} />
+                                            <DetailField label="PAN No" value={editedData.panNo || editedData.personalInfo?.panNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, panNo: v })} />
+                                        </div>
+                                    </section>
 
-                                        <SectionCard title="2. Permanent Address">
-                                            <InfoRow label="State/Province" value={editedData.permanentState} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, permanentState: v })} />
-                                            <InfoRow label="District" value={editedData.permanentDistrict} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, permanentDistrict: v })} />
-                                            <InfoRow label="Municipality" value={editedData.permanentMunicipality} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, permanentMunicipality: v })} />
-                                            <InfoRow label="Ward No" value={editedData.permanentWardNo} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, permanentWardNo: v })} />
-                                            <InfoRow label="Street/Tole" value={editedData.permanentStreet} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, permanentStreet: v })} />
-                                        </SectionCard>
-
-                                        <SectionCard title="3. Current Address">
-                                            <InfoRow label="State/Province" value={editedData.currentState} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, currentState: v })} />
-                                            <InfoRow label="District" value={editedData.currentDistrict} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, currentDistrict: v })} />
-                                            <InfoRow label="Municipality" value={editedData.currentMunicipality} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, currentMunicipality: v })} />
-                                            <InfoRow label="Ward No" value={editedData.currentWardNo} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, currentWardNo: v })} />
-                                            <InfoRow label="Street/Tole" value={editedData.currentStreet} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, currentStreet: v })} />
-                                        </SectionCard>
-
-                                        <SectionCard title="4. Family Details">
-                                            <InfoRow label="Father Name" value={editedData.fatherName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, fatherName: v })} />
-                                            <InfoRow label="Mother Name" value={editedData.motherName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, motherName: v })} />
-                                            <InfoRow label="Grandfather" value={editedData.grandFatherName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, grandFatherName: v })} />
-                                            <InfoRow label="Spouse Name" value={editedData.spouseName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, spouseName: v })} />
-                                        </SectionCard>
-
-                                        <SectionCard title="5. Bank Account">
-                                            <InfoRow label="Bank Name" value={editedData.bankName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, bankName: v })} />
-                                            <InfoRow label="Account Number" value={editedData.bankAccountNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, bankAccountNumber: v })} />
-                                            <InfoRow label="Branch" value={editedData.bankBranch} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, bankBranch: v })} />
-                                            <InfoRow label="Account Type" value={editedData.bankAccountType} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, bankAccountType: v })} />
-                                            <InfoRow label="PAN Number" value={editedData.panNumber} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, panNumber: v })} />
-                                        </SectionCard>
-
-                                        <SectionCard title="6. Financial & Occupation">
-                                            <InfoRow label="Occupation" value={editedData.occupation} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, occupation: v })} />
-                                            <InfoRow label="Organization" value={editedData.organizationName} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, organizationName: v })} />
-                                            <InfoRow label="Income Range" value={editedData.annualIncome} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, annualIncome: v })} />
-                                            <InfoRow label="Source of Funds" value={editedData.sourceOfFunds} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, sourceOfFunds: v })} />
-                                        </SectionCard>
-
-                                        <SectionCard title="7. AML & PEP Status">
-                                            <InfoRow label="PE Person?" value={editedData.isPep ? 'Yes' : 'No'} isEditing={isEditing} type="checkbox" onChange={(v) => setEditedData({ ...editedData, isPep: v })} />
-                                            <InfoRow label="Criminal Record?" value={editedData.hasCriminalRecord ? 'Yes' : 'No'} isEditing={isEditing} type="checkbox" onChange={(v) => setEditedData({ ...editedData, hasCriminalRecord: v })} />
-                                            <InfoRow label="Beneficial Owner?" value={editedData.hasBeneficialOwner ? 'Yes' : 'No'} isEditing={isEditing} type="checkbox" onChange={(v) => setEditedData({ ...editedData, hasBeneficialOwner: v })} />
-                                            {editedData.isPep && <InfoRow label="Relation" value={editedData.pepRelation} isEditing={isEditing} onChange={(v) => setEditedData({ ...editedData, pepRelation: v })} />}
-                                        </SectionCard>
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'documents' && (
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                                    {detailData.documents?.map((doc: any) => (
-                                        <div key={doc.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all group cursor-pointer relative">
-                                            <div className="aspect-video bg-gray-50 rounded-xl mb-3 flex items-center justify-center text-gray-400 group-hover:text-indigo-500 transition-colors overflow-hidden border border-gray-100">
-                                                {doc.contentType?.startsWith('image/') ? (
-                                                    <img
-                                                        src={`${apiBase}/api/KycData/document/${doc.id}?t=${new Date().getTime()}`}
-                                                        alt={doc.documentType}
-                                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                                    />
-                                                ) : (
-                                                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                    </svg>
-                                                )}
+                                    {/* 02. ADDRESS */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><CheckCircle2 className="w-4 h-4" /></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">02. Location Details</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                            <div className="space-y-6">
+                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Permanent Address</h5>
+                                                <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+                                                    <div className="col-span-2"><DetailField label="Country" value={editedData.permanentAddress?.country || "Nepal"} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, country: v } })} /></div>
+                                                    <DetailField label="Province" value={editedData.permanentAddress?.province} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, province: v } })} />
+                                                    <DetailField label="District" value={editedData.permanentAddress?.district} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, district: v } })} />
+                                                    <DetailField label="Municipality" value={editedData.permanentAddress?.municipalityName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, municipalityName: v } })} />
+                                                    <DetailField label="Ward No" value={editedData.permanentAddress?.wardNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, wardNo: v } })} />
+                                                    <DetailField label="Tole" value={editedData.permanentAddress?.tole} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, tole: v } })} />
+                                                </div>
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-indigo-500 uppercase mb-0.5">{doc.documentType}</span>
-                                                <p className="text-[10px] font-bold text-gray-800 uppercase truncate" title={doc.originalFileName}>
-                                                    {doc.originalFileName}
-                                                </p>
-                                                <a
-                                                    href={`${apiBase}/api/KycData/document/${doc.id}`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="text-[9px] text-white bg-indigo-600 px-3 py-1 rounded-full font-bold mt-2 w-fit hover:bg-indigo-700 transition-colors"
-                                                >
-                                                    VIEW FULL FILE
-                                                </a>
+                                            <div className="space-y-6">
+                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Current Address</h5>
+                                                <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+                                                    <div className="col-span-2"><DetailField label="Country" value={editedData.currentAddress?.country || "Nepal"} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, country: v } })} /></div>
+                                                    <DetailField label="Province" value={editedData.currentAddress?.province} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, province: v } })} />
+                                                    <DetailField label="District" value={editedData.currentAddress?.district} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, district: v } })} />
+                                                    <DetailField label="Municipality" value={editedData.currentAddress?.municipalityName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, municipalityName: v } })} />
+                                                    <DetailField label="Ward No" value={editedData.currentAddress?.wardNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, wardNo: v } })} />
+                                                    <DetailField label="Tole" value={editedData.currentAddress?.tole} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, tole: v } })} />
+                                                </div>
                                             </div>
                                         </div>
-                                    ))}
-                                    {(!detailData.documents || detailData.documents.length === 0) && (
-                                        <div className="col-span-full py-12 text-center text-gray-400 font-medium bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
-                                            <p>No documents attached to this application.</p>
+                                    </section>
+
+                                    {/* 03. FAMILY */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><User className="w-4 h-4" /></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">03. Family Details</h4>
                                         </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            <DetailField label="Grandfather" value={editedData.family?.grandFatherName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, family: { ...editedData.family, grandFatherName: v } })} />
+                                            <DetailField label="Father" value={editedData.family?.fatherName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, family: { ...editedData.family, fatherName: v } })} />
+                                            <DetailField label="Mother" value={editedData.family?.motherName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, family: { ...editedData.family, motherName: v } })} />
+                                            <DetailField label="Spouse" value={editedData.family?.spouseName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, family: { ...editedData.family, spouseName: v } })} />
+                                        </div>
+                                    </section>
+
+                                    {/* 04. BANK & OCCUPATION */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><Database className="w-4 h-4" /></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">04. Bank & Occupation</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                            <div className="space-y-6">
+                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Bank Details</h5>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <div className="col-span-2"><DetailField label="Bank Name" value={editedData.bank?.bankName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, bank: { ...editedData.bank, bankName: v } })} /></div>
+                                                    <DetailField label="Account No" value={editedData.bank?.bankAccountNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, bank: { ...editedData.bank, bankAccountNo: v } })} />
+                                                    <DetailField label="Address" value={editedData.bank?.bankAddress} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, bank: { ...editedData.bank, bankAddress: v } })} />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-6">
+                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Occupation</h5>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <DetailField label="Type" value={editedData.occupation?.occupationType} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, occupation: { ...editedData.occupation, occupationType: v } })} />
+                                                    <DetailField label="Organization" value={editedData.occupation?.organizationName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, occupation: { ...editedData.occupation, organizationName: v } })} />
+                                                    <DetailField label="Designation" value={editedData.occupation?.designation} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, occupation: { ...editedData.occupation, designation: v } })} />
+                                                    <DetailField label="Income Range" value={editedData.occupation?.annualIncomeRange} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, occupation: { ...editedData.occupation, annualIncomeRange: v } })} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    {/* 05. FINANCIALS & GUARDIAN */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><ShieldCheck className="w-4 h-4" /></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">05. Financial & AML</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                            <div className="space-y-6">
+                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Net Worth & Risks</h5>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <div className="col-span-2"><DetailField label="Source of Funds" value={editedData.transactionInfo?.sourceOfNetWorth} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, transactionInfo: { ...editedData.transactionInfo, sourceOfNetWorth: v } })} /></div>
+                                                    <DetailField label="Annual Income" value={editedData.financialDetails?.estimatedAnnualIncome} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, financialDetails: { ...editedData.financialDetails, estimatedAnnualIncome: v } })} />
+                                                    <DetailField label="Is PEP?" value={editedData.amlCompliance?.isPoliticallyExposedPerson} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, amlCompliance: { ...editedData.amlCompliance, isPoliticallyExposedPerson: v } })} />
+                                                    <DetailField label="Criminal Record?" value={editedData.amlCompliance?.hasCriminalRecord} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, amlCompliance: { ...editedData.amlCompliance, hasCriminalRecord: v } })} />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-6">
+                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Guardian (If Minor)</h5>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <div className="col-span-2"><DetailField label="Name" value={editedData.guardian?.fullName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, guardian: { ...editedData.guardian, fullName: v } })} /></div>
+                                                    <DetailField label="Relation" value={editedData.guardian?.relationship} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, guardian: { ...editedData.guardian, relationship: v } })} />
+                                                    <DetailField label="Contact" value={editedData.guardian?.contactNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, guardian: { ...editedData.guardian, contactNo: v } })} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    {/* 06. LOCATION MAP */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><CheckCircle2 className="w-4 h-4" /></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">06. Location Map</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <DetailField label="Nearest Landmark" value={editedData.locationMap?.landmark} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationMap: { ...editedData.locationMap, landmark: v } })} />
+                                            <DetailField label="Distance from Main Road" value={editedData.locationMap?.distanceFromMainRoad} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationMap: { ...editedData.locationMap, distanceFromMainRoad: v } })} />
+                                            <DetailField label="Latitude" value={editedData.locationMap?.latitude} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationMap: { ...editedData.locationMap, latitude: v } })} />
+                                            <DetailField label="Longitude" value={editedData.locationMap?.longitude} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationMap: { ...editedData.locationMap, longitude: v } })} />
+                                        </div>
+                                    </section>
+
+                                    {/* 07. INVESTMENT DETAILS */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><Database className="w-4 h-4" /></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">07. Investment Details</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            <DetailField label="Source of Funds" value={editedData.sourceOfFunds} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, sourceOfFunds: v })} />
+                                            <DetailField label="Major Source of Income" value={editedData.majorSourceOfIncome} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, majorSourceOfIncome: v })} />
+                                            <DetailField label="Has Other Broker Account?" value={editedData.hasOtherBrokerAccount} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, hasOtherBrokerAccount: v })} />
+                                            {editedData.hasOtherBrokerAccount && (
+                                                <div className="col-span-full">
+                                                    <DetailField label="Other Broker Names" value={editedData.otherBrokerNames} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, otherBrokerNames: v })} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </section>
+
+                                    {/* 08. TRANSACTION INFORMATION */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+                                            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><FileText className="w-4 h-4" /></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">08. Transaction Information</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <DetailField label="Trading Limit" value={editedData.tradingLimit} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, tradingLimit: v })} />
+                                            <DetailField label="Margin Trading Facility?" value={editedData.marginTradingFacility} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, marginTradingFacility: v })} />
+                                        </div>
+                                    </section>
+
+                                    {/* 09. LEGAL & AML COMPLIANCE */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+                                            <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center text-rose-600"><ShieldCheck className="w-4 h-4" /></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">09. Legal & AML Compliance</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            <DetailField label="Politically Exposed Person (PEP)?" value={editedData.isPep} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, isPep: v })} />
+                                            {editedData.isPep && (
+                                                <div className="col-span-full">
+                                                    <DetailField label="PEP Relation/Details" value={editedData.pepRelation} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, pepRelation: v })} />
+                                                </div>
+                                            )}
+                                            <DetailField label="Has Beneficial Owner?" value={editedData.hasBeneficialOwner} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, hasBeneficialOwner: v })} />
+                                            <DetailField label="Has Criminal Record?" value={editedData.hasCriminalRecord} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, hasCriminalRecord: v })} />
+                                            {editedData.hasCriminalRecord && (
+                                                <div className="col-span-full">
+                                                    <DetailField label="Criminal Record Details" value={editedData.criminalRecordDetails} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, criminalRecordDetails: v })} />
+                                                </div>
+                                            )}
+                                            <DetailField label="CIB Blacklisted?" value={editedData.isCibBlacklisted} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, isCibBlacklisted: v })} />
+                                            {editedData.isCibBlacklisted && (
+                                                <div className="col-span-full">
+                                                    <DetailField label="CIB Blacklist Details" value={editedData.cibBlacklistDetails} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, cibBlacklistDetails: v })} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </section>
+
+                                    {/* 10. DECLARATIONS & AGREEMENTS */}
+                                    <section>
+                                        <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+                                            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600"><CheckCircle2 className="w-4 h-4" /></div>
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">10. Declarations & Agreements</h4>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <DetailField label="Agree to Terms?" value={editedData.agreeToTerms} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, agreeToTerms: v })} />
+                                            <DetailField label="No Other Financial Liability?" value={editedData.noOtherFinancialLiability} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, noOtherFinancialLiability: v })} />
+                                            <DetailField label="All Information True?" value={editedData.allInformationTrue} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, allInformationTrue: v })} />
+                                            <DetailField label="Agreement Date" value={editedData.agreementDate?.split('T')[0]} isEditing={isEditing} type="date" onChange={v => setEditedData({ ...editedData, agreementDate: v })} />
+                                        </div>
+                                    </section>
+
+                                    {/* Reviewer Feedback - Integrated here */}
+                                    {!isCompleted && (
+                                        <section className="bg-slate-50 rounded-3xl p-8 border border-slate-100">
+                                            <label className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Edit3 className="w-4 h-4" /> Reviewer Remarks (Required for Reject)</label>
+                                            <textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full h-32 p-4 bg-white border border-slate-200 rounded-2xl outline-none focus:border-indigo-500 text-slate-700 text-sm font-medium resize-none shadow-sm" placeholder="Write your observation here..." />
+                                        </section>
                                     )}
                                 </div>
                             )}
 
-                            {activeTab === 'history' && (
-                                <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-8">Audit Timeline & Security Logs</h3>
-                                    <div className="space-y-8 relative">
-                                        <div className="absolute top-0 bottom-0 left-[19px] w-0.5 bg-gray-100"></div>
-                                        {detailData.logs?.map((h: any) => (
-                                            <div key={h.id} className="flex gap-6 relative group">
-                                                <div className={`w-10 h-10 rounded-full flex-shrink-0 z-10 flex items-center justify-center border-4 border-white shadow-sm transition-transform group-hover:scale-110 ${h.action === 'Approved' ? 'bg-green-500' :
-                                                    h.action === 'Rejected' ? 'bg-red-500' :
-                                                        h.action === 'KycDetailsEdited' ? 'bg-orange-500' :
-                                                            'bg-indigo-500'
-                                                    }`}>
-                                                    {h.action === 'KycDetailsEdited' ? (
-                                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                        </svg>
+                            {activeTab === 'documents' && (
+                                <div className="space-y-6">
+                                    <div className="border-b border-gray-200 pb-4">
+                                        <h2 className="text-xl font-bold text-gray-800">Uploaded Documents</h2>
+                                        <p className="text-sm text-gray-500">Review all uploaded documents for this application.</p>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {detailData.documents?.map((doc: any) => (
+                                            <div key={doc.id} className="p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 transition-all">
+                                                <div className="aspect-[4/3] bg-gray-100 rounded overflow-hidden mb-3 relative group">
+                                                    {documentFiles[doc.id] ? (
+                                                        // Show preview of newly selected file
+                                                        <img
+                                                            src={URL.createObjectURL(documentFiles[doc.id]!)}
+                                                            className="w-full h-full object-cover"
+                                                            alt={doc.documentType}
+                                                        />
+                                                    ) : doc.contentType?.startsWith('image/') ? (
+                                                        // Show original document
+                                                        <img src={`${apiBase}/api/KycData/document/${doc.id}?t=${Date.now()}`} className="w-full h-full object-cover" alt={doc.documentType} />
                                                     ) : (
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
+                                                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                                            <FileText className="w-16 h-16" />
+                                                            <span className="text-xs mt-2">Document</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                        <button onClick={() => setPreviewDoc(doc)} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-indigo-600 hover:scale-110 transition-transform">
+                                                            <Eye className="w-5 h-5" />
+                                                        </button>
+                                                    </div>
+                                                    {documentFiles[doc.id] && (
+                                                        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                                            NEW
+                                                        </div>
                                                     )}
                                                 </div>
-                                                <div className="flex-1">
-                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest text-white shadow-sm ${h.action === 'Approved' ? 'bg-green-500' :
-                                                                h.action === 'Rejected' ? 'bg-red-500' :
-                                                                    h.action === 'KycDetailsEdited' ? 'bg-orange-500' :
-                                                                        'bg-indigo-500'
-                                                                }`}>
-                                                                {h.action === 'KycDetailsEdited' ? '✏️ EDITED' : h.action}
-                                                            </span>
-                                                            <span className="text-xs text-gray-500 font-mono">{new Date(h.createdAt).toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
-                                                            <div className="flex flex-col items-end">
-                                                                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">By</span>
-                                                                <span className="text-[10px] font-black text-indigo-700 uppercase">{h.userFullName || 'System'}</span>
-                                                            </div>
-                                                            {h.action !== 'KycDetailsEdited' && (
-                                                                <>
-                                                                    <div className="flex flex-col items-end">
-                                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">From</span>
-                                                                        <span className="text-[10px] font-black text-indigo-700 uppercase">{h.actionedByRoleName || 'System'}</span>
-                                                                    </div>
-                                                                    <svg className="w-3 h-3 text-gray-300 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                                                    </svg>
-                                                                    <div className="flex flex-col items-start">
-                                                                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">To</span>
-                                                                        <span className="text-[10px] font-black text-gray-600 uppercase">{h.forwardedToRoleName || 'Finalized'}</span>
-                                                                    </div>
-                                                                </>
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-xs font-semibold text-indigo-600">{doc.documentType}</span>
+                                                        <span className="text-xs text-gray-400">{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-sm font-medium text-gray-700 truncate">{doc.originalFileName}</p>
+
+                                                    {isEditing ? (
+                                                        <div className="space-y-2">
+                                                            <label className="block text-xs font-semibold text-gray-700">Replace Document</label>
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                onChange={(e) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) {
+                                                                        setDocumentFiles(prev => ({ ...prev, [doc.id]: file }));
+                                                                    }
+                                                                }}
+                                                                className="w-full text-xs file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                                                            />
+                                                            {documentFiles[doc.id] && (
+                                                                <p className="text-xs text-green-600 font-semibold">✓ New file selected: {documentFiles[doc.id]?.name}</p>
                                                             )}
                                                         </div>
-                                                    </div>
-                                                    <div className={`mt-3 bg-white p-5 rounded-2xl border shadow-sm relative overflow-hidden ${h.action === 'KycDetailsEdited' ? 'border-orange-100 bg-orange-50/30' : 'border-gray-100'
-                                                        }`}>
-                                                        <div className={`absolute top-0 left-0 w-1 h-full ${h.action === 'KycDetailsEdited' ? 'bg-orange-200' : 'bg-indigo-50'
-                                                            }`}></div>
-                                                        <p className="text-gray-700 text-sm leading-relaxed font-medium">{h.remarks || "No specific remarks provided for this action."}</p>
-                                                        {h.clientIpAddress && (
-                                                            <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-4 text-[9px] text-gray-400 font-mono">
-                                                                <span>IP: {h.clientIpAddress}</span>
-                                                                {h.userAgent && <span className="truncate max-w-xs" title={h.userAgent}>Device: {h.userAgent.split(' ')[0]}</span>}
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    ) : (
+                                                        <a href={`${apiBase}/api/KycData/document/${doc.id}`} target="_blank" className="block text-center py-2 bg-indigo-50 text-indigo-700 rounded text-xs font-semibold hover:bg-indigo-600 hover:text-white transition-all">
+                                                            View Full File
+                                                        </a>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -403,155 +507,143 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                 </div>
                             )}
 
-                            {/* Action Box */}
-                            <div className="bg-white p-8 rounded-[32px] border-2 border-indigo-100 shadow-xl shadow-indigo-100/20">
-                                <label className="flex items-center gap-2 text-sm font-black text-gray-900 uppercase mb-4 tracking-widest px-1">
-                                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    Reviewer Feedback
-                                </label>
-                                <textarea
-                                    value={remarks}
-                                    onChange={(e) => setRemarks(e.target.value)}
-                                    className="w-full p-5 border-2 border-gray-100 rounded-3xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none min-h-[140px] text-gray-700 font-medium transition-all"
-                                    placeholder="Clearly state why you are approving or sending back this application..."
-                                />
-                                <p className="text-[10px] text-gray-400 mt-3 px-3 italic">* Remarks are mandatory for all Rejection and Return actions.</p>
-                            </div>
+                            {activeTab === 'history' && (
+                                <div className="bg-white p-10 rounded-[40px] border border-slate-200 shadow-sm">
+                                    <div className="space-y-12 relative px-4">
+                                        <div className="absolute top-0 bottom-0 left-[31px] w-1 bg-slate-100" />
+
+                                        {/* Initiator Block - manually constructed if logs don't clearly show it first */}
+                                        <div className="flex gap-8 relative group">
+                                            <div className="w-10 h-10 rounded-2xl flex-shrink-0 z-10 flex items-center justify-center border-4 border-white shadow-xl bg-slate-900">
+                                                <div className="w-2 h-2 rounded-full bg-white" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="px-4 py-1.5 rounded-xl text-[10px] font-black uppercase text-white bg-slate-900">INITIATED</span>
+                                                        <span className="text-[10px] text-slate-400 font-mono">{new Date(detailData?.workflow?.kycSession?.createdAt || Date.now()).toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="text-[10px] font-black text-slate-800 uppercase tracking-widest">{detailData?.workflow?.kycSession?.email || "Applicant"} <span className="text-slate-400">(APPLICANT)</span></div>
+                                                </div>
+                                                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 italic text-slate-600 text-sm leading-relaxed">"Application draft created and submitted for verification."</div>
+                                            </div>
+                                        </div>
+
+                                        {detailData.logs?.map((h: any, i: number) => (
+                                            <div key={h.id} className="flex gap-8 relative group">
+                                                <div className={`w-10 h-10 rounded-2xl flex-shrink-0 z-10 flex items-center justify-center border-4 border-white shadow-xl ${h.action.includes('Approved') ? 'bg-emerald-500' : h.action.includes('Rejected') ? 'bg-rose-500' : 'bg-indigo-600'}`}>
+                                                    <div className="w-2 h-2 rounded-full bg-white" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <div className="flex items-center gap-4">
+                                                            <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase text-white ${h.action.includes('Approved') ? 'bg-emerald-500' : h.action.includes('Rejected') ? 'bg-rose-500' : 'bg-indigo-600'}`}>{h.action}</span>
+                                                            <span className="text-[10px] text-slate-400 font-mono">{new Date(h.createdAt).toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="text-[10px] font-black text-slate-800 uppercase tracking-widest">{h.userFullName} <span className="text-slate-400">({h.actionedByRoleName})</span></div>
+                                                    </div>
+                                                    {h.action === 'Edited' && <div className="mb-2 text-[10px] font-bold text-amber-600 bg-amber-50 inline-block px-3 py-1 rounded-lg border border-amber-100">DATA MODIFIED</div>}
+                                                    <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 italic text-slate-600 text-sm leading-relaxed">"{h.remarks || 'No remarks.'}"</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {!isCompleted && activeTab !== 'details' && (
+                                <div className="bg-white p-10 rounded-[40px] border-2 border-indigo-100 shadow-xl shadow-indigo-100/20 relative">
+                                    <label className="text-sm font-black text-slate-900 uppercase tracking-widest mb-4 flex items-center gap-2"><Edit3 className="w-5 h-5 text-indigo-500" /> Reviewer Feedback</label>
+                                    <textarea value={remarks} onChange={e => setRemarks(e.target.value)} className="w-full h-40 p-6 border-2 border-slate-100 rounded-3xl outline-none focus:border-indigo-500 text-slate-700 font-medium" placeholder="Mandatory for Rejection or Return actions..." />
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
 
-                {/* Modal Footer Actions */}
-                <div className="px-8 py-6 border-t flex flex-wrap justify-between items-center gap-4 bg-white">
-                    <div className="flex gap-4">
-                        <button
-                            onClick={() => !actionLoading && onClose()}
-                            className="px-6 py-3 text-gray-500 font-black uppercase text-xs tracking-widest hover:bg-gray-100 rounded-2xl transition-all"
-                            disabled={actionLoading}
-                        >
-                            Cancel Review
-                        </button>
-
-                        {/* Pull Back option for initiators */}
-                        {(detailData?.workflow?.status === 5 || detailData?.workflow?.status === "InReview" || detailData?.workflow?.status === 3 || detailData?.workflow?.status === "Rejected") && !isEditing && (
-                            <button
-                                onClick={() => onAction('pull-back')}
-                                disabled={actionLoading}
-                                className="px-6 py-3 bg-gray-50 text-gray-600 font-bold text-xs uppercase tracking-widest border-2 border-gray-100 rounded-2xl hover:bg-gray-100 transition-all"
-                                title="Retract this application for corrections before it is reviewed"
-                            >
-                                Pull Back Application
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="flex gap-4">
-                        {detailData?.workflow?.status === 4 || detailData?.workflow?.status === "ResubmissionRequired" ? (
-                            <button
-                                onClick={() => onAction('resubmit')}
-                                disabled={actionLoading || isEditing}
-                                className="px-8 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-orange-300 disabled:opacity-50 transition-all flex items-center gap-3 active:scale-95"
-                                title={isEditing ? "Save changes before resubmitting" : "Resubmit this application for review"}
-                            >
-                                {actionLoading ? (
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                ) : (
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                )}
-                                <span>Resubmit Application</span>
-                            </button>
-                        ) : (
-                            <>
-                                <button
-                                    onClick={() => onAction('reject', true)}
-                                    disabled={actionLoading || !remarks}
-                                    className="px-6 py-3 bg-white text-orange-600 font-bold text-xs uppercase tracking-widest border-2 border-orange-100 rounded-2xl hover:bg-orange-50 disabled:opacity-30 transition-all"
-                                    title="Send back to the previous reviewer in the chain"
-                                >
-                                    Return to Previous
-                                </button>
-                                <button
-                                    onClick={() => onAction('reject', false)}
-                                    disabled={actionLoading || !remarks}
-                                    className="px-6 py-3 bg-red-50 text-red-600 font-bold text-xs uppercase tracking-widest border-2 border-red-100 rounded-2xl hover:bg-red-100 disabled:opacity-30 transition-all shadow-lg shadow-red-200/50"
-                                    title="Completely reject back to the customer (Maker)"
-                                >
-                                    Reject to Maker
-                                </button>
-                                <button
-                                    onClick={() => onAction('approve')}
-                                    disabled={actionLoading}
-                                    className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-indigo-300 disabled:opacity-50 transition-all flex items-center gap-3 active:scale-95"
-                                >
-                                    {actionLoading ? (
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                    ) : (
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    )}
-                                    <span>{detailData?.workflow?.pendingLevel === 1 ? 'Final Approval' : 'Approve & Pass'}</span>
-                                </button>
-                            </>
-                        )}
-                    </div>
+                {/* Footer */}
+                <div className="px-10 py-8 border-t border-slate-100 flex justify-between items-center bg-white shadow-lg">
+                    <button onClick={() => !actionLoading && onClose()} className="h-14 px-8 text-slate-500 font-black uppercase text-xs tracking-widest hover:bg-slate-50 rounded-2xl" disabled={actionLoading}>Cancel</button>
+                    {!isCompleted && (
+                        <div className="flex gap-4">
+                            {detailData?.workflow?.status === 4 || detailData?.workflow?.status === "ResubmissionRequired" ? (
+                                <button onClick={() => onAction('resubmit')} disabled={actionLoading || isEditing} className="h-14 px-10 bg-orange-600 text-white font-black text-xs uppercase rounded-2xl flex items-center gap-3"><RotateCcw /> Resubmit Application</button>
+                            ) : (
+                                <>
+                                    <button onClick={() => onAction('reject', true)} disabled={actionLoading || !remarks} className="h-14 px-6 border-2 border-slate-200 text-slate-600 font-black text-xs uppercase rounded-2xl hover:border-indigo-600 hover:text-indigo-600 flex items-center gap-2"><ArrowLeft className="w-4 h-4" /> Back to Previous Role</button>
+                                    <button onClick={() => onAction('reject', false)} disabled={actionLoading || !remarks} className="h-14 px-6 border-2 border-rose-100 text-rose-600 font-black text-xs uppercase rounded-2xl hover:bg-rose-500 hover:text-white transition-all flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Reject</button>
+                                    <button onClick={() => onAction('approve')} disabled={actionLoading} className="h-14 px-12 bg-indigo-600 text-white font-black text-xs uppercase rounded-2xl transition-all shadow-xl shadow-indigo-200 flex items-center gap-3"><ArrowRightCircle className="w-5 h-5" /> Forward to Next Role</button>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* Document Preview */}
+            {previewDoc && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-10">
+                    <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xl" onClick={() => setPreviewDoc(null)} />
+                    <div className="relative max-w-5xl max-h-full flex flex-col items-center">
+                        <button className="absolute -top-16 right-0 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center" onClick={() => setPreviewDoc(null)}><X /></button>
+                        <div className="bg-white p-4 rounded-[40px] shadow-2xl overflow-hidden">
+                            {previewDoc.contentType?.startsWith('image/')
+                                ? <img src={`${apiBase}/api/KycData/document/${previewDoc.id}`} className="max-h-[70vh] rounded-[32px] object-contain" />
+                                : <div className="p-20 flex flex-col items-center"><FileText className="w-20 h-20 text-slate-200 mb-4" /><h3 className="font-black">{previewDoc.documentType}</h3><a href={`${apiBase}/api/KycData/document/${previewDoc.id}`} target="_blank" className="mt-8 px-10 py-4 bg-indigo-600 text-white font-black rounded-2xl">Download File</a></div>
+                            }
+                        </div>
+                        <div className="mt-8 bg-white/10 backdrop-blur-md px-10 py-6 rounded-3xl border border-white/20 text-center text-white">
+                            <h4 className="text-xl font-black">{previewDoc.documentType}</h4>
+                            <p className="opacity-60 text-xs mt-1">CERTIFICATE ID: {previewDoc.id} • UPLOADED: {new Date(previewDoc.uploadedAt).toLocaleString()}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
-const TabButton: React.FC<{ id: string, label: string, active: boolean, onClick: (id: string) => void }> = ({ id, label, active, onClick }) => (
-    <button
-        onClick={() => onClick(id)}
-        className={`py-4 px-1 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${active ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'
-            }`}
-    >
-        {label}
-    </button>
-);
-
 const SectionCard: React.FC<{ title: string, children: React.ReactNode }> = ({ title, children }) => (
-    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-        <h4 className="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest">{title}</h4>
-        <div className="space-y-3">{children}</div>
+    <div className="bg-white p-8 rounded-[40px] border border-slate-200 shadow-sm">
+        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-8 tracking-[0.2em]">{title}</h4>
+        <div className="space-y-4">{children}</div>
     </div>
 );
 
-const InfoRow: React.FC<{ label: string, value: any, isEditing?: boolean, type?: string, onChange?: (val: any) => void }> = ({ label, value, isEditing, type = 'text', onChange }) => (
-    <div className="flex justify-between items-center border-b border-gray-50 py-2 last:border-0 min-h-[40px]">
-        <span className="text-xs text-gray-400 font-bold uppercase">{label}</span>
+
+const DetailField: React.FC<{ label: string, value: any, isEditing?: boolean, type?: string, onChange?: (v: any) => void }> = ({ label, value, isEditing, type = 'text', onChange }) => (
+    <div className="flex flex-col">
+        <label className="text-sm font-semibold text-gray-700 mb-1">{label}</label>
         {isEditing ? (
             type === 'checkbox' ? (
-                <input
-                    type="checkbox"
-                    checked={value === 'YES' || value === true}
-                    onChange={(e) => onChange?.(e.target.checked)}
-                    className="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                />
-            ) : type === 'date' ? (
-                <input
-                    type="date"
-                    value={value || ''}
-                    onChange={(e) => onChange?.(e.target.value)}
-                    className="text-xs text-left font-black text-indigo-600 bg-indigo-50/50 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 w-1/2"
-                />
+                <label className="flex items-center gap-2 p-2 border border-gray-300 rounded cursor-pointer hover:border-indigo-500 transition-all">
+                    <input type="checkbox" checked={value === true || value === 'YES' || value === 'HIGH RISK'} onChange={e => onChange?.(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded focus:ring-2 focus:ring-indigo-500" />
+                    <span className="text-sm font-medium text-gray-700">{value ? 'YES' : 'NO'}</span>
+                </label>
             ) : (
-                <input
-                    type={type}
-                    value={value || ''}
-                    onChange={(e) => onChange?.(e.target.value)}
-                    className="text-xs text-left font-black text-indigo-600 bg-indigo-50/50 rounded px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-300 w-1/2"
-                />
+                <input type={type} value={value || ''} onChange={e => onChange?.(e.target.value)} className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all" />
             )
         ) : (
-            <span className={`text-xs text-gray-900 font-black ${label === 'PEP Status' && (value === 'YES' || value === true) ? 'text-red-600' : ''}`}>
-                {(value !== null && value !== undefined && value !== '') ? String(value) : 'N/A'}
-            </span>
+            <div className="p-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-800 min-h-[38px] flex items-center">
+                {type === 'checkbox' ? (
+                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${value ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}>
+                        {value ? 'YES' : 'NO'}
+                    </span>
+                ) : type === 'date' && value ? (
+                    new Date(value).toLocaleDateString()
+                ) : (value || '—')}
+            </div>
+        )}
+    </div>
+);
+
+const InfoRow: React.FC<{ label: string, value: any, isEditing?: boolean, color?: string, type?: string, onChange?: (v: any) => void }> = ({ label, value, isEditing, color = 'text-slate-900', type = 'text', onChange }) => (
+    <div className="flex items-center justify-between border-b border-slate-50 pb-3 last:border-0 min-h-[44px]">
+        <span className="text-[11px] text-slate-400 font-black uppercase tracking-widest">{label}</span>
+        {isEditing ? (
+            <input type={type} value={value === true ? undefined : (value || '')} checked={type === 'checkbox' ? (value === true || value === 'YES' || value === 'HIGH RISK') : undefined} onChange={e => onChange?.(type === 'checkbox' ? e.target.checked : e.target.value)} className="w-1/2 text-[11px] text-right font-black text-indigo-600 bg-indigo-50/50 rounded-xl px-4 py-2 outline-none" />
+        ) : (
+            <span className={`text-[11px] font-black ${color}`}>{value === true ? 'YES' : value === false ? 'NO' : (value || 'N/A').toString().toUpperCase()}</span>
         )}
     </div>
 );

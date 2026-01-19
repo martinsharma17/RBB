@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import KycPersonalInfo from "./sections/KycPersonalInfo";
 import KycAddress from "./sections/KycAddress";
@@ -55,7 +55,8 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
               setSessionId(sess.sessionId);
               setIsEmailVerified(sess.isEmailVerified);
               emailVerified = sess.isEmailVerified;
-              setCurrentStep(sess.currentStep || 1);
+              const stepNum = Number(sess.currentStep);
+              setCurrentStep(stepNum > 0 ? stepNum : 1);
             }
           }
         }
@@ -79,8 +80,9 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
               // Handle both PascalCase and camelCase for currentStep
               const stepFromApi =
                 detailsRes.data.CurrentStep || detailsRes.data.currentStep;
-              if (stepFromApi) {
-                setCurrentStep(stepFromApi);
+              if (stepFromApi !== undefined && stepFromApi !== null) {
+                const sNum = Number(stepFromApi);
+                setCurrentStep(sNum > 0 ? sNum : 1);
               }
             }
           }
@@ -101,14 +103,61 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     }
   }, [token, apiBase, sessionId, isEmailVerified]);
 
-  const handleNext = (nextStepData: any) => {
-    setKycData((prev: any) => ({ ...prev, ...nextStepData }));
-    setCurrentStep((prev) => prev + 1);
+  // Calculate age helper
+  const calculateAge = (dobAd: string) => {
+    if (!dobAd) return 18; // Default to adult if not set
+    const birthDate = new Date(dobAd);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const month = today.getMonth() - birthDate.getMonth();
+    if (month < 0 || (month === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
   };
 
-  const handlePrev = () => {
-    setCurrentStep((prev) => Math.max(1, prev - 1));
-  };
+  const isMinorAge = calculateAge(kycData?.personalInfo?.dobAd);
+
+  const allStepsConfig = [
+    { id: 1, label: "Personal Info" },
+    { id: 2, label: "Address" },
+    { id: 3, label: "Family" },
+    { id: 4, label: "Bank" },
+    { id: 5, label: "Occupation" },
+    { id: 6, label: "Financial" },
+    { id: 7, label: "Transaction" },
+    { id: 8, label: "Guardian" },
+    { id: 9, label: "AML" },
+    { id: 10, label: "Location" },
+    { id: 11, label: "Declarations" },
+    { id: 12, label: "Agreement" },
+    { id: 13, label: "Attachments" },
+  ];
+
+  // Filter steps for display based on age
+  const visibleSteps = allStepsConfig.filter(s => {
+    if (s.id === 8 && isMinorAge >= 18) return false;
+    return true;
+  });
+
+  const totalVisibleSteps = visibleSteps.length;
+  const currentStepIndex = visibleSteps.findIndex(s => s.id === Number(currentStep));
+
+  // Auto-sync currentStep if it points to a hidden section (e.g., Step 8 for adults)
+  useEffect(() => {
+    if (!loading && visibleSteps.length > 0) {
+      const stepId = Number(currentStep);
+      const isVisible = visibleSteps.some(s => s.id === stepId);
+
+      if (!isVisible && stepId !== 14) {
+        // If we are on a hidden step, find the next available visible step
+        const nextAvailable = visibleSteps.find(s => s.id > stepId) || visibleSteps[visibleSteps.length - 1];
+        if (nextAvailable) {
+          setCurrentStep(nextAvailable.id);
+        }
+      }
+    }
+  }, [currentStep, visibleSteps, loading]);
 
   if (loading)
     return (
@@ -121,21 +170,41 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
       <div className="p-8 text-center text-red-500 font-bold">{error}</div>
     );
 
-  const steps = [
-    "Personal Info",
-    "Address",
-    "Family",
-    "Bank",
-    "Occupation",
-    "Financial",
-    "Transaction",
-    "Guardian",
-    "AML",
-    "Location",
-    "Declarations",
-    "Agreement",
-    "Attachments",
-  ];
+  const handleNext = (nextStepData: any) => {
+    setKycData((prev: any) => ({ ...prev, ...nextStepData }));
+
+    // Logic to skip Guardian (Step 8) if user is not a minor
+    if (currentStep === 7 && isMinorAge >= 18) {
+      setCurrentStep(9); // Skip to AML
+    } else {
+      const idx = visibleSteps.findIndex(s => s.id === currentStep);
+      if (idx !== -1 && idx < totalVisibleSteps - 1) {
+        const nextStep = visibleSteps[idx + 1];
+        if (nextStep) setCurrentStep(nextStep.id);
+      } else {
+        setCurrentStep(14); // Summary view
+      }
+    }
+  };
+
+  const handlePrev = () => {
+    // Logic to skip Guardian (Step 8) when going back if user is not a minor
+    if (currentStep === 9 && isMinorAge >= 18) {
+      setCurrentStep(7); // Skip back to Transaction
+    } else {
+      const idx = visibleSteps.findIndex(s => s.id === currentStep);
+      if (idx > 0) {
+        const prevVisible = visibleSteps[idx - 1];
+        if (prevVisible) setCurrentStep(prevVisible.id);
+      } else if (currentStep === 14 && totalVisibleSteps > 0) {
+        const lastVisible = visibleSteps[totalVisibleSteps - 1];
+        if (lastVisible) setCurrentStep(lastVisible.id);
+      } else {
+        setCurrentStep((prev) => Math.max(1, prev - 1));
+      }
+    }
+  };
+
   const personalInfo = kycData?.personalInfo || {};
   const familyInitialData = kycData?.family || {};
 
@@ -147,7 +216,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
           Know Your Customer (KYC)
         </h1>
         <p className="text-gray-500">
-          Please complete all {steps.length} sections to verify your identity.
+          Please complete all {totalVisibleSteps} sections to verify your identity.
         </p>
 
         <div className="mt-6 flex items-center justify-between relative">
@@ -155,42 +224,39 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
           <div
             className="absolute top-1/2 left-0 h-1 bg-indigo-600 -z-10 -translate-y-1/2 transition-all duration-500 ease-in-out"
             style={{
-              width: `${((currentStep - 1) / (steps.length - 1)) * 100}%`,
+              width: totalVisibleSteps > 1 ? `${(Math.max(0, currentStepIndex) / (totalVisibleSteps - 1)) * 100}%` : "0%",
             }}
           ></div>
 
-          {steps.map((label, index) => {
-            const stepNum = index + 1;
-            const isCompleted = stepNum < currentStep;
-            const isActive = stepNum === currentStep;
-            const isClickable = isCompleted || isActive; // Only allow navigation to completed or current steps
+          {visibleSteps.map((step, index) => {
+            const isCompleted = index < currentStepIndex;
+            const isActive = step.id === Number(currentStep);
+            const isClickable = isCompleted || isActive;
 
             return (
-              <div key={label} className="flex flex-col items-center">
+              <div key={step.label} className="flex flex-col items-center">
                 <button
                   type="button"
                   disabled={!isClickable}
-                  onClick={() => isClickable && setCurrentStep(stepNum)}
+                  onClick={() => isClickable && setCurrentStep(step.id)}
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 focus:outline-none
-                        ${
-                          isCompleted
-                            ? "bg-indigo-600 text-white cursor-pointer hover:scale-110"
-                            : isActive
-                            ? "bg-white border-2 border-indigo-600 text-indigo-600 scale-110 shadow-md cursor-pointer"
-                            : "bg-gray-200 text-gray-400 cursor-default"
-                        }
+                        ${isCompleted
+                      ? "bg-indigo-600 text-white cursor-pointer hover:scale-110"
+                      : isActive
+                        ? "bg-white border-2 border-indigo-600 text-indigo-600 scale-110 shadow-md cursor-pointer"
+                        : "bg-gray-200 text-gray-400 cursor-default"
+                    }
                     `}
                   style={{ pointerEvents: isClickable ? "auto" : "none" }}
-                  aria-label={`Go to ${label}`}
+                  aria-label={`Go to ${step.label}`}
                 >
-                  {isCompleted ? "✓" : stepNum}
+                  {isCompleted ? "✓" : index + 1}
                 </button>
                 <span
-                  className={`text-xs mt-2 font-medium hidden md:block ${
-                    isActive ? "text-indigo-600" : "text-gray-400"
-                  }`}
+                  className={`text-xs mt-2 font-medium hidden md:block ${isActive ? "text-indigo-600" : "text-gray-400"
+                    }`}
                 >
-                  {label}
+                  {step.label}
                 </span>
               </div>
             );
@@ -209,14 +275,14 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
           />
         ) : (
           <>
-            {currentStep === 1 && (
+            {Number(currentStep) === 1 && (
               <KycPersonalInfo
                 sessionId={sessionId}
                 initialData={kycData?.personalInfo}
                 onNext={handleNext}
               />
             )}
-            {currentStep === 2 && (
+            {Number(currentStep) === 2 && (
               <KycAddress
                 sessionId={sessionId}
                 initialData={kycData}
@@ -224,7 +290,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
               />
             )}
-            {currentStep === 3 && (
+            {Number(currentStep) === 3 && (
               <KycFamily
                 sessionId={sessionId}
                 initialData={familyInitialData}
@@ -234,7 +300,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 maritalStatus={personalInfo.maritalStatus}
               />
             )}
-            {currentStep === 4 && (
+            {Number(currentStep) === 4 && (
               <KycBank
                 sessionId={sessionId}
                 initialData={kycData?.bank}
@@ -242,7 +308,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
               />
             )}
-            {currentStep === 5 && (
+            {Number(currentStep) === 5 && (
               <KycOccupation
                 sessionId={sessionId}
                 initialData={kycData?.occupation}
@@ -250,7 +316,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
               />
             )}
-            {currentStep === 6 && (
+            {Number(currentStep) === 6 && (
               <KycInvestment
                 sessionId={sessionId}
                 initialData={kycData?.financialDetails}
@@ -258,7 +324,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
               />
             )}
-            {currentStep === 7 && (
+            {Number(currentStep) === 7 && (
               <KycTransaction
                 sessionId={sessionId}
                 initialData={kycData?.transactionInfo}
@@ -266,7 +332,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
               />
             )}
-            {currentStep === 8 && (
+            {Number(currentStep) === 8 && (
               <KycGuardian
                 sessionId={sessionId}
                 initialData={kycData?.guardian}
@@ -274,7 +340,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
               />
             )}
-            {currentStep === 9 && (
+            {Number(currentStep) === 9 && (
               <KycAml
                 sessionId={sessionId}
                 initialData={kycData?.amlCompliance}
@@ -282,7 +348,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
               />
             )}
-            {currentStep === 10 && (
+            {Number(currentStep) === 10 && (
               <KycLocation
                 sessionId={sessionId}
                 initialData={kycData?.locationMap}
@@ -290,7 +356,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
               />
             )}
-            {currentStep === 11 && (
+            {Number(currentStep) === 11 && (
               <KycLegal
                 sessionId={sessionId}
                 initialData={kycData?.declarations}
@@ -298,7 +364,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
               />
             )}
-            {currentStep === 12 && (
+            {Number(currentStep) === 12 && (
               <KycAgreement
                 sessionId={sessionId}
                 initialData={kycData?.agreement}
@@ -306,7 +372,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
               />
             )}
-            {currentStep === 13 && (
+            {Number(currentStep) === 13 && (
               <KycAttachment
                 sessionId={sessionId}
                 onBack={handlePrev}
@@ -318,7 +384,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
               />
             )}
 
-            {currentStep === 14 && (
+            {Number(currentStep) === 14 && (
               <div className="text-center py-16">
                 <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
                   <svg
@@ -368,7 +434,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
       {/* Legend */}
       <div className="mt-8 flex items-center justify-between text-sm text-gray-500 border-t pt-6">
         <div>
-          Section {currentStep} of {steps.length}
+          Section {currentStepIndex + 1} of {totalVisibleSteps}
         </div>
         <div className="flex space-x-4">
           <span className="flex items-center">

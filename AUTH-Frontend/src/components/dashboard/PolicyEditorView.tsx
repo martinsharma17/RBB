@@ -51,6 +51,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'kyc_workflow', name: 'KYC Approval Queue' },
         { id: 'kyc_unified_queue', name: 'Unified KYC Queue' },
         { id: 'kyc_search', name: 'Global KYC Search' },
+        { id: 'approved_kyc', name: 'Approved KYC Records' },
 
     ];
 
@@ -412,7 +413,7 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
                                                                 icon = <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h7" />;
                                                                 break;
                                                             case 'export':
-                                                                if (!['kyc', 'kyc_workflow', 'kyc_unified_queue', 'kyc_search'].includes(resource.id)) return <td key={action.id} className="py-4 px-4 text-center align-middle"></td>;
+                                                                if (!['kyc', 'kyc_workflow', 'kyc_unified_queue', 'kyc_search', 'approved_kyc'].includes(resource.id)) return <td key={action.id} className="py-4 px-4 text-center align-middle"></td>;
                                                                 gradientClass = 'bg-gradient-to-r from-blue-300 to-indigo-500';
                                                                 shadowClass = 'shadow-lg shadow-blue-400/40';
                                                                 textColorClass = 'text-blue-600';
