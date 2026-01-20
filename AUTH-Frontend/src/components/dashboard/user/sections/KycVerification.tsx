@@ -123,17 +123,16 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
         switch (status) {
             case 0: return 'Not Started';
             case 1: return 'In Progress';
-            case 2: return 'Ready for Submission';
-            case 3:
-            case 4: return 'Submitted';
+            case 2: return 'Reference Check'; // Changed from 'Ready for Submission' to avoid confusion if waiting
+            case 3: return 'Application Submitted';
+            case 4: return 'Approved';
+            case 5: return 'Rejected';
             default: return 'Completed';
         }
     };
 
     const getStepLabel = (step: number) => {
-        // Re-aligning with KycFormMaster's visibleSteps logic
-        // KycFormMaster mapping: 
-        // 1: Personal, 2: Address, 3: Family, 4: Bank, 5: Occupation, 6: Financial, 7: Transaction, 8: Guardian, 9: AML, 10: Location, 11: Legal, 12: Agreement, 13: Attachments
+        // ... (keep same)
         const masterLabels: { [key: number]: string } = {
             1: "Personal Information",
             2: "Address Details",
@@ -155,6 +154,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
 
     return (
         <div className="max-w-md mx-auto py-12 px-4">
+            {/* ... (Header same) ... */}
             <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,17 +238,20 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                                 <div
                                     key={s.sessionId}
                                     onClick={() => !isSubmitted && onVerified(s.sessionId)}
-                                    className={`p-5 border-2 rounded-2xl transition-all flex justify-between items-center group ${isSubmitted
-                                        ? 'bg-slate-50 border-slate-100 cursor-not-allowed'
-                                        : 'bg-white border-slate-100 hover:border-indigo-500 cursor-pointer shadow-sm hover:shadow-indigo-100'
+                                    className={`p-5 border rounded-2xl transition-all flex justify-between items-center group relative overflow-hidden ${isSubmitted
+                                        ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-80'
+                                        : 'bg-white border-slate-200 hover:border-indigo-500 cursor-pointer shadow-sm hover:shadow-md'
                                         }`}
                                 >
+                                    {isSubmitted && (
+                                        <div className="absolute inset-0 z-10 bg-white/10" />
+                                    )}
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-black text-slate-900">Session #{s.sessionId}</span>
-                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${isSubmitted ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                            <span className={`font-black ${isSubmitted ? 'text-gray-500' : 'text-slate-900'}`}>Session #{s.sessionId}</span>
+                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${isSubmitted ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                                                 }`}>
-                                                {getStatusText(s.formStatus)}
+                                                {getStatusText(isSubmitted ? 3 : s.formStatus)}
                                             </span>
                                         </div>
 
@@ -260,11 +263,6 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                                                 <div className="text-xs font-bold text-indigo-600 flex items-center gap-1 mt-1">
                                                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse"></div>
                                                     Last Step: {getStepLabel(s.currentStep || s.lastSavedStep + 1)}
-                                                </div>
-                                            )}
-                                            {isSubmitted && (
-                                                <div className="text-xs font-bold text-slate-400 mt-1 italic">
-                                                    Review in Progress (Locked)
                                                 </div>
                                             )}
                                         </div>
@@ -279,7 +277,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                                     )}
 
                                     {isSubmitted && (
-                                        <div className="text-slate-300">
+                                        <div className="text-gray-400">
                                             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
                                                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5z" />
                                             </svg>

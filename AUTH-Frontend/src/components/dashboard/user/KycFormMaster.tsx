@@ -14,7 +14,6 @@ import KycTransaction from "./sections/KycTransaction";
 import KycAml from "./sections/KycAml";
 import KycLocation from "./sections/KycLocation";
 import KycAgreement from "./sections/KycAgreement";
-import FinalReviewModal from "./sections/FinalReviewModel";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -34,8 +33,13 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isEmailVerified, setIsEmailVerified] = useState(initialEmailVerified);
   const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
-  const [showFinalModal, setShowFinalModal] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Sync state with props when they change (e.g. starting a new session)
+  useEffect(() => {
+    setSessionId(initialSessionId);
+    if (initialEmailVerified !== undefined) setIsEmailVerified(initialEmailVerified);
+  }, [initialSessionId, initialEmailVerified]);
 
   // Fetch existing KYC data on load
   useEffect(() => {
@@ -213,6 +217,31 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
       ['Terms Agreed', 'Yes']
     ];
     addSection("Declarations & Compliance", declarations);
+
+    // 6. Documents
+    let docRows: any[] = [];
+    if (d.attachments && Array.isArray(d.attachments) && d.attachments.length > 0) {
+      const getDocName = (type: number) => {
+        const map: any = { 1: 'Passport Photo', 2: 'Citizenship Front', 3: 'Citizenship Back', 4: 'Signature', 5: 'Left Thumb', 6: 'Right Thumb', 10: 'Location Map' };
+        return map[type] || `Document ${type}`;
+      };
+      docRows = d.attachments.map((a: any) => [
+        getDocName(a.documentType),
+        a.documentName || '-'
+      ]);
+    } else if (d.documents) {
+      // Fallback for local state structure
+      if (d.documents.photo) docRows.push(['Passport Photo', d.documents.photo]);
+      if (d.documents.citizenship?.front) docRows.push(['Citizenship Front', d.documents.citizenship.front]);
+      if (d.documents.citizenship?.back) docRows.push(['Citizenship Back', d.documents.citizenship.back]);
+      if (d.documents.signature) docRows.push(['Signature', d.documents.signature]);
+      if (d.documents.thumbs?.left) docRows.push(['Left Thumb', d.documents.thumbs.left]);
+      if (d.documents.thumbs?.right) docRows.push(['Right Thumb', d.documents.thumbs.right]);
+    }
+
+    if (docRows.length > 0) {
+      addSection("Attached Documents", docRows);
+    }
 
     doc.save(`KYC_Submission_${sessionId}.pdf`);
   };
@@ -486,54 +515,11 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onComplete={(mergedKycData) => {
                   setKycData(mergedKycData); // update the main kycData state
                   handleDownloadKycPdf(mergedKycData);
-                  setCurrentStep(14);
+                  setShowSuccess(true);
+                  setCurrentStep(99);
                 }}
                 allKycFormData={kycData}
               />
-            )}
-
-            {Number(currentStep) === 14 && (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <svg
-                    className="w-12 h-12"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={3}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <h2 className="text-3xl font-extrabold text-gray-900 mb-4">
-                  Application Submitted!
-                </h2>
-                <p className="text-lg text-gray-600 mb-8 max-w-md mx-auto">
-                  Thank you for completing your KYC. Please review your details
-                  and agree to the terms before final submission.
-                </p>
-                <button
-                  onClick={() => setShowFinalModal(true)}
-                  className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition-all"
-                >
-                  Final Submit
-                </button>
-                <FinalReviewModal
-                  open={showFinalModal}
-                  onClose={() => setShowFinalModal(false)}
-                  kycData={kycData}
-                  pdfUrl="/terms.pdf"
-                  onFinalSubmit={() => {
-                    handleDownloadKycPdf();
-                    setShowFinalModal(false);
-                    setShowSuccess(true);
-                  }}
-                />
-              </div>
             )}
           </>
         )}
