@@ -1,16 +1,8 @@
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Text.Json;
 using AUTHApi.Data;
 using AUTHApi.Entities;
-using AUTHApi.Models.KYC;
 using AUTHApi.DTOs;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Http;
-using System.Text.Json;
-using Microsoft.Extensions.Configuration;
-using Microsoft.AspNetCore.Hosting; // Added for IWebHostEnvironment
 
 namespace AUTHApi.Services
 {
@@ -123,8 +115,8 @@ namespace AUTHApi.Services
                         detail.CurrentMunicipality = a.MunicipalityName;
                         detail.CurrentWardNo = a.WardNo?.ToString();
                         detail.CurrentStreet = a.Tole;
-                        detail.MobileNumber = a.MobileNo ?? string.Empty;
-                        detail.Email = a.EmailId ?? string.Empty;
+                        detail.MobileNumber = a.MobileNo;
+                        detail.Email = a.EmailId;
                     }
                     else if (stepNumber == 3)
                     {
@@ -145,6 +137,9 @@ namespace AUTHApi.Services
                     detail.SpouseName = f.SpouseName;
                     detail.SonName = f.SonName;
                     detail.DaughterName = f.DaughterName;
+                    detail.DaughterInLawName = f.DaughterInLawName;
+                    detail.FatherInLawName = f.FatherInLawName;
+                    detail.MotherInLawName = f.MotherInLawName;
                     break;
 
                 // Step 5: Bank Account Details
@@ -231,21 +226,14 @@ namespace AUTHApi.Services
 
             detail.UpdatedAt = DateTime.UtcNow;
 
-            try
+            var s = await _context.KycFormSessions.FindAsync(sessionId);
+            if (s != null)
             {
-                var s = await _context.KycFormSessions.FindAsync(sessionId);
-                if (s != null)
-                {
-                    s.ModifiedDate = DateTime.UtcNow;
-                    s.LastActivityDate = DateTime.UtcNow;
-                }
+                s.ModifiedDate = DateTime.UtcNow;
+                s.LastActivityDate = DateTime.UtcNow;
+            }
 
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                throw;
-            }
+            await _context.SaveChangesAsync();
 
             return detail.Id;
         }
@@ -266,7 +254,9 @@ namespace AUTHApi.Services
 
             var detail = await GetOrCreateDetailAsync(sessionId);
 
-            var wwwRoot = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+            var wwwRoot = _env.WebRootPath;
+            if (string.IsNullOrEmpty(wwwRoot))
+                wwwRoot = Path.Combine(_env.ContentRootPath, "wwwroot");
             var uploadsRoot = Path.Combine(wwwRoot, "uploads", "kyc", sessionId.ToString());
 
             if (!Directory.Exists(uploadsRoot))
@@ -353,19 +343,21 @@ namespace AUTHApi.Services
 
             // 1. Try to find the most recent ACTIVE session (not submitted)
             // We prioritize userId for security to prevent session sharing by email
+            var uId = userId;
+            var em = email;
             var session = await _context.KycFormSessions
                 .Include(s => s.KycDetail)
                 .Include(s => s.StepCompletions)
                 .OrderByDescending(s => s.LastActivityDate)
                 .FirstOrDefaultAsync(s =>
-                    ((userId != null && s.UserId == userId) || (userId == null && email != null && s.Email == email))
+                    ((uId != null && s.UserId == uId) || (uId == null && em != null && s.Email == em))
                     && s.FormStatus < 3);
 
             if (session == null)
             {
                 // NO active session found. Check if they have a submitted one recently.
                 var lastSubmitted = await _context.KycFormSessions
-                    .Where(s => (userId != null && s.UserId == userId) || (email != null && s.Email == email))
+                    .Where(s => (uId != null && s.UserId == uId) || (em != null && s.Email == em))
                     .OrderByDescending(s => s.ModifiedDate)
                     .FirstOrDefaultAsync(s => s.FormStatus == 3);
 
@@ -518,13 +510,12 @@ namespace AUTHApi.Services
 
         public async Task<string?> GetStepFormSchemaAsync(int stepNumber)
         {
-            var step = await _context.KycFormSteps.FirstOrDefaultAsync(s => s.StepNumber == stepNumber);
             // FieldSchemaJson property does not exist in the entity, returning null for now.
             // If needed, add this property to KycFormSteps entity and run migration.
             return null;
         }
 
-        public async Task UpdateDetailWithJsonAsync(int sessionId, int stepNumber, System.Text.Json.JsonElement data)
+        public async Task UpdateDetailWithJsonAsync(int sessionId, int stepNumber, JsonElement data)
         {
             switch (stepNumber)
             {

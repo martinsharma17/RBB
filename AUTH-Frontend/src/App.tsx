@@ -68,23 +68,24 @@ function AppContent() {
   void isSuperAdmin;
 
   return (
-    <div className="App">
-      <header className="header">
-        {/* Only show Navbar if user is logged in */}
-        {token && <Navbar />}
-      </header>
-      <main>
-        <Routes>
-          {/* Public Routes: Accessible by anyone */}
-          <Route path="/login" element={<LoginForm />} />
-          <Route path="/register" element={<RegisterForm />} />
+    <div className="zoom-out">
+      <div className="App">
+        <header className="header">
+          {/* Only show Navbar if user is logged in */}
+          {token && <Navbar />}
+        </header>
+        <main>
+          <Routes>
+            {/* Public Routes: Accessible by anyone */}
+            <Route path="/login" element={<LoginForm />} />
+            <Route path="/register" element={<RegisterForm />} />
 
-          {/* Password Reset Routes: Public (no auth required) */}
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/public-kyc" element={<PublicKyc />} />
+            {/* Password Reset Routes: Public (no auth required) */}
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/public-kyc" element={<PublicKyc />} />
 
-          {/* 
+            {/* 
              ==============================================================================
              PROTECTED ROUTE LOGIC
              ==============================================================================
@@ -94,28 +95,29 @@ function AppContent() {
              2. If logged in, Check specific roles in order of priority.
              3. Render appropriate Dashboard.
           */}
-          <Route
-            path="/dashboard"
-            element={
-              token ? (
-                // USER IS LOGGED IN
-                // Use the Unified Dashboard for ALL roles.
-                // It adapts its sidebar and views based on dynamic permissions.
-                <Dashboard />
-              ) : (
-                // USER IS NOT LOGGED IN -> Redirect to Login
-                <Navigate to="/login" />
-              )
-            }
-          />
+            <Route
+              path="/dashboard/:view?"
+              element={
+                token ? (
+                  // USER IS LOGGED IN
+                  // Use the Unified Dashboard for ALL roles.
+                  // It adapts its sidebar and views based on dynamic permissions.
+                  <Dashboard />
+                ) : (
+                  // USER IS NOT LOGGED IN -> Redirect to Login
+                  <Navigate to="/login" />
+                )
+              }
+            />
 
-          {/* Default Route: Redirect root URL to dashboard (which handles auth check) */}
-          <Route
-            path="/"
-            element={<Navigate to={token ? "/dashboard" : "/login"} />}
-          />
-        </Routes>
-      </main>
+            {/* Default Route: Redirect root URL to dashboard (which handles auth check) */}
+            <Route
+              path="/"
+              element={<Navigate to={token ? "/dashboard" : "/login"} />}
+            />
+          </Routes>
+        </main>
+      </div>
     </div>
   );
 }

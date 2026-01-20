@@ -138,10 +138,40 @@ const FinalReviewModal: React.FC<FinalReviewModalProps> = ({
                     if (age >= 18 && filteredData.guardian) {
                       delete filteredData.guardian;
                     }
+                    // Exclude attachments from generic render, allow custom render below
+                    if (filteredData.attachments) {
+                      delete filteredData.attachments;
+                    }
                     return renderFields(filteredData);
                   })()}
                 </tbody>
               </table>
+
+              {/* Documents Section */}
+              {kycData.attachments && kycData.attachments.length > 0 && (
+                <div className="mt-6">
+                  <h4 className="text-md font-semibold text-gray-700 mb-2 border-b pb-1">Attached Documents</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {kycData.attachments.map((doc: any, index: number) => {
+                      const getDocName = (type: number) => {
+                        const map: any = { 1: 'Passport Photo', 2: 'Citizenship Front', 3: 'Citizenship Back', 4: 'Signature', 5: 'Left Thumb', 6: 'Right Thumb', 10: 'Location Map' };
+                        return map[type] || `Document ${type}`;
+                      };
+                      return (
+                        <div key={index} className="flex items-center p-3 bg-white border rounded shadow-sm">
+                          <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mr-3 font-bold text-xs">
+                            {doc.documentType}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">{getDocName(doc.documentType)}</p>
+                            <p className="text-xs text-gray-500 truncate max-w-[150px]" title={doc.documentName}>{doc.documentName}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 

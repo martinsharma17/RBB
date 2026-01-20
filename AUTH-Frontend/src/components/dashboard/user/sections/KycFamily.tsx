@@ -6,7 +6,6 @@ interface KycFamilyProps {
   initialData?: any;
   onNext: (data: any) => void;
   onBack: () => void;
-  gender: string;
   maritalStatus: string;
 }
 
@@ -14,11 +13,12 @@ interface KycFamilyData {
   fatherName: string;
   motherName: string;
   grandfatherName: string;
-  fatherInLawName: string;
-  motherInLawName: string;
   spouseName: string;
   sonName: string;
   daughterName: string;
+  daughterInLawName: string;
+  fatherInLawName: string;
+  motherInLawName: string;
   [key: string]: any;
 }
 
@@ -27,7 +27,6 @@ const KycFamily: React.FC<KycFamilyProps> = ({
   initialData,
   onNext,
   onBack,
-  gender,
   maritalStatus,
 }) => {
   const { token, apiBase } = useAuth();
@@ -43,6 +42,7 @@ const KycFamily: React.FC<KycFamilyProps> = ({
     spouseName: initialData?.spouseName || initialData?.SpouseName || "",
     sonName: initialData?.sonName || initialData?.SonName || "",
     daughterName: initialData?.daughterName || initialData?.DaughterName || "",
+    daughterInLawName: initialData?.daughterInLawName || initialData?.DaughterInLawName || "",
     fatherInLawName:
       initialData?.fatherInLawName || initialData?.FatherInLawName || "",
     motherInLawName:
@@ -63,6 +63,7 @@ const KycFamily: React.FC<KycFamilyProps> = ({
         sonName: initialData?.sonName || initialData?.SonName || "",
         daughterName:
           initialData?.daughterName || initialData?.DaughterName || "",
+        daughterInLawName: initialData?.daughterInLawName || initialData?.DaughterInLawName || "",
         fatherInLawName:
           initialData?.fatherInLawName || initialData?.FatherInLawName || "",
         motherInLawName:
@@ -107,6 +108,7 @@ const KycFamily: React.FC<KycFamilyProps> = ({
             spouseName: formData.spouseName,
             sonName: formData.sonName,
             daughterName: formData.daughterName,
+            daughterInLawName: formData.daughterInLawName,
             fatherInLawName: formData.fatherInLawName,
             motherInLawName: formData.motherInLawName,
           },
@@ -125,10 +127,8 @@ const KycFamily: React.FC<KycFamilyProps> = ({
     }
   };
 
-  // Show in-law, spouse, son, daughter fields only if female & married
-  const showInLawAndSpouseFields =
-    String(gender || "").toLowerCase() === "female" &&
-    String(maritalStatus || "").toLowerCase() === "married";
+  // Show in-law, spouse, son, daughter fields if married
+  const isMarried = String(maritalStatus || "").toLowerCase() === "married";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -178,7 +178,7 @@ const KycFamily: React.FC<KycFamilyProps> = ({
 
         <div className="flex flex-col">
           <label className="text-sm font-semibold text-gray-700 mb-1">
-            Mother's Name *
+            Mother's Name*
           </label>
           <input
             type="text"
@@ -190,11 +190,25 @@ const KycFamily: React.FC<KycFamilyProps> = ({
           />
         </div>
 
-        {showInLawAndSpouseFields && (
+        {isMarried && (
           <>
             <div className="flex flex-col">
               <label className="text-sm font-semibold text-gray-700 mb-1">
-                Father-in-law's Name *
+                Spouse's Name
+              </label>
+              <input
+                type="text"
+                name="spouseName"
+                value={formData.spouseName}
+                onChange={handleChange}
+                placeholder="Spouse Name"
+                className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Father-in-law's Name
               </label>
               <input
                 type="text"
@@ -202,12 +216,14 @@ const KycFamily: React.FC<KycFamilyProps> = ({
                 value={formData.fatherInLawName}
                 onChange={handleChange}
                 required
+                placeholder="Father-in-law's Name"
                 className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
               />
             </div>
+
             <div className="flex flex-col">
               <label className="text-sm font-semibold text-gray-700 mb-1">
-                Mother-in-law's Name *
+                Mother-in-law's Name
               </label>
               <input
                 type="text"
@@ -215,21 +231,11 @@ const KycFamily: React.FC<KycFamilyProps> = ({
                 value={formData.motherInLawName}
                 onChange={handleChange}
                 required
+                placeholder="Mother-in-law's Name"
                 className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
               />
             </div>
-            <div className="flex flex-col">
-              <label className="text-sm font-semibold text-gray-700 mb-1">
-                Spouse Name
-              </label>
-              <input
-                type="text"
-                name="spouseName"
-                value={formData.spouseName}
-                onChange={handleChange}
-                className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
-              />
-            </div>
+
             <div className="flex flex-col">
               <label className="text-sm font-semibold text-gray-700 mb-1">
                 Son's Name
@@ -239,9 +245,11 @@ const KycFamily: React.FC<KycFamilyProps> = ({
                 name="sonName"
                 value={formData.sonName}
                 onChange={handleChange}
+                placeholder="Son's Name"
                 className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
               />
             </div>
+
             <div className="flex flex-col">
               <label className="text-sm font-semibold text-gray-700 mb-1">
                 Daughter's Name
@@ -251,6 +259,21 @@ const KycFamily: React.FC<KycFamilyProps> = ({
                 name="daughterName"
                 value={formData.daughterName}
                 onChange={handleChange}
+                placeholder="Daughter's Name"
+                className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Daughter in-Law's Name
+              </label>
+              <input
+                type="text"
+                name="daughterInLawName"
+                value={formData.daughterInLawName}
+                onChange={handleChange}
+                placeholder="Daughter in-Law's Name"
                 className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
               />
             </div>

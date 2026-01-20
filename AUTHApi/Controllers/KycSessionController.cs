@@ -185,7 +185,7 @@ namespace AUTHApi.Controllers
             // After successful verification, find ALL active sessions for this email
             var email = session?.Email ?? otp.SentToEmail;
             var availableSessions = await _context.KycFormSessions
-                .Where(s => s.Email == email && s.FormStatus < 3 && !s.IsExpired)
+                .Where(s => s.Email == email && !s.IsExpired)
                 .OrderByDescending(s => s.CreatedDate)
                 .Select(s => new KycSessionBriefDto
                 {

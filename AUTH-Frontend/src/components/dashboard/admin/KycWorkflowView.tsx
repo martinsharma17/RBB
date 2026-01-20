@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import KycReviewModal from './KycReviewModal';
+import {
+    Download,
+    Eye,
+    ChevronDown, FileText, Database
+} from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface PendingKyc {
     id: number;
@@ -33,6 +40,68 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
     const [isEditing, setIsEditing] = useState(false);
     const [editedData, setEditedData] = useState<any>({});
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
+
+    const downloadAsCSV = (record: PendingKyc) => {
+        const headers = ["Field Name", "Value"];
+        const rows = [
+            ["ID", record.id],
+            ["Email", record.customerEmail],
+            ["Customer Name", record.customerName || "N/A"],
+            ["Branch", record.branchName || "Global"],
+            ["Role", record.currentRoleName],
+            ["Submission Date", new Date(record.createdAt).toLocaleDateString()]
+        ];
+
+        const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `KYC_Pending_${record.id}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setActiveDropdown(null);
+    };
+
+    const downloadAsPDF = (record: PendingKyc) => {
+        const doc = new jsPDF();
+
+        // Header
+        doc.setFillColor(79, 70, 229); // Indigo-600
+        doc.rect(0, 0, 210, 40, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.text("Pending KYC Summary", 14, 22);
+
+        doc.setFontSize(9);
+        doc.text(`Workflow ID: ${record.id}`, 14, 32);
+        doc.text(`Applied: ${new Date(record.createdAt).toLocaleString()}`, 150, 32);
+
+        const tableData = [
+            ["Customer Name", record.customerName || "N/A"],
+            ["Email Address", record.customerEmail],
+            ["Branch", record.branchName || "Global"],
+            ["Current Role", record.currentRoleName],
+            ["Inventory Level", `${record.totalLevels - record.pendingLevel + 1} of ${record.totalLevels}`],
+            ["Last Remarks", record.lastRemarks || "—"]
+        ];
+
+        autoTable(doc, {
+            startY: 50,
+            head: [['KYC Field', 'Information Details']],
+            body: tableData,
+            theme: 'striped',
+            headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] },
+            bodyStyles: { fontSize: 10 }
+        });
+
+        doc.save(`KYC_Pending_${record.id}.pdf`);
+        setActiveDropdown(null);
+    };
 
     // Check if user has export permission
     const canExport = user?.roles?.some(r => r.toLowerCase() === 'superadmin') || permissions?.kyc?.export || false;
@@ -137,10 +206,18 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
         }
     };
 
-    const handleAction = async (action: 'approve' | 'reject' | 'resubmit' | 'pull-back', returnToPrevious: boolean = false) => {
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        action: 'approve' | 'reject' | 'resubmit' | 'pull-back' | null;
+        description: string;
+        returnToPrevious: boolean;
+    }>({ isOpen: false, action: null, description: '', returnToPrevious: false });
+
+    // ... (keep existing functions)
+
+    const handleAction = (action: 'approve' | 'reject' | 'resubmit' | 'pull-back', returnToPrevious: boolean = false) => {
         if (!selectedKyc) return;
 
-        // Confirmation Alert
         let actionDescription = "";
         switch (action) {
             case 'approve': actionDescription = "approve this application"; break;
@@ -153,16 +230,26 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
                 break;
         }
 
-        if (!window.confirm(`Are you sure you want to ${actionDescription}?`)) {
-            return;
-        }
-
         if (action === 'reject' && !remarks) {
             alert("Remarks are required for rejection or returning.");
             return;
         }
 
+        setConfirmModal({
+            isOpen: true,
+            action,
+            description: actionDescription,
+            returnToPrevious
+        });
+    };
+
+    const executeAction = async () => {
+        const { action, returnToPrevious } = confirmModal;
+        if (!selectedKyc || !action) return;
+
         setActionLoading(true);
+        setConfirmModal(prev => ({ ...prev, isOpen: false })); // Close modal
+
         try {
             const res = await fetch(`${apiBase}/api/KycApproval/${action}`, {
                 method: 'POST',
@@ -187,7 +274,6 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
                     alert(data.message || `Failed to ${action} KYC.`);
                 }
             } else {
-                // Handle non-OK responses (403, 500 etc)
                 if (res.status === 403) {
                     alert(`Access Forbidden: You do not have permission to ${action} this KYC application.`);
                 } else {
@@ -201,29 +287,6 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
             alert(`A network error occurred. Please try again or check your connection.`);
         } finally {
             setActionLoading(false);
-        }
-    };
-    const handleDownloadCsv = async (workflowId: number) => {
-        try {
-            const res = await fetch(`${apiBase}/api/KycApproval/export-csv/${workflowId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `KYC_Form_${workflowId}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-            } else {
-                alert("Failed to download CSV.");
-            }
-        } catch (err) {
-            console.error("Download error", err);
-            alert("A network error occurred while downloading the file.");
         }
     };
 
@@ -426,13 +489,39 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
                                         </td>
                                         <td className="px-6 py-6 text-center">
                                             {canExport && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDownloadCsv(kyc.id); }}
-                                                    className="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-600 rounded-xl transition-all shadow-sm hover:shadow-md"
-                                                    title="Download Dataset"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                                </button>
+                                                <div className="relative flex justify-center">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setActiveDropdown(activeDropdown === kyc.id ? null : kyc.id); }}
+                                                        className={`w-14 h-10 flex items-center justify-center gap-1 rounded-xl transition-all shadow-sm hover:shadow-md border ${activeDropdown === kyc.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-400 border-slate-200 hover:text-indigo-600 hover:border-indigo-600'}`}
+                                                        title="Download Dataset"
+                                                    >
+                                                        <Download className="w-4 h-4" />
+                                                        <ChevronDown className={`w-3 h-3 transition-transform ${activeDropdown === kyc.id ? 'rotate-180' : ''}`} />
+                                                    </button>
+
+                                                    {activeDropdown === kyc.id && (
+                                                        <div className="absolute top-full mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); downloadAsPDF(kyc); }}
+                                                                className="w-full text-left px-5 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors"
+                                                            >
+                                                                <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                                                                    <FileText className="w-4 h-4" />
+                                                                </div>
+                                                                PDF Record
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); downloadAsCSV(kyc); }}
+                                                                className="w-full text-left px-5 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors"
+                                                            >
+                                                                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                                                    <Database className="w-4 h-4" />
+                                                                </div>
+                                                                CSV Data
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             )}
                                         </td>
                                         <td className="px-6 py-6">
@@ -451,8 +540,9 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
                                         <td className="px-6 py-6 text-right">
                                             <button
                                                 onClick={() => viewDetails(kyc.id)}
-                                                className="h-11 px-8 bg-slate-900 text-white text-xs font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-600 hover:shadow-xl hover:shadow-indigo-200 transition-all duration-300 group/btn"
+                                                className="h-11 px-6 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-indigo-600 hover:shadow-xl hover:shadow-indigo-200 transition-all duration-300 group/btn flex items-center gap-2"
                                             >
+                                                <Eye className="w-4 h-4" />
                                                 Review Data
                                             </button>
                                         </td>
@@ -478,9 +568,47 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
                 remarks={remarks}
                 setRemarks={setRemarks}
                 onAction={handleAction}
-                onDownloadCsv={handleDownloadCsv}
                 canExport={canExport}
             />
+
+            {/* System Confirmation Modal */}
+            {confirmModal.isOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 transform transition-all scale-100 border border-gray-100">
+                        <div className="flex flex-col items-center text-center">
+                            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 
+                                ${confirmModal.action === 'approve' ? 'bg-green-100 text-green-600' :
+                                    confirmModal.action === 'reject' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Confirmation Required</h3>
+                            <p className="text-gray-500 mb-8 leading-relaxed">
+                                Are you sure you want to {confirmModal.description}?
+                            </p>
+
+                            <div className="flex gap-3 w-full">
+                                <button
+                                    onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={executeAction}
+                                    className={`flex-1 px-4 py-3 text-white font-bold rounded-xl shadow-lg transition-all transform hover:scale-105
+                                        ${confirmModal.action === 'approve' ? 'bg-green-600 hover:bg-green-700 shadow-green-200' :
+                                            confirmModal.action === 'reject' ? 'bg-red-600 hover:bg-red-700 shadow-red-200' : 'bg-amber-600 hover:bg-amber-700 shadow-amber-200'}`}
+                                >
+                                    Yes, Proceed
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

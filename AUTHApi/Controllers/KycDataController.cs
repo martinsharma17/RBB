@@ -92,7 +92,10 @@ namespace AUTHApi.Controllers
                     GrandFatherName = detail.GrandFatherName,
                     SpouseName = detail.SpouseName,
                     SonName = detail.SonName,
-                    DaughterName = detail.DaughterName
+                    DaughterName = detail.DaughterName,
+                    DaughterInLawName = detail.DaughterInLawName,
+                    FatherInLawName = detail.FatherInLawName,
+                    MotherInLawName = detail.MotherInLawName
                 },
                 Bank = new BankDto
                 {
@@ -140,7 +143,11 @@ namespace AUTHApi.Controllers
                     Id = d.Id,
                     DocumentType = (byte)(d.DocumentType == "Photo" ? 1 :
                         d.DocumentType == "CitizenshipFront" ? 2 :
-                        d.DocumentType == "CitizenshipBack" ? 3 : 10), // Simple mapping
+                        d.DocumentType == "CitizenshipBack" ? 3 :
+                        d.DocumentType == "Signature" ? 4 :
+                        d.DocumentType == "LeftThumb" ? 5 :
+                        d.DocumentType == "RightThumb" ? 6 :
+                        d.DocumentType == "LocationMap" ? 10 : 0),
                     DocumentName = d.OriginalFileName,
                     FilePath = $"/api/KycData/document/{d.Id}", // URL for the frontend to fetch the image
                     MimeType = d.ContentType,
@@ -423,6 +430,10 @@ namespace AUTHApi.Controllers
                     1 => "Photo",
                     2 => "CitizenshipFront",
                     3 => "CitizenshipBack",
+                    4 => "Signature",
+                    5 => "LeftThumb",
+                    6 => "RightThumb",
+                    10 => "LocationMap",
                     _ => "Other_" + documentType
                 };
 

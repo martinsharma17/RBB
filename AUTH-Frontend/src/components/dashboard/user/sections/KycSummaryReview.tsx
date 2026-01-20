@@ -88,6 +88,11 @@ const KycSummaryReview: React.FC<KycSummaryReviewProps> = ({ kycData, onNext, on
                 <Field label="Father's Name" value={kycData.family?.fatherName} />
                 <Field label="Mother's Name" value={kycData.family?.motherName} />
                 <Field label="Spouse's Name" value={kycData.family?.spouseName} />
+                <Field label="Son's Name" value={kycData.family?.sonName} />
+                <Field label="Daughter's Name" value={kycData.family?.daughterName} />
+                <Field label="Daughter-in-law's Name" value={kycData.family?.daughterInLawName} />
+                <Field label="Father-in-law's Name" value={kycData.family?.fatherInLawName} />
+                <Field label="Mother-in-law's Name" value={kycData.family?.motherInLawName} />
             </SummarySection>
 
             {/* Occupation & Bank */}
@@ -106,6 +111,26 @@ const KycSummaryReview: React.FC<KycSummaryReviewProps> = ({ kycData, onNext, on
                 <Field label="Major Source of Income" value={kycData.majorSourceOfIncome} />
                 <Field label="Trading Limit" value={kycData.tradingLimit} />
                 <Field label="Margin Trading" value={kycData.marginTradingFacility ? 'Yes' : 'No'} />
+            </SummarySection>
+
+            {/* Location Map */}
+            <SummarySection title="Location Map" icon={MapPin}>
+                <Field label="Nearest Landmark" value={kycData.locationMap?.landmark} />
+                <Field label="Distance from Main Road" value={kycData.locationMap?.distanceFromMainRoad} />
+                <Field label="Latitude" value={kycData.locationMap?.latitude} />
+                <Field label="Longitude" value={kycData.locationMap?.longitude} />
+                <div className="col-span-2 mt-2">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Map Preview</span>
+                    {kycData.attachments?.find((a: any) => a.documentType === 10) ? (
+                        <img
+                            src={kycData.attachments.find((a: any) => a.documentType === 10).filePath}
+                            alt="Location Map"
+                            className="w-full max-w-md h-auto rounded-lg border border-slate-200 mt-2"
+                        />
+                    ) : (
+                        <p className="text-sm text-slate-400 italic mt-1">No map image captured yet.</p>
+                    )}
+                </div>
             </SummarySection>
 
             {/* Compliance & Risk */}

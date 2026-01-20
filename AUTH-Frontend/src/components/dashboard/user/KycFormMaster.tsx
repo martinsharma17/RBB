@@ -15,6 +15,8 @@ import KycAml from "./sections/KycAml";
 import KycLocation from "./sections/KycLocation";
 import KycAgreement from "./sections/KycAgreement";
 import FinalReviewModal from "./sections/FinalReviewModel";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface KycFormMasterProps {
   initialSessionId?: number | null;
@@ -33,10 +35,12 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
   const [isEmailVerified, setIsEmailVerified] = useState(initialEmailVerified);
   const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
   const [showFinalModal, setShowFinalModal] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Fetch existing KYC data on load
   useEffect(() => {
     const fetchKyc = async () => {
+      setLoading(true);
       try {
         let currentSessionId = sessionId;
         let emailVerified = isEmailVerified;
@@ -117,6 +121,101 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
   };
 
   const isMinorAge = calculateAge(kycData?.personalInfo?.dobAd);
+
+  const handleDownloadKycPdf = (data: any = null) => {
+    const d = data || kycData;
+    if (!d) return;
+    const doc = new jsPDF();
+
+    // Brand Header
+    doc.setFillColor(79, 70, 229); // Indigo-600
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("KYC Application Details", 14, 25);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 33);
+    doc.text(`Session ID: ${sessionId}`, 150, 25, { align: "right" });
+    if (d.email) doc.text(`Email: ${d.email}`, 150, 33, { align: "right" });
+
+    let currentY = 50;
+
+    const addSection = (title: string, data: any[][]) => {
+      autoTable(doc, {
+        startY: currentY,
+        head: [[{ content: title, colSpan: 2, styles: { halign: 'left', fillColor: [243, 244, 246], textColor: [17, 24, 39], fontStyle: 'bold' } }]],
+        body: data,
+        theme: 'grid',
+        headStyles: { fillColor: [255, 255, 255] },
+        columnStyles: {
+          0: { cellWidth: 80, fontStyle: 'bold', textColor: [107, 114, 128] }, // Label column
+          1: { textColor: [31, 41, 55] } // Value column
+        },
+        styles: { fontSize: 9, cellPadding: 4 },
+        margin: { left: 14, right: 14 },
+        didDrawPage: (data) => {
+          // Optional: Header/Footer on new pages
+        }
+      });
+      // @ts-ignore
+      currentY = doc.lastAutoTable.finalY + 15;
+    };
+
+    // 1. Personal Information
+    const personalInfo = [
+      ['Full Name', `${d.firstName || d.personalInfo?.firstName || ''} ${d.middleName || d.personalInfo?.middleName || ''} ${d.lastName || d.personalInfo?.lastName || ''}`],
+      ['Date of Birth', new Date(d.dateOfBirth || d.personalInfo?.dateOfBirthAd).toLocaleDateString()],
+      ['Gender', d.gender || d.personalInfo?.gender || '-'],
+      ['Marital Status', d.maritalStatus || d.personalInfo?.maritalStatus || '-'],
+      ['Nationality', d.nationality || d.personalInfo?.nationality || '-'],
+      ['Citizenship No', d.citizenshipNumber || d.personalInfo?.citizenshipNo || '-'],
+      ['PAN Number', d.panNumber || d.personalInfo?.panNo || '-'],
+      ['Mobile Number', d.mobileNumber || '-']
+    ];
+    addSection("Personal Information", personalInfo);
+
+    // 2. Addresses
+    const addressInfo = [
+      ['Permanent Address', `${d.permanentAddress?.tole || ''}, ${d.permanentAddress?.municipalityName || ''}-${d.permanentAddress?.wardNo || ''}, ${d.permanentAddress?.district || ''}, ${d.permanentAddress?.province || ''}`],
+      ['Current Address', `${d.currentAddress?.tole || ''}, ${d.currentAddress?.municipalityName || ''}-${d.currentAddress?.wardNo || ''}, ${d.currentAddress?.district || ''}, ${d.currentAddress?.province || ''}`]
+    ];
+    addSection("Address Details", addressInfo);
+
+    // 3. Family
+    const familyInfo = [
+      ['Grandfather', d.family?.grandFatherName || '-'],
+      ['Father', d.family?.fatherName || '-'],
+      ['Mother', d.family?.motherName || '-'],
+      ['Spouse', d.family?.spouseName || '-']
+    ];
+    addSection("Family Information", familyInfo);
+
+    // 4. Work & Financials
+    const financialInfo = [
+      ['Occupation', d.occupation?.occupationType || '-'],
+      ['Organization', d.occupation?.organizationName || '-'],
+      ['Annual Income', d.occupation?.annualIncomeRange || '-'],
+      ['Bank', d.bank?.bankName || '-'],
+      ['Account No', d.bank?.bankAccountNo || '-'],
+      ['Source of Funds', d.sourceOfFunds || '-'],
+      ['Major Income Source', d.majorSourceOfIncome || '-']
+    ];
+    addSection("Work & Financial Details", financialInfo);
+
+    // 5. Declarations
+    const declarations = [
+      ['Politically Exposed (PEP)', d.isPep ? 'Yes' : 'No'],
+      ['Beneficial Owner', d.hasBeneficialOwner ? 'Yes' : 'No'],
+      ['Criminal Record', d.hasCriminalRecord ? 'Yes' : 'No'],
+      ['Terms Agreed', 'Yes']
+    ];
+    addSection("Declarations & Compliance", declarations);
+
+    doc.save(`KYC_Submission_${sessionId}.pdf`);
+  };
 
   const allStepsConfig = [
     { id: 1, label: "Personal Info" },
@@ -271,7 +370,15 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             initialEmail={user?.email}
             sessionId={sessionId}
             apiBase={apiBase}
-            onVerified={() => setIsEmailVerified(true)}
+            onVerified={(newSessionId) => {
+              if (newSessionId) {
+                setLoading(true);
+                setKycData(null);
+                setCurrentStep(1);
+                setSessionId(newSessionId);
+              }
+              setIsEmailVerified(true);
+            }}
           />
         ) : (
           <>
@@ -296,7 +403,6 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 initialData={familyInitialData}
                 onNext={handleNext}
                 onBack={handlePrev}
-                gender={personalInfo.gender}
                 maritalStatus={personalInfo.maritalStatus}
               />
             )}
@@ -352,6 +458,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
               <KycLocation
                 sessionId={sessionId}
                 initialData={kycData?.locationMap}
+                existingImageUrl={kycData?.attachments?.find((a: any) => a.documentType === 10)?.filePath}
                 onNext={handleNext}
                 onBack={handlePrev}
               />
@@ -378,6 +485,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onBack={handlePrev}
                 onComplete={(mergedKycData) => {
                   setKycData(mergedKycData); // update the main kycData state
+                  handleDownloadKycPdf(mergedKycData);
                   setCurrentStep(14);
                 }}
                 allKycFormData={kycData}
@@ -420,9 +528,9 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   kycData={kycData}
                   pdfUrl="/terms.pdf"
                   onFinalSubmit={() => {
+                    handleDownloadKycPdf();
                     setShowFinalModal(false);
-                    // Add your final submit logic here (e.g., API call, show success message, etc.)
-                    window.location.reload();
+                    setShowSuccess(true);
                   }}
                 />
               </div>
@@ -430,6 +538,28 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
           </>
         )}
       </div>
+
+      {showSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-100/50 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center border border-gray-100 transform transition-all scale-100">
+            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce-in">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Submission Successful
+            </h2>
+            <p className="text-gray-500 mb-8 leading-relaxed">
+              Your KYC application has been successfully submitted for review.
+            </p>
+            <button
+              className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 active:scale-95"
+              onClick={() => window.location.reload()}
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Legend */}
       <div className="mt-8 flex items-center justify-between text-sm text-gray-500 border-t pt-6">

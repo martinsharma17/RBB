@@ -5,3 +5,14 @@
     --color-primary-gold: #A68901;
     --color-secondary-gold: #D2BC56;
 }
+
+.zoom-out {
+    transform: scale(0.8);
+    transform-origin: top left;
+    width: 125%;
+    /* 1 / 0.8 = 1.25 */
+    height: 125vh;
+    /* Limit to viewport height */
+
+
+}

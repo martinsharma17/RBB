@@ -3,8 +3,10 @@ import {
     X, FileText, Database,
     CheckCircle2, AlertCircle, Edit3, Download,
     Eye, ArrowLeft, ShieldCheck, User,
-    ArrowRightCircle, RotateCcw
+    ArrowRightCircle, RotateCcw, ChevronDown
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface KycReviewModalProps {
     isOpen: boolean; onClose: () => void; detailData: any; apiBase: string;
@@ -13,17 +15,91 @@ interface KycReviewModalProps {
     onSave: (documentFiles?: { [key: number]: File }) => void; actionLoading: boolean;
     remarks: string; setRemarks: (val: string) => void;
     onAction: (action: 'approve' | 'reject' | 'resubmit' | 'pull-back', prev?: boolean) => void;
-    onDownloadCsv: (id: number) => void; canExport: boolean;
+    canExport: boolean;
 }
 
 const KycReviewModal: React.FC<KycReviewModalProps> = ({
     isOpen, onClose, detailData, apiBase, isEditing, setIsEditing,
     editedData, setEditedData, onSave, actionLoading, remarks, setRemarks,
-    onAction, onDownloadCsv, canExport
+    onAction, canExport
 }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [previewDoc, setPreviewDoc] = useState<any>(null);
     const [documentFiles, setDocumentFiles] = useState<{ [key: number]: File }>({});
+    const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+
+    const downloadAsCSV = () => {
+        const data = editedData;
+        const headers = ["Field Name", "Value"];
+        const rows = Object.entries(data)
+            .filter(([key, value]) => !['id', 'sessionId', 'userId', 'updatedAt', 'branchId'].includes(key) && typeof value !== 'object')
+            .map(([key, value]) => {
+                const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                const formattedValue = value === true ? 'YES' : value === false ? 'NO' : value || '—';
+                return [formattedKey, formattedValue];
+            });
+
+        const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `KYC_Details_${data.firstName || 'User'}_${data.lastName || ''}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setShowDownloadMenu(false);
+    };
+
+    const downloadAsPDF = () => {
+        const data = editedData;
+        const doc = new jsPDF();
+
+        // Header styling
+        doc.setFillColor(79, 70, 229);
+        doc.rect(0, 0, 210, 40, 'F');
+
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.text("KYC Review Document", 14, 22);
+
+        doc.setFontSize(9);
+        doc.text(`Application ID: ${detailData?.workflow?.id || 'N/A'}`, 14, 32);
+        doc.text(`Email: ${detailData?.workflow?.kycSession?.email || data.email || 'N/A'}`, 80, 32);
+        doc.text(`Date: ${new Date().toLocaleString()}`, 150, 32);
+
+        const tableData = Object.entries(data)
+            .filter(([key, value]) => !['id', 'sessionId', 'userId', 'updatedAt', 'branchId'].includes(key) && typeof value !== 'object')
+            .map(([key, value]) => {
+                const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                const formattedValue = value === true ? 'YES' : value === false ? 'NO' : value || '—';
+                return [formattedKey, formattedValue];
+            });
+
+        autoTable(doc, {
+            startY: 50,
+            head: [['KYC Field', 'Information Details']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+            bodyStyles: { fontSize: 8, cellPadding: 3 },
+            alternateRowStyles: { fillColor: [249, 250, 251] },
+            margin: { top: 50, bottom: 20 }
+        });
+
+        // Footer
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
+        }
+
+        doc.save(`KYC_Review_${data.firstName || 'User'}_${data.lastName || ''}.pdf`);
+        setShowDownloadMenu(false);
+    };
 
     if (!isOpen) return null;
     const isCompleted = detailData?.workflow?.status === 'Approved' || detailData?.workflow?.status === 2;
@@ -55,7 +131,50 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                 {isEditing ? <CheckCircle2 className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />} {isEditing ? 'Save Changes' : 'Quick Edit'}
                             </button>
                         )}
-                        {canExport && <button onClick={() => onDownloadCsv(detailData.workflow.id)} className="h-11 px-6 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2"><Download className="w-4 h-4" /> PDF</button>}
+
+
+
+                        {/* download button in application review modal  */}
+
+
+                        {canExport && (
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                                    className="h-11 px-6 bg-slate-900 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-all"
+                                >
+                                    <Download className="w-4 h-4" /> Export <ChevronDown className={`w-3 h-3 transition-transform ${showDownloadMenu ? 'rotate-180' : ''}`} />
+                                </button>
+
+                                {showDownloadMenu && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                                        <button
+                                            onClick={downloadAsPDF}
+                                            className="w-full text-left px-5 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors"
+                                        >
+                                            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                                                <FileText className="w-4 h-4" />
+                                            </div>
+                                            PDF Document
+                                        </button>
+                                        <button
+                                            onClick={downloadAsCSV}
+                                            className="w-full text-left px-5 py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-3 transition-colors"
+                                        >
+                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                                <Database className="w-4 h-4" />
+                                            </div>
+                                            CSV Spreadsheet
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+
+
+
+
                         <button onClick={() => !actionLoading && onClose()} className="w-11 h-11 flex items-center justify-center text-slate-400 hover:bg-slate-50 rounded-2xl border border-slate-100"><X className="w-6 h-6" /></button>
                     </div>
                 </div>
@@ -93,7 +212,6 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                                 {detailData.approvalChain?.map((step: any, index: number) => {
                                                     const isCompleted = step.isCompleted;
                                                     const isCurrent = step.isCurrent;
-                                                    const isPending = !isCompleted && !isCurrent;
 
                                                     return (
                                                         <div key={index} className="relative flex items-start gap-6 group">
@@ -200,7 +318,7 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                     )}
                                     <div className="grid md:grid-cols-2 gap-8">
                                         <SectionCard title="Core Attributes">
-                                            <InfoRow label="NAME" value={`${editedData.firstName} ${editedData.lastName}`} isEditing={isEditing} onChange={v => { const p = v.split(' '); setEditedData({ ...editedData, firstName: p[0], lastName: p[1] || '' }); }} />
+                                            <InfoRow label="NAME" value={`${editedData.firstName || ''} ${editedData.lastName || ''}`} isEditing={isEditing} onChange={v => { const p = v.split(' '); setEditedData({ ...editedData, firstName: p[0], lastName: p[1] || '' }); }} />
                                             <InfoRow label="EMAIL" value={editedData.email} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, email: v })} />
                                             <InfoRow label="MOBILE" value={editedData.mobileNumber} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, mobileNumber: v })} />
                                         </SectionCard>
@@ -221,18 +339,17 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                             <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">01. Personal Information</h4>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-8">
-                                            <DetailField label="First Name" value={editedData.firstName || editedData.personalInfo?.firstName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, firstName: v })} />
-                                            <DetailField label="Middle Name" value={editedData.middleName || editedData.personalInfo?.middleName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, middleName: v })} />
-                                            <DetailField label="Last Name" value={editedData.lastName || editedData.personalInfo?.lastName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, lastName: v })} />
-                                            <DetailField label="Gender" value={editedData.gender || editedData.personalInfo?.gender} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, gender: v })} />
-                                            <DetailField label="Date of Birth (AD)" value={editedData.dateOfBirthAd || editedData.personalInfo?.dateOfBirthAd} isEditing={isEditing} type="date" onChange={v => setEditedData({ ...editedData, dateOfBirthAd: v })} />
-                                            <DetailField label="Date of Birth (BS)" value={editedData.dateOfBirthBs || editedData.personalInfo?.dateOfBirthBs} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, dateOfBirthBs: v })} />
-                                            <DetailField label="Marital Status" value={editedData.maritalStatus || editedData.personalInfo?.maritalStatus} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, maritalStatus: v })} />
-                                            <DetailField label="Is Nepali?" value={editedData.isNepali || editedData.personalInfo?.isNepali} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, isNepali: v })} />
-                                            <DetailField label="Citizenship No" value={editedData.citizenshipNo || editedData.personalInfo?.citizenshipNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, citizenshipNo: v })} />
-                                            <DetailField label="Issue District" value={editedData.citizenshipIssueDistrict || editedData.personalInfo?.citizenshipIssueDistrict} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, citizenshipIssueDistrict: v })} />
-                                            <DetailField label="Issue Date" value={editedData.citizenshipIssueDate || editedData.personalInfo?.citizenshipIssueDate} isEditing={isEditing} type="date" onChange={v => setEditedData({ ...editedData, citizenshipIssueDate: v })} />
-                                            <DetailField label="PAN No" value={editedData.panNo || editedData.personalInfo?.panNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, panNo: v })} />
+                                            <DetailField label="First Name" value={editedData.firstName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, firstName: v })} />
+                                            <DetailField label="Middle Name" value={editedData.middleName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, middleName: v })} />
+                                            <DetailField label="Last Name" value={editedData.lastName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, lastName: v })} />
+                                            <DetailField label="Gender" value={editedData.gender} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, gender: v })} />
+                                            <DetailField label="Date of Birth" value={editedData.dateOfBirth?.split('T')[0]} isEditing={isEditing} type="date" onChange={v => setEditedData({ ...editedData, dateOfBirth: v })} />
+                                            <DetailField label="Marital Status" value={editedData.maritalStatus} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, maritalStatus: v })} />
+                                            <DetailField label="Nationality" value={editedData.nationality} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, nationality: v })} />
+                                            <DetailField label="Citizenship No" value={editedData.citizenshipNumber} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, citizenshipNumber: v })} />
+                                            <DetailField label="Issue District" value={editedData.citizenshipIssuedDistrict} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, citizenshipIssuedDistrict: v })} />
+                                            <DetailField label="Issue Date" value={editedData.citizenshipIssuedDate?.split('T')[0]} isEditing={isEditing} type="date" onChange={v => setEditedData({ ...editedData, citizenshipIssuedDate: v })} />
+                                            <DetailField label="PAN No" value={editedData.panNumber} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, panNumber: v })} />
                                         </div>
                                     </section>
 
@@ -246,23 +363,21 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                             <div className="space-y-6">
                                                 <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Permanent Address</h5>
                                                 <div className="grid grid-cols-2 gap-x-6 gap-y-6">
-                                                    <div className="col-span-2"><DetailField label="Country" value={editedData.permanentAddress?.country || "Nepal"} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, country: v } })} /></div>
-                                                    <DetailField label="Province" value={editedData.permanentAddress?.province} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, province: v } })} />
-                                                    <DetailField label="District" value={editedData.permanentAddress?.district} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, district: v } })} />
-                                                    <DetailField label="Municipality" value={editedData.permanentAddress?.municipalityName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, municipalityName: v } })} />
-                                                    <DetailField label="Ward No" value={editedData.permanentAddress?.wardNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, wardNo: v } })} />
-                                                    <DetailField label="Tole" value={editedData.permanentAddress?.tole} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentAddress: { ...editedData.permanentAddress, tole: v } })} />
+                                                    <DetailField label="Province" value={editedData.permanentState} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentState: v })} />
+                                                    <DetailField label="District" value={editedData.permanentDistrict} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentDistrict: v })} />
+                                                    <DetailField label="Municipality" value={editedData.permanentMunicipality} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentMunicipality: v })} />
+                                                    <DetailField label="Ward No" value={editedData.permanentWardNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentWardNo: v })} />
+                                                    <DetailField label="Tole" value={editedData.permanentStreet} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, permanentStreet: v })} />
                                                 </div>
                                             </div>
                                             <div className="space-y-6">
                                                 <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Current Address</h5>
                                                 <div className="grid grid-cols-2 gap-x-6 gap-y-6">
-                                                    <div className="col-span-2"><DetailField label="Country" value={editedData.currentAddress?.country || "Nepal"} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, country: v } })} /></div>
-                                                    <DetailField label="Province" value={editedData.currentAddress?.province} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, province: v } })} />
-                                                    <DetailField label="District" value={editedData.currentAddress?.district} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, district: v } })} />
-                                                    <DetailField label="Municipality" value={editedData.currentAddress?.municipalityName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, municipalityName: v } })} />
-                                                    <DetailField label="Ward No" value={editedData.currentAddress?.wardNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, wardNo: v } })} />
-                                                    <DetailField label="Tole" value={editedData.currentAddress?.tole} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentAddress: { ...editedData.currentAddress, tole: v } })} />
+                                                    <DetailField label="Province" value={editedData.currentState} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentState: v })} />
+                                                    <DetailField label="District" value={editedData.currentDistrict} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentDistrict: v })} />
+                                                    <DetailField label="Municipality" value={editedData.currentMunicipality} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentMunicipality: v })} />
+                                                    <DetailField label="Ward No" value={editedData.currentWardNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentWardNo: v })} />
+                                                    <DetailField label="Tole" value={editedData.currentStreet} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, currentStreet: v })} />
                                                 </div>
                                             </div>
                                         </div>
@@ -274,11 +389,16 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                             <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600"><User className="w-4 h-4" /></div>
                                             <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">03. Family Details</h4>
                                         </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                                            <DetailField label="Grandfather" value={editedData.family?.grandFatherName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, family: { ...editedData.family, grandFatherName: v } })} />
-                                            <DetailField label="Father" value={editedData.family?.fatherName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, family: { ...editedData.family, fatherName: v } })} />
-                                            <DetailField label="Mother" value={editedData.family?.motherName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, family: { ...editedData.family, motherName: v } })} />
-                                            <DetailField label="Spouse" value={editedData.family?.spouseName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, family: { ...editedData.family, spouseName: v } })} />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            <DetailField label="Grandfather" value={editedData.grandFatherName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, grandFatherName: v })} />
+                                            <DetailField label="Father" value={editedData.fatherName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, fatherName: v })} />
+                                            <DetailField label="Mother" value={editedData.motherName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, motherName: v })} />
+                                            <DetailField label="Spouse" value={editedData.spouseName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, spouseName: v })} />
+                                            <DetailField label="Son" value={editedData.sonName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, sonName: v })} />
+                                            <DetailField label="Daughter" value={editedData.daughterName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, daughterName: v })} />
+                                            <DetailField label="Daughter-in-law" value={editedData.daughterInLawName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, daughterInLawName: v })} />
+                                            <DetailField label="Father-in-law" value={editedData.fatherInLawName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, fatherInLawName: v })} />
+                                            <DetailField label="Mother-in-law" value={editedData.motherInLawName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, motherInLawName: v })} />
                                         </div>
                                     </section>
 
@@ -292,18 +412,19 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                             <div className="space-y-6">
                                                 <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Bank Details</h5>
                                                 <div className="grid grid-cols-2 gap-6">
-                                                    <div className="col-span-2"><DetailField label="Bank Name" value={editedData.bank?.bankName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, bank: { ...editedData.bank, bankName: v } })} /></div>
-                                                    <DetailField label="Account No" value={editedData.bank?.bankAccountNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, bank: { ...editedData.bank, bankAccountNo: v } })} />
-                                                    <DetailField label="Address" value={editedData.bank?.bankAddress} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, bank: { ...editedData.bank, bankAddress: v } })} />
+                                                    <DetailField label="Bank Name" value={editedData.bankName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, bankName: v })} />
+                                                    <DetailField label="Account No" value={editedData.bankAccountNumber} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, bankAccountNumber: v })} />
+                                                    <DetailField label="Branch" value={editedData.bankBranch} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, bankBranch: v })} />
+                                                    <DetailField label="Account Type" value={editedData.bankAccountType} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, bankAccountType: v })} />
                                                 </div>
                                             </div>
                                             <div className="space-y-6">
                                                 <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Occupation</h5>
                                                 <div className="grid grid-cols-2 gap-6">
-                                                    <DetailField label="Type" value={editedData.occupation?.occupationType} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, occupation: { ...editedData.occupation, occupationType: v } })} />
-                                                    <DetailField label="Organization" value={editedData.occupation?.organizationName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, occupation: { ...editedData.occupation, organizationName: v } })} />
-                                                    <DetailField label="Designation" value={editedData.occupation?.designation} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, occupation: { ...editedData.occupation, designation: v } })} />
-                                                    <DetailField label="Income Range" value={editedData.occupation?.annualIncomeRange} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, occupation: { ...editedData.occupation, annualIncomeRange: v } })} />
+                                                    <DetailField label="Occupation" value={editedData.occupation} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, occupation: v })} />
+                                                    <DetailField label="Organization" value={editedData.organizationName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, organizationName: v })} />
+                                                    <DetailField label="Designation" value={editedData.designation} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, designation: v })} />
+                                                    <DetailField label="Annual Income" value={editedData.annualIncome} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, annualIncome: v })} />
                                                 </div>
                                             </div>
                                         </div>
@@ -317,20 +438,21 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                                             <div className="space-y-6">
-                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Net Worth & Risks</h5>
+                                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Funds & Risks</h5>
                                                 <div className="grid grid-cols-2 gap-6">
-                                                    <div className="col-span-2"><DetailField label="Source of Funds" value={editedData.transactionInfo?.sourceOfNetWorth} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, transactionInfo: { ...editedData.transactionInfo, sourceOfNetWorth: v } })} /></div>
-                                                    <DetailField label="Annual Income" value={editedData.financialDetails?.estimatedAnnualIncome} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, financialDetails: { ...editedData.financialDetails, estimatedAnnualIncome: v } })} />
-                                                    <DetailField label="Is PEP?" value={editedData.amlCompliance?.isPoliticallyExposedPerson} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, amlCompliance: { ...editedData.amlCompliance, isPoliticallyExposedPerson: v } })} />
-                                                    <DetailField label="Criminal Record?" value={editedData.amlCompliance?.hasCriminalRecord} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, amlCompliance: { ...editedData.amlCompliance, hasCriminalRecord: v } })} />
+                                                    <DetailField label="Source of Funds" value={editedData.sourceOfFunds} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, sourceOfFunds: v })} />
+                                                    <DetailField label="Major Income" value={editedData.majorSourceOfIncome} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, majorSourceOfIncome: v })} />
+                                                    <DetailField label="Is PEP?" value={editedData.isPep} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, isPep: v })} />
+                                                    <DetailField label="Criminal Record?" value={editedData.hasCriminalRecord} isEditing={isEditing} type="checkbox" onChange={v => setEditedData({ ...editedData, hasCriminalRecord: v })} />
                                                 </div>
                                             </div>
                                             <div className="space-y-6">
                                                 <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Guardian (If Minor)</h5>
                                                 <div className="grid grid-cols-2 gap-6">
-                                                    <div className="col-span-2"><DetailField label="Name" value={editedData.guardian?.fullName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, guardian: { ...editedData.guardian, fullName: v } })} /></div>
-                                                    <DetailField label="Relation" value={editedData.guardian?.relationship} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, guardian: { ...editedData.guardian, relationship: v } })} />
-                                                    <DetailField label="Contact" value={editedData.guardian?.contactNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, guardian: { ...editedData.guardian, contactNo: v } })} />
+                                                    <DetailField label="Name" value={editedData.guardianName} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, guardianName: v })} />
+                                                    <DetailField label="Relation" value={editedData.guardianRelationship} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, guardianRelationship: v })} />
+                                                    <DetailField label="Contact" value={editedData.guardianContactNo} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, guardianContactNo: v })} />
+                                                    <DetailField label="PAN No" value={editedData.guardianPanNumber} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, guardianPanNumber: v })} />
                                                 </div>
                                             </div>
                                         </div>
@@ -343,10 +465,23 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                             <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">06. Location Map</h4>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <DetailField label="Nearest Landmark" value={editedData.locationMap?.landmark} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationMap: { ...editedData.locationMap, landmark: v } })} />
-                                            <DetailField label="Distance from Main Road" value={editedData.locationMap?.distanceFromMainRoad} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationMap: { ...editedData.locationMap, distanceFromMainRoad: v } })} />
-                                            <DetailField label="Latitude" value={editedData.locationMap?.latitude} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationMap: { ...editedData.locationMap, latitude: v } })} />
-                                            <DetailField label="Longitude" value={editedData.locationMap?.longitude} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationMap: { ...editedData.locationMap, longitude: v } })} />
+                                            <DetailField label="Nearest Landmark" value={editedData.locationLandmark} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationLandmark: v })} />
+                                            <DetailField label="Distance from Main Road" value={editedData.locationDistance} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationDistance: v })} />
+                                            <DetailField label="Latitude" value={editedData.locationLatitude} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationLatitude: v })} />
+                                            <DetailField label="Longitude" value={editedData.locationLongitude} isEditing={isEditing} onChange={v => setEditedData({ ...editedData, locationLongitude: v })} />
+
+                                            {detailData.documents?.find((d: any) => d.documentType === "LocationMap" || d.documentType === "Other_10") && (
+                                                <div className="col-span-full mt-4">
+                                                    <label className="text-sm font-semibold text-gray-700 mb-2 block">Captured Location Map</label>
+                                                    <div className="p-2 border border-slate-200 rounded-2xl bg-slate-50 inline-block">
+                                                        <img
+                                                            src={`${apiBase}/api/KycData/document/${detailData.documents.find((d: any) => d.documentType === "LocationMap" || d.documentType === "Other_10").id}`}
+                                                            alt="Location Map"
+                                                            className="max-w-full h-auto rounded-xl shadow-sm border border-slate-200 max-h-[300px]"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </section>
 
@@ -529,7 +664,7 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
                                             </div>
                                         </div>
 
-                                        {detailData.logs?.map((h: any, i: number) => (
+                                        {detailData.logs?.map((h: any) => (
                                             <div key={h.id} className="flex gap-8 relative group">
                                                 <div className={`w-10 h-10 rounded-2xl flex-shrink-0 z-10 flex items-center justify-center border-4 border-white shadow-xl ${h.action.includes('Approved') ? 'bg-emerald-500' : h.action.includes('Rejected') ? 'bg-rose-500' : 'bg-indigo-600'}`}>
                                                     <div className="w-2 h-2 rounded-full bg-white" />

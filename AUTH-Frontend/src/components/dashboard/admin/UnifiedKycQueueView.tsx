@@ -8,6 +8,7 @@ import {
     RefreshCw,
     Shield
 } from 'lucide-react';
+import KycReviewModal from './KycReviewModal';
 
 interface KycUnifiedItem {
     workflowId: number;
@@ -27,14 +28,23 @@ interface KycUnifiedItem {
 }
 
 const UnifiedKycQueueView: React.FC = () => {
-    const { token, apiBase } = useAuth();
+    const { token, apiBase, user, permissions } = useAuth();
     const [data, setData] = useState<KycUnifiedItem[]>([]);
     const [filteredData, setFilteredData] = useState<KycUnifiedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
 
+    // Review Modal States
+    const [selectedKycId, setSelectedKycId] = useState<number | null>(null);
+    const [detailData, setDetailData] = useState<any>(null);
+    const [isReviewOpen, setIsReviewOpen] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [remarks, setRemarks] = useState('');
+    const [isEditing, setIsEditing] = useState(false);
+    const [editedData, setEditedData] = useState<any>({});
 
+    const canExport = user?.roles?.some(r => r.toLowerCase() === 'superadmin') || permissions?.kyc?.export || false;
 
     useEffect(() => {
         fetchData();
@@ -79,6 +89,111 @@ const UnifiedKycQueueView: React.FC = () => {
         setFilteredData(filtered);
     };
 
+    const viewDetails = async (workflowId: number) => {
+        setLoading(true);
+        setSelectedKycId(workflowId);
+        try {
+            const res = await fetch(`${apiBase}/api/KycApproval/details/${workflowId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const result = await res.json();
+            if (result.success) {
+                setDetailData(result.data);
+                setEditedData(result.data.details || {});
+                setIsReviewOpen(true);
+            }
+        } catch (err) {
+            console.error("Error fetching details:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAction = async (action: 'approve' | 'reject' | 'resubmit' | 'pull-back', returnToPrevious: boolean = false) => {
+        if (!selectedKycId) return;
+
+        if (action === 'reject' && !remarks) {
+            alert("Remarks are required for rejection or returning.");
+            return;
+        }
+
+        setActionLoading(true);
+        try {
+            const res = await fetch(`${apiBase}/api/KycApproval/${action}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    workflowId: selectedKycId,
+                    remarks: remarks,
+                    returnToPrevious: returnToPrevious
+                })
+            });
+
+            const result = await res.json();
+            if (result.success) {
+                setIsReviewOpen(false);
+                setRemarks('');
+                fetchData();
+            } else {
+                alert(result.message || `Failed to ${action} KYC.`);
+            }
+        } catch (err) {
+            console.error(`Error during ${action}:`, err);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleSaveEdit = async (documentFiles?: { [key: number]: File }) => {
+        if (!selectedKycId) return;
+        setActionLoading(true);
+
+        try {
+            // Document replacement logic (if any)
+            if (documentFiles && Object.keys(documentFiles).length > 0) {
+                for (const [docId, file] of Object.entries(documentFiles)) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('documentId', docId);
+
+                    await fetch(`${apiBase}/api/KycData/replace-document`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: formData
+                    });
+                }
+            }
+
+            // Save details
+            const res = await fetch(`${apiBase}/api/KycApproval/update-details`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    workflowId: selectedKycId,
+                    ...editedData
+                })
+            });
+
+            const result = await res.json();
+            if (result.success) {
+                setIsEditing(false);
+                viewDetails(selectedKycId);
+            } else {
+                alert(result.message || "Failed to update details.");
+            }
+        } catch (err) {
+            console.error("Error saving edits:", err);
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     const getStatusStyle = (status: string) => {
         switch (status) {
             case 'Approved': return 'bg-green-100 text-green-700 border-green-200';
@@ -104,7 +219,7 @@ const UnifiedKycQueueView: React.FC = () => {
                     onClick={fetchData}
                     className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm hover:bg-slate-50 transition-all text-slate-600 font-medium"
                 >
-                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 ${loading && !isReviewOpen ? 'animate-spin' : ''}`} />
                     Refresh Data
                 </button>
             </div>
@@ -157,7 +272,7 @@ const UnifiedKycQueueView: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {loading ? (
+                            {loading && !isReviewOpen ? (
                                 Array(5).fill(0).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
                                         <td colSpan={7} className="px-6 py-8">
@@ -206,6 +321,7 @@ const UnifiedKycQueueView: React.FC = () => {
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex items-center justify-center gap-2">
                                                 <button
+                                                    onClick={() => viewDetails(item.workflowId)}
                                                     className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all group-hover:scale-110 active:scale-95"
                                                     title="View Action Details"
                                                 >
@@ -231,8 +347,26 @@ const UnifiedKycQueueView: React.FC = () => {
                     </table>
                 </div>
             </div>
+
+            <KycReviewModal
+                isOpen={isReviewOpen}
+                onClose={() => !actionLoading && setIsReviewOpen(false)}
+                detailData={detailData}
+                apiBase={apiBase}
+                isEditing={isEditing}
+                setIsEditing={setIsEditing}
+                editedData={editedData}
+                setEditedData={setEditedData}
+                onSave={handleSaveEdit}
+                actionLoading={actionLoading}
+                remarks={remarks}
+                setRemarks={setRemarks}
+                onAction={handleAction}
+                canExport={canExport}
+            />
         </div>
     );
 };
 
 export default UnifiedKycQueueView;
+

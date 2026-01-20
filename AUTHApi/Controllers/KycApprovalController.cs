@@ -486,6 +486,7 @@ namespace AUTHApi.Controllers
                         details.MobileNumber,
                         details.Gender,
                         details.DateOfBirth,
+                        details.MaritalStatus,
                         details.Nationality,
                         details.CitizenshipNumber,
                         details.CitizenshipIssuedDistrict,
@@ -520,11 +521,27 @@ namespace AUTHApi.Controllers
                         details.Designation,
                         details.EmployeeIdNo,
                         details.AnnualIncome,
+                        details.SourceOfFunds,
+                        details.MajorSourceOfIncome,
+                        details.HasOtherBrokerAccount,
+                        details.OtherBrokerNames,
+                        details.IsCibBlacklisted,
+                        details.CibBlacklistDetails,
+                        details.GuardianName,
+                        details.GuardianRelationship,
+                        details.GuardianAddress,
+                        details.GuardianContactNo,
+                        details.GuardianEmail,
+                        details.GuardianPanNumber,
                         details.IsPep,
                         details.PepRelation,
                         details.HasBeneficialOwner,
                         details.HasCriminalRecord,
                         details.CriminalRecordDetails,
+                        details.LocationLandmark,
+                        details.LocationDistance,
+                        details.LocationLatitude,
+                        details.LocationLongitude,
                         details.AgreeToTerms,
                         details.NoOtherFinancialLiability,
                         details.AllInformationTrue,
@@ -631,47 +648,70 @@ namespace AUTHApi.Controllers
             detail.DateOfBirth = model.DateOfBirth ?? detail.DateOfBirth;
             detail.Nationality = model.Nationality ?? detail.Nationality;
             detail.MaritalStatus = model.MaritalStatus ?? detail.MaritalStatus;
-            detail.CitizenshipNumber = model.CitizenshipNumber ?? detail.CitizenshipNumber;
-            detail.CitizenshipIssuedDistrict = model.CitizenshipIssuedDistrict ?? detail.CitizenshipIssuedDistrict;
-            detail.CitizenshipIssuedDate = model.CitizenshipIssuedDate ?? detail.CitizenshipIssuedDate;
 
-            // Address
             detail.PermanentState = model.PermanentState ?? detail.PermanentState;
             detail.PermanentDistrict = model.PermanentDistrict ?? detail.PermanentDistrict;
             detail.PermanentMunicipality = model.PermanentMunicipality ?? detail.PermanentMunicipality;
-            detail.PermanentWardNo = model.PermanentWardNo?.ToString() ?? detail.PermanentWardNo;
+            detail.PermanentWardNo = model.PermanentWardNo ?? detail.PermanentWardNo;
             detail.PermanentStreet = model.PermanentStreet ?? detail.PermanentStreet;
 
             detail.CurrentState = model.CurrentState ?? detail.CurrentState;
             detail.CurrentDistrict = model.CurrentDistrict ?? detail.CurrentDistrict;
             detail.CurrentMunicipality = model.CurrentMunicipality ?? detail.CurrentMunicipality;
-            detail.CurrentWardNo = model.CurrentWardNo?.ToString() ?? detail.CurrentWardNo;
+            detail.CurrentWardNo = model.CurrentWardNo ?? detail.CurrentWardNo;
             detail.CurrentStreet = model.CurrentStreet ?? detail.CurrentStreet;
 
-            // Family
             detail.FatherName = model.FatherName ?? detail.FatherName;
             detail.MotherName = model.MotherName ?? detail.MotherName;
             detail.GrandFatherName = model.GrandFatherName ?? detail.GrandFatherName;
             detail.SpouseName = model.SpouseName ?? detail.SpouseName;
 
-            // Bank & Financial
             detail.BankName = model.BankName ?? detail.BankName;
             detail.BankAccountNumber = model.BankAccountNumber ?? detail.BankAccountNumber;
             detail.BankBranch = model.BankBranch ?? detail.BankBranch;
             detail.BankAccountType = model.BankAccountType ?? detail.BankAccountType;
-            detail.PanNumber = model.PanNumber ?? detail.PanNumber;
 
-            // Occupation
+            detail.CitizenshipNumber = model.CitizenshipNumber ?? detail.CitizenshipNumber;
+            detail.CitizenshipIssuedDistrict = model.CitizenshipIssuedDistrict ?? detail.CitizenshipIssuedDistrict;
+            detail.CitizenshipIssuedDate = model.CitizenshipIssuedDate ?? detail.CitizenshipIssuedDate;
+
             detail.Occupation = model.Occupation ?? detail.Occupation;
             detail.OrganizationName = model.OrganizationName ?? detail.OrganizationName;
+            detail.Designation = model.Designation ?? detail.Designation;
             detail.AnnualIncome = model.AnnualIncome ?? detail.AnnualIncome;
+            detail.PanNumber = model.PanNumber ?? detail.PanNumber;
 
-            // PEP & Status
+            detail.SourceOfFunds = model.SourceOfFunds ?? detail.SourceOfFunds;
+            detail.MajorSourceOfIncome = model.MajorSourceOfIncome ?? detail.MajorSourceOfIncome;
+            detail.HasOtherBrokerAccount = model.HasOtherBrokerAccount ?? detail.HasOtherBrokerAccount;
+            detail.OtherBrokerNames = model.OtherBrokerNames ?? detail.OtherBrokerNames;
+
             detail.IsPep = model.IsPep ?? detail.IsPep;
             detail.PepRelation = model.PepRelation ?? detail.PepRelation;
-            detail.HasCriminalRecord = model.HasCriminalRecord ?? detail.HasCriminalRecord;
-            detail.SourceOfFunds = model.SourceOfFunds ?? detail.SourceOfFunds;
             detail.HasBeneficialOwner = model.HasBeneficialOwner ?? detail.HasBeneficialOwner;
+            detail.HasCriminalRecord = model.HasCriminalRecord ?? detail.HasCriminalRecord;
+            detail.CriminalRecordDetails = model.CriminalRecordDetails ?? detail.CriminalRecordDetails;
+            detail.IsCibBlacklisted = model.IsCibBlacklisted ?? detail.IsCibBlacklisted;
+            detail.CibBlacklistDetails = model.CibBlacklistDetails ?? detail.CibBlacklistDetails;
+
+            detail.GuardianName = model.GuardianName ?? detail.GuardianName;
+            detail.GuardianRelationship = model.GuardianRelationship ?? detail.GuardianRelationship;
+            detail.GuardianAddress = model.GuardianAddress ?? detail.GuardianAddress;
+            detail.GuardianContactNo = model.GuardianContactNo ?? detail.GuardianContactNo;
+            detail.GuardianEmail = model.GuardianEmail ?? detail.GuardianEmail;
+            detail.GuardianPanNumber = model.GuardianPanNumber ?? detail.GuardianPanNumber;
+
+            detail.LocationLandmark = model.LocationLandmark ?? detail.LocationLandmark;
+            detail.LocationDistance = model.LocationDistance ?? detail.LocationDistance;
+            detail.LocationLatitude = model.LocationLatitude ?? detail.LocationLatitude;
+            detail.LocationLongitude = model.LocationLongitude ?? detail.LocationLongitude;
+
+            detail.AgreeToTerms = model.AgreeToTerms ?? detail.AgreeToTerms;
+            detail.NoOtherFinancialLiability = model.NoOtherFinancialLiability ?? detail.NoOtherFinancialLiability;
+            detail.AllInformationTrue = model.AllInformationTrue ?? detail.AllInformationTrue;
+            detail.AgreementDate = model.AgreementDate ?? detail.AgreementDate;
+            detail.TradingLimit = model.TradingLimit ?? detail.TradingLimit;
+            detail.MarginTradingFacility = model.MarginTradingFacility ?? detail.MarginTradingFacility;
 
             detail.UpdatedAt = DateTime.UtcNow;
 
@@ -738,19 +778,21 @@ namespace AUTHApi.Controllers
             public string? PermanentState { get; set; }
             public string? PermanentDistrict { get; set; }
             public string? PermanentMunicipality { get; set; }
-            public int? PermanentWardNo { get; set; }
+            public string? PermanentWardNo { get; set; }
             public string? PermanentStreet { get; set; }
 
             public string? CurrentState { get; set; }
             public string? CurrentDistrict { get; set; }
             public string? CurrentMunicipality { get; set; }
-            public int? CurrentWardNo { get; set; }
+            public string? CurrentWardNo { get; set; }
             public string? CurrentStreet { get; set; }
 
             public string? FatherName { get; set; }
             public string? MotherName { get; set; }
             public string? GrandFatherName { get; set; }
             public string? SpouseName { get; set; }
+            public string? SonName { get; set; }
+            public string? DaughterName { get; set; }
 
             public string? BankName { get; set; }
             public string? BankAccountNumber { get; set; }
@@ -760,13 +802,40 @@ namespace AUTHApi.Controllers
 
             public string? Occupation { get; set; }
             public string? OrganizationName { get; set; }
+            public string? Designation { get; set; }
             public string? AnnualIncome { get; set; }
+
+            public string? SourceOfFunds { get; set; }
+            public string? MajorSourceOfIncome { get; set; }
+            public bool? HasOtherBrokerAccount { get; set; }
+            public string? OtherBrokerNames { get; set; }
 
             public bool? IsPep { get; set; }
             public string? PepRelation { get; set; }
-            public bool? HasCriminalRecord { get; set; }
-            public string? SourceOfFunds { get; set; }
             public bool? HasBeneficialOwner { get; set; }
+            public bool? HasCriminalRecord { get; set; }
+            public string? CriminalRecordDetails { get; set; }
+            public bool? IsCibBlacklisted { get; set; }
+            public string? CibBlacklistDetails { get; set; }
+
+            public string? GuardianName { get; set; }
+            public string? GuardianRelationship { get; set; }
+            public string? GuardianAddress { get; set; }
+            public string? GuardianContactNo { get; set; }
+            public string? GuardianEmail { get; set; }
+            public string? GuardianPanNumber { get; set; }
+
+            public string? LocationLandmark { get; set; }
+            public string? LocationDistance { get; set; }
+            public string? LocationLatitude { get; set; }
+            public string? LocationLongitude { get; set; }
+
+            public bool? AgreeToTerms { get; set; }
+            public bool? NoOtherFinancialLiability { get; set; }
+            public bool? AllInformationTrue { get; set; }
+            public DateTime? AgreementDate { get; set; }
+            public string? TradingLimit { get; set; }
+            public bool? MarginTradingFacility { get; set; }
         }
 
         public class PullBackModel

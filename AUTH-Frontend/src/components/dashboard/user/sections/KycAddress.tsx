@@ -80,11 +80,6 @@ const KycAddress: React.FC<KycAddressProps> = ({
     } else {
       setPermDistricts([]);
     }
-    setFormData((prev) => ({
-      ...prev,
-      permanentDistrictId: "",
-      permanentMunicipalityId: "",
-    }));
   }, [formData.permanentProvinceId, apiBase]);
 
   // Handle Permanent District Change
@@ -99,10 +94,6 @@ const KycAddress: React.FC<KycAddressProps> = ({
     } else {
       setPermMunicipalities([]);
     }
-    setFormData((prev) => ({
-      ...prev,
-      permanentMunicipalityId: "",
-    }));
   }, [formData.permanentDistrictId, apiBase]);
 
   // Handle Current Province Change
@@ -115,11 +106,6 @@ const KycAddress: React.FC<KycAddressProps> = ({
     } else {
       setCurrDistricts([]);
     }
-    setFormData((prev) => ({
-      ...prev,
-      currentDistrictId: "",
-      currentMunicipalityId: "",
-    }));
   }, [formData.currentProvinceId, apiBase]);
 
   // Handle Current District Change
@@ -134,89 +120,108 @@ const KycAddress: React.FC<KycAddressProps> = ({
     } else {
       setCurrMunicipalities([]);
     }
-    setFormData((prev) => ({
-      ...prev,
-      currentMunicipalityId: "",
-    }));
   }, [formData.currentDistrictId, apiBase]);
 
-  // Sync initialData names to IDs
+  // Sync initialData
   useEffect(() => {
+    // 1. Prioritize locally saved state (if user pressed Back)
+    if (initialData?.address) {
+      setFormData(prev => ({ ...prev, ...initialData.address }));
+      return;
+    }
+
+    // 2. Otherwise sync from backend structure (names to IDs)
     if (initialData?.permanentAddress && permProvinces.length > 0) {
       const p = initialData.permanentAddress;
       const province = permProvinces.find(pr => pr.name === p.province);
       if (province) {
-        setFormData(prev => ({ ...prev, permanentProvinceId: province.id.toString(), permanentWardNo: p.wardNo?.toString() || "", permanentTole: p.tole || "" }));
+        setFormData(prev => ({
+          ...prev,
+          permanentProvinceId: province.id.toString(),
+          permanentWardNo: p.wardNo?.toString() || prev.permanentWardNo,
+          permanentTole: p.tole || prev.permanentTole,
+          permanentCountry: p.country || prev.permanentCountry
+        }));
       }
     }
-  }, [initialData, permProvinces]);
 
-  useEffect(() => {
-    if (initialData?.permanentAddress && permDistricts.length > 0) {
-      const p = initialData.permanentAddress;
-      const district = permDistricts.find(d => d.name === p.district);
-      if (district) {
-        setFormData(prev => ({ ...prev, permanentDistrictId: district.id.toString() }));
-      }
-    }
-  }, [initialData, permDistricts]);
-
-  useEffect(() => {
-    if (initialData?.permanentAddress && permMunicipalities.length > 0) {
-      const p = initialData.permanentAddress;
-      const mun = permMunicipalities.find(m => m.name === p.municipalityName);
-      if (mun) {
-        setFormData(prev => ({ ...prev, permanentMunicipalityId: mun.id.toString() }));
-      }
-    }
-  }, [initialData, permMunicipalities]);
-
-  useEffect(() => {
     if (initialData?.currentAddress && currProvinces.length > 0) {
       const c = initialData.currentAddress;
       const province = currProvinces.find(pr => pr.name === c.province);
       if (province) {
-        setFormData(prev => ({ ...prev, currentProvinceId: province.id.toString(), wardNo: c.wardNo?.toString() || "", currentTole: c.tole || "", contactNumber: c.mobileNo || "" }));
+        setFormData(prev => ({
+          ...prev,
+          currentProvinceId: province.id.toString(),
+          wardNo: c.wardNo?.toString() || prev.wardNo,
+          currentTole: c.tole || prev.currentTole,
+          contactNumber: c.mobileNo || prev.contactNumber,
+          currentCountry: c.country || prev.currentCountry
+        }));
       }
     }
-  }, [initialData, currProvinces]);
+  }, [initialData, permProvinces, currProvinces]);
 
   useEffect(() => {
-    if (initialData?.currentAddress && currDistricts.length > 0) {
-      const c = initialData.currentAddress;
-      const district = currDistricts.find(d => d.name === c.district);
-      if (district) {
-        setFormData(prev => ({ ...prev, currentDistrictId: district.id.toString() }));
-      }
+    if (!initialData?.address && initialData?.permanentAddress && permDistricts.length > 0) {
+      const district = permDistricts.find(d => d.name === initialData.permanentAddress.district);
+      if (district) setFormData(prev => ({ ...prev, permanentDistrictId: district.id.toString() }));
     }
-  }, [initialData, currDistricts]);
+  }, [permDistricts, initialData]);
 
   useEffect(() => {
-    if (initialData?.currentAddress && currMunicipalities.length > 0) {
-      const c = initialData.currentAddress;
-      const mun = currMunicipalities.find(m => m.name === c.municipalityName);
-      if (mun) {
-        setFormData(prev => ({ ...prev, currentMunicipalityId: mun.id.toString() }));
-      }
+    if (!initialData?.address && initialData?.permanentAddress && permMunicipalities.length > 0) {
+      const mun = permMunicipalities.find(m => m.name === initialData.permanentAddress.municipalityName);
+      if (mun) setFormData(prev => ({ ...prev, permanentMunicipalityId: mun.id.toString() }));
     }
-  }, [initialData, currMunicipalities]);
+  }, [permMunicipalities, initialData]);
+
+  useEffect(() => {
+    if (!initialData?.address && initialData?.currentAddress && currDistricts.length > 0) {
+      const district = currDistricts.find(d => d.name === initialData.currentAddress.district);
+      if (district) setFormData(prev => ({ ...prev, currentDistrictId: district.id.toString() }));
+    }
+  }, [currDistricts, initialData]);
+
+  useEffect(() => {
+    if (!initialData?.address && initialData?.currentAddress && currMunicipalities.length > 0) {
+      const mun = currMunicipalities.find(m => m.name === initialData.currentAddress.municipalityName);
+      if (mun) setFormData(prev => ({ ...prev, currentMunicipalityId: mun.id.toString() }));
+    }
+  }, [currMunicipalities, initialData]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const newData = { ...prev, [name]: value };
+
+      // Clear dependent fields ONLY on manual change
+      if (name === "permanentProvinceId") {
+        newData.permanentDistrictId = "";
+        newData.permanentMunicipalityId = "";
+      } else if (name === "permanentDistrictId") {
+        newData.permanentMunicipalityId = "";
+      } else if (name === "currentProvinceId") {
+        newData.currentDistrictId = "";
+        newData.currentMunicipalityId = "";
+      } else if (name === "currentDistrictId") {
+        newData.currentMunicipalityId = "";
+      }
+
+      return newData;
+    });
   };
 
-  const copyPermanentToCurrent = () => {
+  const copyCurrentToPermanent = () => {
     setFormData((prev) => ({
       ...prev,
-      currentProvinceId: prev.permanentProvinceId,
-      currentDistrictId: prev.permanentDistrictId,
-      currentMunicipalityId: prev.permanentMunicipalityId,
-      wardNo: prev.permanentWardNo,
-      currentTole: prev.permanentTole,
-      currentCountry: prev.permanentCountry,
+      permanentProvinceId: prev.currentProvinceId,
+      permanentDistrictId: prev.currentDistrictId,
+      permanentMunicipalityId: prev.currentMunicipalityId,
+      permanentWardNo: prev.wardNo,
+      permanentTole: prev.currentTole,
+      permanentCountry: prev.currentCountry,
     }));
   };
 
@@ -320,124 +325,10 @@ const KycAddress: React.FC<KycAddressProps> = ({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <h3 className="col-span-full text-md font-semibold text-indigo-700 border-l-4 border-indigo-600 pl-2 mt-2">
-          Permanent Address
-        </h3>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent Province *
-          </label>
-          <select
-            name="permanentProvinceId"
-            value={formData.permanentProvinceId}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          >
-            <option value="">Select Province</option>
-            {permProvinces.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent District *
-          </label>
-          <select
-            name="permanentDistrictId"
-            value={formData.permanentDistrictId}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          >
-            <option value="">Select District</option>
-            {permDistricts.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent Municipality *
-          </label>
-          <select
-            name="permanentMunicipalityId"
-            value={formData.permanentMunicipalityId}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          >
-            <option value="">Select Municipality</option>
-            {permMunicipalities.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent Ward No. *
-          </label>
-          <input
-            type="text"
-            name="permanentWardNo"
-            value={formData.permanentWardNo}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent Tole
-          </label>
-          <input
-            type="text"
-            name="permanentTole"
-            value={formData.permanentTole}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent Country *
-          </label>
-          <input
-            type="text"
-            name="permanentCountry"
-            value={formData.permanentCountry}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          />
-        </div>
-
-        <div className="col-span-full border-t border-gray-100 my-4"></div>
-
-        <div className="col-span-full flex items-center justify-between">
+        <div className="col-span-full flex items-center justify-between mt-2">
           <h3 className="text-md font-semibold text-indigo-700 border-l-4 border-indigo-600 pl-2">
-            Current Address
+            Current Address (Temporary)
           </h3>
-          <button
-            type="button"
-            onClick={copyPermanentToCurrent}
-            className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded hover:bg-indigo-100 transition-colors"
-          >
-            Same as permanent
-          </button>
         </div>
 
         <div className="flex flex-col">
@@ -535,6 +426,122 @@ const KycAddress: React.FC<KycAddressProps> = ({
             type="text"
             name="currentCountry"
             value={formData.currentCountry}
+            onChange={handleChange}
+            className="p-2 border rounded"
+            required
+          />
+        </div>
+
+        <div className="col-span-full border-t border-gray-100 my-4"></div>
+
+        <div className="col-span-full flex items-center justify-between">
+          <h3 className="text-md font-semibold text-indigo-700 border-l-4 border-indigo-600 pl-2">
+            Permanent Address
+          </h3>
+          <button
+            type="button"
+            onClick={copyCurrentToPermanent}
+            className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1 rounded hover:bg-indigo-100 transition-colors"
+          >
+            Same as temporary
+          </button>
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent Province *
+          </label>
+          <select
+            name="permanentProvinceId"
+            value={formData.permanentProvinceId}
+            onChange={handleChange}
+            className="p-2 border rounded"
+            required
+          >
+            <option value="">Select Province</option>
+            {permProvinces.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent District *
+          </label>
+          <select
+            name="permanentDistrictId"
+            value={formData.permanentDistrictId}
+            onChange={handleChange}
+            className="p-2 border rounded"
+            required
+          >
+            <option value="">Select District</option>
+            {permDistricts.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent Municipality *
+          </label>
+          <select
+            name="permanentMunicipalityId"
+            value={formData.permanentMunicipalityId}
+            onChange={handleChange}
+            className="p-2 border rounded"
+            required
+          >
+            <option value="">Select Municipality</option>
+            {permMunicipalities.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent Ward No. *
+          </label>
+          <input
+            type="text"
+            name="permanentWardNo"
+            value={formData.permanentWardNo}
+            onChange={handleChange}
+            className="p-2 border rounded"
+            required
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent Tole
+          </label>
+          <input
+            type="text"
+            name="permanentTole"
+            value={formData.permanentTole}
+            onChange={handleChange}
+            className="p-2 border rounded"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            Permanent Country *
+          </label>
+          <input
+            type="text"
+            name="permanentCountry"
+            value={formData.permanentCountry}
             onChange={handleChange}
             className="p-2 border rounded"
             required

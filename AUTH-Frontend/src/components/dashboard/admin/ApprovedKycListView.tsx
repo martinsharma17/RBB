@@ -7,8 +7,12 @@ import {
     CheckSquare,
     Square,
     ShieldCheck,
-    Calendar
+    Calendar,
+    FileText,
+    Database
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface KycUnifiedItem {
     workflowId: number;
@@ -34,6 +38,181 @@ const ApprovedKycListView: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    const [downloadPopup, setDownloadPopup] = useState<{ isOpen: boolean; items: KycUnifiedItem[] }>({ isOpen: false, items: [] });
+    const [processingDownload, setProcessingDownload] = useState(false);
+
+    const fetchFullDetails = async (id: number) => {
+        try {
+            const res = await fetch(`${apiBase}/api/KycApproval/details/${id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const json = await res.json();
+            return json.success ? json.data : null;
+        } catch (e) {
+            console.error("Error fetching details for", id, e);
+            return null;
+        }
+    };
+
+    const processDownload = async (type: 'pdf' | 'csv') => {
+        setProcessingDownload(true);
+        try {
+            const items = downloadPopup.items;
+            const fullDetailsList = await Promise.all(items.map(item => fetchFullDetails(item.workflowId)));
+            const validDetails = fullDetailsList.filter(d => d !== null);
+
+            if (type === 'pdf') {
+                const doc = new jsPDF();
+                let isFirst = true;
+
+                for (const detail of validDetails) {
+                    if (!isFirst) doc.addPage();
+                    isFirst = false;
+
+                    // Header styling
+                    doc.setFillColor(16, 185, 129);
+                    doc.rect(0, 0, 210, 40, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(22);
+                    doc.text("Approved KYC Record", 14, 22);
+                    doc.setFontSize(10);
+                    doc.text(`ID: ${detail.workflowId}`, 14, 32);
+                    doc.text(`Generated: ${new Date().toLocaleString()}`, 150, 32);
+
+                    const d = detail.details || {};
+                    const tableData: any[] = [];
+                    const processObj = (obj: any, prefix = '') => {
+                        for (const [key, val] of Object.entries(obj)) {
+                            if (typeof val === 'object' && val !== null) {
+                                if (!Array.isArray(val)) {
+                                    processObj(val, `${prefix}${key} `);
+                                } else {
+                                    tableData.push([`${prefix}${key}`, val.join(', ')]);
+                                }
+                            } else {
+                                tableData.push([`${prefix}${key}`, val]);
+                            }
+                        }
+                    };
+                    processObj(d);
+
+                    autoTable(doc, {
+                        startY: 50,
+                        head: [['Field', 'Value']],
+                        body: tableData,
+                        theme: 'grid',
+                        styles: { fontSize: 8 },
+                        headStyles: { fillColor: [16, 185, 129] }
+                    });
+
+                    // Add Documents Section
+                    if (detail.attachments && detail.attachments.length > 0) {
+                        const docRows = detail.attachments.map((a: any) => [
+                            getDocTypeName(a.documentType),
+                            `${a.documentName || 'File'} (Size: ${(a.fileSize / 1024).toFixed(2)} KB)`
+                        ]);
+
+                        autoTable(doc, {
+                            startY: (doc as any).lastAutoTable.finalY + 10,
+                            head: [['Document Type', 'File Details']],
+                            body: docRows,
+                            theme: 'grid',
+                            headStyles: { fillColor: [100, 116, 139] },
+                            styles: { fontSize: 8 },
+                        });
+                    }
+                }
+
+                doc.save(`KYC_Export_${new Date().toISOString()}.pdf`);
+            } else {
+                // CSV
+                const allKeys = new Set<string>();
+                const flattenedList = validDetails.map(detail => {
+                    const flat: any = flattenObject(detail.details || {});
+                    flat['WorkflowID'] = detail.workflowId;
+
+                    // Add Documents Column
+                    if (detail.attachments && detail.attachments.length > 0) {
+                        flat['Documents'] = detail.attachments.map((a: any) =>
+                            `${getDocTypeName(a.documentType)}: ${a.documentName}`
+                        ).join('; ');
+                    } else {
+                        flat['Documents'] = "No Documents";
+                    }
+
+                    Object.keys(flat).forEach(k => allKeys.add(k));
+                    return flat;
+                });
+
+                const headers = Array.from(allKeys).sort();
+                // Ensure WorkflowID is first
+                if (headers.includes('WorkflowID')) {
+                    headers.splice(headers.indexOf('WorkflowID'), 1);
+                    headers.unshift('WorkflowID');
+                }
+
+                const csvRows = [];
+                csvRows.push(headers.join(','));
+
+                for (const row of flattenedList) {
+                    csvRows.push(headers.map(header => {
+                        const val = row[header] === undefined || row[header] === null ? '' : String(row[header]);
+                        return `"${val.replace(/"/g, '""')}"`;
+                    }).join(','));
+                }
+
+                const csvContent = csvRows.join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", `KYC_Export_${new Date().toISOString()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error generating download");
+        } finally {
+            setProcessingDownload(false);
+            setDownloadPopup({ isOpen: false, items: [] });
+        }
+    };
+
+    function flattenObject(ob: any): any {
+        let toReturn: any = {};
+        for (let i in ob) {
+            if (!ob.hasOwnProperty(i)) continue;
+            if ((typeof ob[i]) == 'object' && ob[i] !== null) {
+                if (Array.isArray(ob[i])) {
+                    toReturn[i] = JSON.stringify(ob[i]);
+                } else {
+                    let flatObject = flattenObject(ob[i]);
+                    for (let x in flatObject) {
+                        if (!flatObject.hasOwnProperty(x)) continue;
+                        toReturn[i + ' ' + x] = flatObject[x];
+                    }
+                }
+            } else {
+                toReturn[i] = ob[i];
+            }
+        }
+        return toReturn;
+    }
+
+    const getDocTypeName = (typeId: number) => {
+        const types: any = {
+            1: "Passport Photo",
+            2: "Citizenship Front",
+            3: "Citizenship Back",
+            4: "Signature",
+            5: "Left Thumb",
+            6: "Right Thumb",
+            10: "Location Map"
+        };
+        return types[typeId] || `Document Type ${typeId}`;
+    };
 
     useEffect(() => {
         fetchData();
@@ -94,51 +273,10 @@ const ApprovedKycListView: React.FC = () => {
         }
     };
 
-    const handleDownloadIndividual = async (workflowId: number, name: string) => {
-        try {
-            const res = await fetch(`${apiBase}/api/KycApproval/export-csv/${workflowId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `Approved_KYC_${name.replace(/\s+/g, '_')}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            }
-        } catch (err) {
-            console.error("Download error:", err);
-        }
-    };
-
-    const handleBulkDownload = async () => {
+    const handleBulkDownload = () => {
         if (selectedIds.size === 0) return;
-
-        const idsParam = Array.from(selectedIds).join(',');
-        try {
-            const res = await fetch(`${apiBase}/api/KycApproval/export-approved-csv?ids=${idsParam}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
-            if (res.ok) {
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `Approved_KYC_Bulk_${new Date().toISOString().split('T')[0]}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            }
-        } catch (err) {
-            console.error("Bulk download error:", err);
-        }
+        const items = filteredData.filter(i => selectedIds.has(i.workflowId));
+        setDownloadPopup({ isOpen: true, items });
     };
 
     return (
@@ -266,11 +404,11 @@ const ApprovedKycListView: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
-                                            <div className="flex items-center justify-center gap-2">
+                                            <div className="flex items-center justify-center gap-2 relative">
                                                 <button
-                                                    onClick={() => handleDownloadIndividual(item.workflowId, item.customerName)}
-                                                    className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all hover:scale-110 active:scale-95"
-                                                    title="Download Approved Record"
+                                                    onClick={() => setDownloadPopup({ isOpen: true, items: [item] })}
+                                                    className="p-2 text-emerald-600 hover:bg-emerald-100 rounded-xl transition-all hover:scale-110 active:scale-95 flex items-center gap-1 border border-emerald-100"
+                                                    title="Download"
                                                 >
                                                     <Download className="w-5 h-5" />
                                                 </button>
@@ -289,6 +427,49 @@ const ApprovedKycListView: React.FC = () => {
                     </table>
                 </div>
             </div>
+            {/* Download Option Modal */}
+            {downloadPopup.isOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 transform transition-all scale-100 border border-gray-100">
+                        <div className="text-center">
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Download Options</h3>
+                            <p className="text-gray-500 mb-6">
+                                Choose format to download {downloadPopup.items.length} record(s).
+                            </p>
+
+                            {processingDownload ? (
+                                <div className="flex flex-col items-center py-4">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mb-2"></div>
+                                    <span className="text-sm text-gray-400">Processing...</span>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-3">
+                                    <button
+                                        onClick={() => processDownload('pdf')}
+                                        className="flex items-center justify-center gap-3 w-full py-3 bg-rose-50 text-rose-700 font-bold rounded-xl hover:bg-rose-100 transition-colors border border-rose-100"
+                                    >
+                                        <FileText className="w-5 h-5" />
+                                        Download as PDF
+                                    </button>
+                                    <button
+                                        onClick={() => processDownload('csv')}
+                                        className="flex items-center justify-center gap-3 w-full py-3 bg-emerald-50 text-emerald-700 font-bold rounded-xl hover:bg-emerald-100 transition-colors border border-emerald-100"
+                                    >
+                                        <Database className="w-5 h-5" />
+                                        Download as CSV
+                                    </button>
+                                    <button
+                                        onClick={() => setDownloadPopup({ isOpen: false, items: [] })}
+                                        className="mt-2 text-sm text-gray-400 hover:text-gray-600"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

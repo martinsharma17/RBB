@@ -52,6 +52,9 @@ namespace AUTHApi.Entities
         [MaxLength(100)] public string? SpouseName { get; set; }
         [MaxLength(100)] public string? SonName { get; set; }
         [MaxLength(100)] public string? DaughterName { get; set; }
+        [MaxLength(100)] public string? DaughterInLawName { get; set; }
+        [MaxLength(100)] public string? FatherInLawName { get; set; }
+        [MaxLength(100)] public string? MotherInLawName { get; set; }
 
         // --- 4. Identification & Financial ---
         [MaxLength(50)] public string? CitizenshipNumber { get; set; }

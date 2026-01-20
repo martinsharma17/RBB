@@ -30,6 +30,9 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
   const [photo, setPhoto] = useState<File | null>(null);
   const [citFront, setCitFront] = useState<File | null>(null);
   const [citBack, setCitBack] = useState<File | null>(null);
+  const [leftThumb, setLeftThumb] = useState<File | null>(null);
+  const [rightThumb, setRightThumb] = useState<File | null>(null);
+  const [signature, setSignature] = useState<File | null>(null);
 
   // Flow states
   const [currentStep, setCurrentStep] = useState<'upload' | 'summary' | 'agreement' | 'success'>('upload');
@@ -70,8 +73,8 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!photo || !citFront || !citBack) {
-      setError("Please upload all required documents.");
+    if (!photo || !citFront || !citBack || !leftThumb || !rightThumb || !signature) {
+      setError("Please upload all required documents: Photo, Citizenship Front/Back, Thumbs, and Signature.");
       return;
     }
 
@@ -87,6 +90,9 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
       await uploadFile(photo, 1);
       await uploadFile(citFront, 2);
       await uploadFile(citBack, 3);
+      await uploadFile(signature, 4);
+      await uploadFile(leftThumb, 5);
+      await uploadFile(rightThumb, 6);
 
       // Merge allKycFormData with backend data
       let reviewData: any = allKycFormData
@@ -99,6 +105,11 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
               front: citFront.name,
               back: citBack.name,
             },
+            signature: signature.name,
+            thumbs: {
+              left: leftThumb.name,
+              right: rightThumb.name,
+            }
           },
         }
         : {
@@ -109,6 +120,11 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
               front: citFront.name,
               back: citBack.name,
             },
+            signature: signature.name,
+            thumbs: {
+              left: leftThumb.name,
+              right: rightThumb.name,
+            }
           },
         };
 
@@ -188,33 +204,21 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
 
   if (currentStep === 'success') {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-green-50">
-        <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-2xl text-center animate-fade-in">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-r from-emerald-500 to-green-500 flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-200">
-            <CheckCircle2 className="w-14 h-14 text-white" />
-          </div>
-          <h2 className="text-4xl font-black text-slate-800 mb-4">
-            Successfully Submitted!
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-100/50 backdrop-blur-sm">
+        <div className="bg-white rounded-xl shadow-xl p-8 max-w-sm w-full text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            Successful
           </h2>
-          <p className="text-xl text-slate-600 mb-8 leading-relaxed">
-            Your KYC application has been submitted successfully.<br />
-            Our team will review your application and contact you soon.
+          <p className="text-gray-600 mb-6">
+            Your KYC details have been submitted.
           </p>
-          <div className="space-y-3">
-            <p className="text-sm text-slate-500">
-              Application ID: <span className="font-mono font-bold text-indigo-600">#{sessionId}</span>
-            </p>
-            <p className="text-sm text-slate-500">
-              You will receive a confirmation email shortly.
-            </p>
-          </div>
           <button
-            className="mt-8 px-10 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:shadow-xl transition-all"
+            className="w-full py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
             onClick={() => {
               navigate("/login");
             }}
           >
-            Return to Login
+            Back
           </button>
         </div>
       </div>
@@ -246,6 +250,9 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
             ["Passport Size Photo", setPhoto],
             ["Citizenship Front", setCitFront],
             ["Citizenship Back", setCitBack],
+            ["Signature", setSignature],
+            ["Left Thumbprint", setLeftThumb],
+            ["Right Thumbprint", setRightThumb],
           ].map(([label, setter]: any, i) => (
             <div
               key={i}

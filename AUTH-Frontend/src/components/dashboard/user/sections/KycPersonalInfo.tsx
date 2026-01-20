@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
+import NepaliDate from 'nepali-date-converter';
 // import { adToBs } from "bikram-sambat-js";
 
 interface KycPersonalInfoProps {
@@ -25,18 +26,18 @@ interface KycPersonalInfoData {
   [key: string]: any;
 }
 
-// Dummy AD to BS converter (replace with your actual logic or API call)
+// AD to BS converter using nepali-date-converter
 function convertAdToBs(adDate: string): string {
-  // Example: just return the same date for now
-  // Replace with actual conversion logic or API call
   if (!adDate) return "";
-  // Simulate conversion: add 57 years for demo
-  const date = new Date(adDate);
-  if (isNaN(date.getTime())) return "";
-  return `${date.getFullYear() + 57}-${String(date.getMonth() + 1).padStart(
-    2,
-    "0"
-  )}-${String(date.getDate()).padStart(2, "0")}`;
+  try {
+    const date = new Date(adDate);
+    if (isNaN(date.getTime())) return "";
+    const nepaliDate = new NepaliDate(date);
+    return nepaliDate.format('YYYY-MM-DD');
+  } catch (e) {
+    console.error("Conversion error", e);
+    return "";
+  }
 }
 
 const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
@@ -65,8 +66,8 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
     firstName: initialData?.firstName || "",
     middleName: initialData?.middleName || "",
     lastName: initialData?.lastName || "",
-    dobAd: initialData?.dateOfBirthAd || initialData?.DateOfBirthAd || "",
-    dobBs: initialData?.dateOfBirthBs || initialData?.DateOfBirthBs || "",
+    dobAd: initialData?.dobAd || initialData?.dateOfBirthAd || initialData?.DateOfBirthAd || "",
+    dobBs: initialData?.dobBs || initialData?.dateOfBirthBs || initialData?.DateOfBirthBs || "",
     gender:
       initialData?.gender === 1
         ? "Male"
@@ -81,11 +82,11 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
 
     nationality:
       initialData?.isNepali || initialData?.IsNepali
-        ? "Nepali"
+        ? "Nepal"
         : initialData?.otherNationality ||
         initialData?.OtherNationality ||
         initialData?.nationality ||
-        "Nepali",
+        "Nepal",
     citizenshipNo:
       initialData?.citizenshipNo || initialData?.CitizenshipNo || "",
     citizenshipIssueDate:
@@ -110,8 +111,8 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
         firstName: initialData?.firstName || "",
         middleName: initialData?.middleName || "",
         lastName: initialData?.lastName || "",
-        dobAd: initialData?.dateOfBirthAd || initialData?.DateOfBirthAd || "",
-        dobBs: initialData?.dateOfBirthBs || initialData?.DateOfBirthBs || "",
+        dobAd: initialData?.dobAd || initialData?.dateOfBirthAd || initialData?.DateOfBirthAd || "",
+        dobBs: initialData?.dobBs || initialData?.dateOfBirthBs || initialData?.DateOfBirthBs || "",
         gender:
           initialData?.gender === 1
             ? "Male"
@@ -126,11 +127,11 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
 
         nationality:
           initialData?.isNepali || initialData?.IsNepali
-            ? "Nepali"
+            ? "Nepal"
             : initialData?.otherNationality ||
             initialData?.OtherNationality ||
             initialData?.nationality ||
-            "Nepali",
+            "Nepal",
         citizenshipNo:
           initialData?.citizenshipNo || initialData?.CitizenshipNo || "",
         citizenshipIssueDate:
@@ -194,9 +195,9 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
             : formData.gender === "Other"
               ? 3
               : null,
-      isNepali: formData.nationality?.toLowerCase() === "nepali",
+      isNepali: formData.nationality?.toLowerCase() === "nepal" || formData.nationality?.toLowerCase() === "nepali",
       otherNationality:
-        formData.nationality?.toLowerCase() === "nepali"
+        (formData.nationality?.toLowerCase() === "nepal" || formData.nationality?.toLowerCase() === "nepali")
           ? null
           : formData.nationality,
       citizenshipNo: formData.citizenshipNo || null,
@@ -334,6 +335,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
                   : ""
               }
               onChange={handleChange}
+              max={new Date().toISOString().split("T")[0]}
               className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
             />
           </div>
@@ -353,21 +355,56 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
         </div>
 
         {/* Gender below */}
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Gender
+        <div className="flex flex-col col-span-2 md:col-span-1">
+          <label className="text-sm font-semibold text-gray-700 mb-2">
+            Gender *
           </label>
-          <select
-            name="gender"
-            value={formData.gender}
-            onChange={handleChange}
-            className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
-          >
-            <option value="">Select Gender</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Other">Other</option>
-          </select>
+          <div className="flex flex-wrap gap-4">
+            {[
+              {
+                id: "Male", label: "Male", icon: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="10" cy="14" r="5" strokeWidth={2} />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 9l5-5m0 0h-4m4 0v4" />
+                  </svg>
+                )
+              },
+              {
+                id: "Female", label: "Female", icon: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <circle cx="12" cy="9" r="5" strokeWidth={2} />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14v7m-3-3h6" />
+                  </svg>
+                )
+              },
+              {
+                id: "Other", label: "Other", icon: (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197" />
+                  </svg>
+                )
+              }
+            ].map((option) => (
+              <label
+                key={option.id}
+                className={`flex items-center space-x-2 px-4 py-2 border rounded-lg cursor-pointer transition-all ${formData.gender === option.id
+                  ? "bg-indigo-50 border-indigo-600 text-indigo-700 ring-2 ring-indigo-200"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-gray-50"
+                  }`}
+              >
+                <input
+                  type="radio"
+                  name="gender"
+                  value={option.id}
+                  checked={formData.gender === option.id}
+                  onChange={handleChange}
+                  className="hidden"
+                />
+                {option.icon}
+                <span className="font-medium">{option.label}</span>
+              </label>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col">

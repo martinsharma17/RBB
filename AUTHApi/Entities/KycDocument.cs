@@ -6,7 +6,7 @@ namespace AUTHApi.Entities
 {
     public class KycDocument
     {
-        public const int MaxFileSize = 4 * 1024; // 4 KB
+        public const int MaxFileSize = 4 * 1024 * 1024; // 4 MB
         [Key] public int Id { get; set; }
 
         [Required] public int KycDetailId { get; set; }
@@ -44,7 +44,7 @@ namespace AUTHApi.Entities
             if (Data != null && Data.Length > MaxFileSize)
             {
                 yield return new ValidationResult(
-                    $"Document size must not exceed {MaxFileSize} bytes (4 KB).",
+                    $"Document size must not exceed {MaxFileSize} bytes (4 MB).",
                     new[] { nameof(Data) }
                 );
             }
@@ -52,7 +52,7 @@ namespace AUTHApi.Entities
             if (FileSize > MaxFileSize)
             {
                 yield return new ValidationResult(
-                    $"FileSize must not exceed {MaxFileSize} bytes (4 KB).",
+                    $"FileSize must not exceed {MaxFileSize} bytes (4 MB).",
                     new[] { nameof(FileSize) }
                 );
             }

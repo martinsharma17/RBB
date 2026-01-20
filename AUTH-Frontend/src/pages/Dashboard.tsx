@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Sidebar from '../components/dashboard/Sidebar';
 import { getViewComponent } from '../components/dashboard/ViewMapper';
 import AddUserModal from '../components/dashboard/AddUserModal';
@@ -9,11 +9,12 @@ import AssignRoleModal from '../components/dashboard/AssignRoleModal';
 const Dashboard = () => {
     // 1. Auth & Context
     const { token, logout, apiBase, user, permissions, fetchPermissions } = useAuth();
+    const { view } = useParams();
     const navigate = useNavigate();
 
     // 2. Local State
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [activeView, setActiveView] = useState("dashboard");
+    const activeView = view || "dashboard";
     const [menuItems, setMenuItems] = useState<any[]>([]);
 
     // Data States (shared across views via props)
@@ -206,6 +207,10 @@ const Dashboard = () => {
         }
     };
 
+    const handleViewChange = (newView: string) => {
+        navigate(`/dashboard/${newView}`);
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 flex">
             {/* Dynamic Sidebar */}
@@ -213,7 +218,7 @@ const Dashboard = () => {
                 sidebarOpen={sidebarOpen}
                 setSidebarOpen={setSidebarOpen}
                 activeView={activeView}
-                setActiveView={setActiveView}
+                setActiveView={handleViewChange}
                 menuItems={menuItems}
                 onLogout={handleLogout}
                 user={user}
@@ -234,8 +239,8 @@ const Dashboard = () => {
                         onAddUser: permissions?.create_users ? () => setShowAddModal(true) : null,
                         onDelete: handleDeleteUser,
                         onAssignRole: handleAssignRole,
-                        onViewUsers: () => setActiveView('users'),
-                        onViewCharts: () => setActiveView('charts'),
+                        onViewUsers: () => handleViewChange('users'),
+                        onViewCharts: () => handleViewChange('charts'),
 
                         permissions,
                         user,

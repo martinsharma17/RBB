@@ -43,6 +43,9 @@ namespace AUTHApi.DTOs
         public string? SpouseName { get; set; }
         public string? SonName { get; set; }
         public string? DaughterName { get; set; }
+        public string? DaughterInLawName { get; set; }
+        public string? FatherInLawName { get; set; }
+        public string? MotherInLawName { get; set; }
     }
 
     public class BankDto

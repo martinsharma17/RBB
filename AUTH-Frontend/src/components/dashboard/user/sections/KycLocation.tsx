@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import html2canvas from "html2canvas";
 import { useAuth } from "../../../../context/AuthContext";
+import { Camera, Upload, Check } from "lucide-react";
 
 interface KycLocationProps {
   sessionId: number | null;
   initialData?: any;
+  existingImageUrl?: string;
   onNext: (data: any) => void;
   onBack: () => void;
 }
@@ -63,10 +66,14 @@ const LocationPicker: React.FC<{
 const KycLocation: React.FC<KycLocationProps> = ({
   sessionId,
   initialData,
+  existingImageUrl,
   onNext,
   onBack,
 }) => {
   const { token, apiBase } = useAuth();
+  const [mapImageFile, setMapImageFile] = useState<File | null>(null);
+  const [mapImageUrl, setMapImageUrl] = useState<string | null>(existingImageUrl || null);
+  const [capturing, setCapturing] = useState(false);
 
   const [formData, setFormData] = useState<KycLocationData>({
     landmark: initialData?.landmark || "",
@@ -113,16 +120,82 @@ const KycLocation: React.FC<KycLocationProps> = ({
     setAutoFilling(false);
   };
 
+  const captureMap = async () => {
+    const mapElement = document.getElementById("kyc-map-container");
+    if (!mapElement) return;
+
+    setCapturing(true);
+    try {
+      // Small delay to ensure marker and tiles are settled
+      await new Promise((r) => setTimeout(r, 500));
+
+      const canvas = await html2canvas(mapElement, {
+        useCORS: true,
+        allowTaint: true,
+      });
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `location_map_${sessionId}.png`, {
+            type: "image/png",
+          });
+          setMapImageFile(file);
+          setMapImageUrl(URL.createObjectURL(blob));
+        }
+      }, "image/png");
+    } catch (err) {
+      console.error("Failed to capture map", err);
+      setError("Failed to capture map screenshot. Please upload manually.");
+    } finally {
+      setCapturing(false);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setMapImageFile(file);
+      setMapImageUrl(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!sessionId) {
       setError("Session not initialized");
       return;
     }
+
+    if (!mapImageFile && !initialData?.mapImageId) {
+      setError("Please capture or upload a location map image.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
     try {
+      // 1. Upload map image if new one exists
+      if (mapImageFile) {
+        const formDataUpload = new FormData();
+        formDataUpload.append("sessionId", sessionId.toString());
+        formDataUpload.append("documentType", "10"); // 10 = LocationMap
+        formDataUpload.append("file", mapImageFile);
+
+        const uploadRes = await fetch(`${apiBase}/api/KycData/upload-document`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formDataUpload,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error("Failed to upload map image");
+        }
+      }
+
+      // 2. Save location data
       const response = await fetch(`${apiBase}/api/KycData/save-location-map`, {
         method: "POST",
         headers: {
@@ -208,33 +281,66 @@ const KycLocation: React.FC<KycLocationProps> = ({
       </div>
 
       <div className="my-6">
-        <label className="text-sm font-semibold text-gray-700 mb-2 block">
-          Pin Location on Map
-        </label>
-        <MapContainer
-          {...({
-            center: defaultPosition,
-            zoom: 13,
-            style: { height: "300px", width: "100%" },
-          } as any)}
-        >
-          <TileLayer
+        <div id="kyc-map-container" className="relative group">
+          <MapContainer
             {...({
-              url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-              attribution:
-                '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+              center: defaultPosition,
+              zoom: 13,
+              style: { height: "300px", width: "100%", borderRadius: "12px" },
             } as any)}
-          />
-          <LocationPicker setCoords={setCoords} />
-          {formData.latitude && formData.longitude ? (
-            <Marker
-              position={[
-                parseFloat(formData.latitude),
-                parseFloat(formData.longitude),
-              ]}
+          >
+            <TileLayer
+              {...({
+                url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                attribution:
+                  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+              } as any)}
             />
-          ) : null}
-        </MapContainer>
+            <LocationPicker setCoords={setCoords} />
+            {formData.latitude && formData.longitude ? (
+              <Marker
+                position={[
+                  parseFloat(formData.latitude),
+                  parseFloat(formData.longitude),
+                ]}
+              />
+            ) : null}
+          </MapContainer>
+        </div>
+
+        <div className="mt-4 flex flex-col sm:flex-row gap-4">
+          <button
+            type="button"
+            onClick={captureMap}
+            disabled={capturing || !formData.latitude}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg font-bold hover:bg-indigo-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-indigo-200"
+          >
+            {capturing ? (
+              <div className="w-4 h-4 border-2 border-indigo-700 border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Camera className="w-4 h-4" />
+            )}
+            {capturing ? "Capturing..." : "Capture Map Screenshot"}
+          </button>
+
+          <label className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 rounded-lg font-bold hover:bg-gray-50 transition-all cursor-pointer border border-gray-200">
+            <Upload className="w-4 h-4" />
+            Upload Map Manually
+            <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
+          </label>
+        </div>
+
+        {mapImageUrl && (
+          <div className="mt-4 p-4 bg-emerald-50 rounded-xl border border-emerald-100 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm mb-3">
+              <Check className="w-4 h-4" />
+              Location Map Captured / Uploaded Successfully
+            </div>
+            <img src={mapImageUrl} alt="Captured Map" className="w-full max-w-md h-auto rounded-lg shadow-sm border border-emerald-200" />
+            <p className="text-[10px] text-emerald-600 mt-2 italic font-medium">This map will be used in your bank recruitment forms.</p>
+          </div>
+        )}
+
         <div className="mt-2 text-xs text-gray-600">
           Click on the map to set your location.
           {autoFilling && (
