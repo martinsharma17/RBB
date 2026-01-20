@@ -43,7 +43,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         email: email,
-                        forceNew: false // Try to find existing first
+                        ForceNew: false // Try to find existing first
                     })
                 });
 
@@ -161,7 +161,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: email,
-                    forceNew: true
+                    ForceNew: true
                 })
             });
 
