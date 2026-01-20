@@ -52,10 +52,9 @@ namespace AUTHApi.Controllers
                     .ToListAsync();
 
                 // Fetch all granted policies for these roles
-                grantedPolicyIds = await _context.RolePolicies
-                    .Where(rp => roleIds.Contains(rp.RoleId) && rp.IsGranted)
-                    .Select(rp => rp.PolicyId)
-                    .ToHashSetAsync();
+                grantedPolicyIds = _context.RolePolicies
+                     .Where(rp => roleIds.Contains(rp.RoleId) && rp.IsGranted)
+                     .Select(rp => rp.PolicyId).ToHashSet();
             }
 
             // 3. Fetch All Menu Items (Ordered)

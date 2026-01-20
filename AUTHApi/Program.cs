@@ -136,9 +136,9 @@ internal class Program
                     RoleClaimType = ClaimTypes.Role,
                     NameClaimType = ClaimTypes.Name
                 };
-            })
+            });
             // --- External Auth (Google) Configuration ---
-            .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme) // Cookies needed for Google sign-in flow
+            /*.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme) // Cookies needed for Google sign-in flow
             .AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
             {
                 // Get Google credentials from configuration (appsettings.json or User Secrets)
@@ -155,7 +155,7 @@ internal class Program
                 options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
                 options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
                 options.ClaimActions.MapJsonKey("picture", "picture");
-            });
+            });*/
 
         // --- Authorization Policies ---
         // We use a dynamic PermissionPolicyProvider for granular permission-based logic.

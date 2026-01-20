@@ -50,15 +50,30 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
           const sessionResponse = await fetch(`${apiBase}/api/Kyc/my-session`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-
           if (sessionResponse.ok) {
             const sessionRes = await sessionResponse.json();
+
             if (sessionRes.success && sessionRes.data) {
               const sess = sessionRes.data;
+              console.log("Session Data:", sess);
+
+              // 🚫 COMPLETED KYC → START FRESH
+              if (Number(sess.status) === 3) {
+                setSessionId(null);
+                setKycData(null);
+                setCurrentStep(1);
+                setIsEmailVerified(true);
+
+                setLoading(false);
+                return; // ⛔ STOP EXECUTION HERE
+              }
+
+              // ✅ Resume only active KYC
               currentSessionId = sess.sessionId;
               setSessionId(sess.sessionId);
               setIsEmailVerified(sess.isEmailVerified);
               emailVerified = sess.isEmailVerified;
+
               const stepNum = Number(sess.currentStep);
               setCurrentStep(stepNum > 0 ? stepNum : 1);
             }
@@ -74,7 +89,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             `${apiBase}/api/KycData/all-details/${currentSessionId}`,
             {
               headers,
-            }
+            },
           );
 
           if (detailsResponse.ok) {
@@ -129,7 +144,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
 
     // Brand Header
     doc.setFillColor(79, 70, 229); // Indigo-600
-    doc.rect(0, 0, 210, 40, 'F');
+    doc.rect(0, 0, 210, 40, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
@@ -146,19 +161,32 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     const addSection = (title: string, data: any[][]) => {
       autoTable(doc, {
         startY: currentY,
-        head: [[{ content: title, colSpan: 2, styles: { halign: 'left', fillColor: [243, 244, 246], textColor: [17, 24, 39], fontStyle: 'bold' } }]],
+        head: [
+          [
+            {
+              content: title,
+              colSpan: 2,
+              styles: {
+                halign: "left",
+                fillColor: [243, 244, 246],
+                textColor: [17, 24, 39],
+                fontStyle: "bold",
+              },
+            },
+          ],
+        ],
         body: data,
-        theme: 'grid',
+        theme: "grid",
         headStyles: { fillColor: [255, 255, 255] },
         columnStyles: {
-          0: { cellWidth: 80, fontStyle: 'bold', textColor: [107, 114, 128] }, // Label column
-          1: { textColor: [31, 41, 55] } // Value column
+          0: { cellWidth: 80, fontStyle: "bold", textColor: [107, 114, 128] }, // Label column
+          1: { textColor: [31, 41, 55] }, // Value column
         },
         styles: { fontSize: 9, cellPadding: 4 },
         margin: { left: 14, right: 14 },
         didDrawPage: (data) => {
           // Optional: Header/Footer on new pages
-        }
+        },
       });
       // @ts-ignore
       currentY = doc.lastAutoTable.finalY + 15;
@@ -166,51 +194,71 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
 
     // 1. Personal Information
     const personalInfo = [
-      ['Full Name', `${d.firstName || d.personalInfo?.firstName || ''} ${d.middleName || d.personalInfo?.middleName || ''} ${d.lastName || d.personalInfo?.lastName || ''}`],
-      ['Date of Birth', new Date(d.dateOfBirth || d.personalInfo?.dateOfBirthAd).toLocaleDateString()],
-      ['Gender', d.gender || d.personalInfo?.gender || '-'],
-      ['Marital Status', d.maritalStatus || d.personalInfo?.maritalStatus || '-'],
-      ['Nationality', d.nationality || d.personalInfo?.nationality || '-'],
-      ['Citizenship No', d.citizenshipNumber || d.personalInfo?.citizenshipNo || '-'],
-      ['PAN Number', d.panNumber || d.personalInfo?.panNo || '-'],
-      ['Mobile Number', d.mobileNumber || '-']
+      [
+        "Full Name",
+        `${d.firstName || d.personalInfo?.firstName || ""} ${d.middleName || d.personalInfo?.middleName || ""} ${d.lastName || d.personalInfo?.lastName || ""}`,
+      ],
+      [
+        "Date of Birth",
+        new Date(
+          d.dateOfBirth || d.personalInfo?.dateOfBirthAd,
+        ).toLocaleDateString(),
+      ],
+      ["Gender", d.gender || d.personalInfo?.gender || "-"],
+      [
+        "Marital Status",
+        d.maritalStatus || d.personalInfo?.maritalStatus || "-",
+      ],
+      ["Nationality", d.nationality || d.personalInfo?.nationality || "-"],
+      [
+        "Citizenship No",
+        d.citizenshipNumber || d.personalInfo?.citizenshipNo || "-",
+      ],
+      ["PAN Number", d.panNumber || d.personalInfo?.panNo || "-"],
+      ["Mobile Number", d.mobileNumber || "-"],
     ];
     addSection("Personal Information", personalInfo);
 
     // 2. Addresses
     const addressInfo = [
-      ['Permanent Address', `${d.permanentAddress?.tole || ''}, ${d.permanentAddress?.municipalityName || ''}-${d.permanentAddress?.wardNo || ''}, ${d.permanentAddress?.district || ''}, ${d.permanentAddress?.province || ''}`],
-      ['Current Address', `${d.currentAddress?.tole || ''}, ${d.currentAddress?.municipalityName || ''}-${d.currentAddress?.wardNo || ''}, ${d.currentAddress?.district || ''}, ${d.currentAddress?.province || ''}`]
+      [
+        "Permanent Address",
+        `${d.permanentAddress?.tole || ""}, ${d.permanentAddress?.municipalityName || ""}-${d.permanentAddress?.wardNo || ""}, ${d.permanentAddress?.district || ""}, ${d.permanentAddress?.province || ""}`,
+      ],
+      [
+        "Current Address",
+        `${d.currentAddress?.tole || ""}, ${d.currentAddress?.municipalityName || ""}-${d.currentAddress?.wardNo || ""}, ${d.currentAddress?.district || ""}, ${d.currentAddress?.province || ""}`,
+      ],
     ];
     addSection("Address Details", addressInfo);
 
     // 3. Family
     const familyInfo = [
-      ['Grandfather', d.family?.grandFatherName || '-'],
-      ['Father', d.family?.fatherName || '-'],
-      ['Mother', d.family?.motherName || '-'],
-      ['Spouse', d.family?.spouseName || '-']
+      ["Grandfather", d.family?.grandFatherName || "-"],
+      ["Father", d.family?.fatherName || "-"],
+      ["Mother", d.family?.motherName || "-"],
+      ["Spouse", d.family?.spouseName || "-"],
     ];
     addSection("Family Information", familyInfo);
 
     // 4. Work & Financials
     const financialInfo = [
-      ['Occupation', d.occupation?.occupationType || '-'],
-      ['Organization', d.occupation?.organizationName || '-'],
-      ['Annual Income', d.occupation?.annualIncomeRange || '-'],
-      ['Bank', d.bank?.bankName || '-'],
-      ['Account No', d.bank?.bankAccountNo || '-'],
-      ['Source of Funds', d.sourceOfFunds || '-'],
-      ['Major Income Source', d.majorSourceOfIncome || '-']
+      ["Occupation", d.occupation?.occupationType || "-"],
+      ["Organization", d.occupation?.organizationName || "-"],
+      ["Annual Income", d.occupation?.annualIncomeRange || "-"],
+      ["Bank", d.bank?.bankName || "-"],
+      ["Account No", d.bank?.bankAccountNo || "-"],
+      ["Source of Funds", d.sourceOfFunds || "-"],
+      ["Major Income Source", d.majorSourceOfIncome || "-"],
     ];
     addSection("Work & Financial Details", financialInfo);
 
     // 5. Declarations
     const declarations = [
-      ['Politically Exposed (PEP)', d.isPep ? 'Yes' : 'No'],
-      ['Beneficial Owner', d.hasBeneficialOwner ? 'Yes' : 'No'],
-      ['Criminal Record', d.hasCriminalRecord ? 'Yes' : 'No'],
-      ['Terms Agreed', 'Yes']
+      ["Politically Exposed (PEP)", d.isPep ? "Yes" : "No"],
+      ["Beneficial Owner", d.hasBeneficialOwner ? "Yes" : "No"],
+      ["Criminal Record", d.hasCriminalRecord ? "Yes" : "No"],
+      ["Terms Agreed", "Yes"],
     ];
     addSection("Declarations & Compliance", declarations);
 
@@ -234,23 +282,27 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
   ];
 
   // Filter steps for display based on age
-  const visibleSteps = allStepsConfig.filter(s => {
+  const visibleSteps = allStepsConfig.filter((s) => {
     if (s.id === 8 && isMinorAge >= 18) return false;
     return true;
   });
 
   const totalVisibleSteps = visibleSteps.length;
-  const currentStepIndex = visibleSteps.findIndex(s => s.id === Number(currentStep));
+  const currentStepIndex = visibleSteps.findIndex(
+    (s) => s.id === Number(currentStep),
+  );
 
   // Auto-sync currentStep if it points to a hidden section (e.g., Step 8 for adults)
   useEffect(() => {
     if (!loading && visibleSteps.length > 0) {
       const stepId = Number(currentStep);
-      const isVisible = visibleSteps.some(s => s.id === stepId);
+      const isVisible = visibleSteps.some((s) => s.id === stepId);
 
       if (!isVisible && stepId !== 14) {
         // If we are on a hidden step, find the next available visible step
-        const nextAvailable = visibleSteps.find(s => s.id > stepId) || visibleSteps[visibleSteps.length - 1];
+        const nextAvailable =
+          visibleSteps.find((s) => s.id > stepId) ||
+          visibleSteps[visibleSteps.length - 1];
         if (nextAvailable) {
           setCurrentStep(nextAvailable.id);
         }
@@ -276,7 +328,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     if (currentStep === 7 && isMinorAge >= 18) {
       setCurrentStep(9); // Skip to AML
     } else {
-      const idx = visibleSteps.findIndex(s => s.id === currentStep);
+      const idx = visibleSteps.findIndex((s) => s.id === currentStep);
       if (idx !== -1 && idx < totalVisibleSteps - 1) {
         const nextStep = visibleSteps[idx + 1];
         if (nextStep) setCurrentStep(nextStep.id);
@@ -291,7 +343,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     if (currentStep === 9 && isMinorAge >= 18) {
       setCurrentStep(7); // Skip back to Transaction
     } else {
-      const idx = visibleSteps.findIndex(s => s.id === currentStep);
+      const idx = visibleSteps.findIndex((s) => s.id === currentStep);
       if (idx > 0) {
         const prevVisible = visibleSteps[idx - 1];
         if (prevVisible) setCurrentStep(prevVisible.id);
@@ -315,7 +367,8 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
           Know Your Customer (KYC)
         </h1>
         <p className="text-gray-500">
-          Please complete all {totalVisibleSteps} sections to verify your identity.
+          Please complete all {totalVisibleSteps} sections to verify your
+          identity.
         </p>
 
         <div className="mt-6 flex items-center justify-between relative">
@@ -323,7 +376,10 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
           <div
             className="absolute top-1/2 left-0 h-1 bg-indigo-600 -z-10 -translate-y-1/2 transition-all duration-500 ease-in-out"
             style={{
-              width: totalVisibleSteps > 1 ? `${(Math.max(0, currentStepIndex) / (totalVisibleSteps - 1)) * 100}%` : "0%",
+              width:
+                totalVisibleSteps > 1
+                  ? `${(Math.max(0, currentStepIndex) / (totalVisibleSteps - 1)) * 100}%`
+                  : "0%",
             }}
           ></div>
 
@@ -339,12 +395,13 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   disabled={!isClickable}
                   onClick={() => isClickable && setCurrentStep(step.id)}
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 focus:outline-none
-                        ${isCompleted
-                      ? "bg-indigo-600 text-white cursor-pointer hover:scale-110"
-                      : isActive
-                        ? "bg-white border-2 border-indigo-600 text-indigo-600 scale-110 shadow-md cursor-pointer"
-                        : "bg-gray-200 text-gray-400 cursor-default"
-                    }
+                        ${
+                          isCompleted
+                            ? "bg-indigo-600 text-white cursor-pointer hover:scale-110"
+                            : isActive
+                              ? "bg-white border-2 border-indigo-600 text-indigo-600 scale-110 shadow-md cursor-pointer"
+                              : "bg-gray-200 text-gray-400 cursor-default"
+                        }
                     `}
                   style={{ pointerEvents: isClickable ? "auto" : "none" }}
                   aria-label={`Go to ${step.label}`}
@@ -352,8 +409,9 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   {isCompleted ? "✓" : index + 1}
                 </button>
                 <span
-                  className={`text-xs mt-2 font-medium hidden md:block ${isActive ? "text-indigo-600" : "text-gray-400"
-                    }`}
+                  className={`text-xs mt-2 font-medium hidden md:block ${
+                    isActive ? "text-indigo-600" : "text-gray-400"
+                  }`}
                 >
                   {step.label}
                 </span>
@@ -458,7 +516,10 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
               <KycLocation
                 sessionId={sessionId}
                 initialData={kycData?.locationMap}
-                existingImageUrl={kycData?.attachments?.find((a: any) => a.documentType === 10)?.filePath}
+                existingImageUrl={
+                  kycData?.attachments?.find((a: any) => a.documentType === 10)
+                    ?.filePath
+                }
                 onNext={handleNext}
                 onBack={handlePrev}
               />
@@ -516,12 +577,12 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   Thank you for completing your KYC. Please review your details
                   and agree to the terms before final submission.
                 </p>
-                <button
+                {/* <button
                   onClick={() => setShowFinalModal(true)}
                   className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-lg hover:bg-indigo-700 transition-all"
                 >
                   Final Submit
-                </button>
+                </button> */}
                 <FinalReviewModal
                   open={showFinalModal}
                   onClose={() => setShowFinalModal(false)}
@@ -543,7 +604,19 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-100/50 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center border border-gray-100 transform transition-all scale-100">
             <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce-in">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+              <svg
+                className="w-8 h-8"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               Submission Successful
