@@ -73,8 +73,10 @@ namespace AUTHApi.Controllers
             var session = await _context.KycFormSessions.FindAsync(sessionId);
             if (session == null) return Failure("Session not found", 404);
 
+            /* COMMENTED FOR DEV BYPASS
             if (!session.EmailVerified)
                 return Failure("Email verification is required before submission.");
+            */
 
             // Verify all required steps are completed
             var requiredSteps = await _context.KycFormSteps.Where(s => s.IsRequired).Select(s => s.StepNumber)

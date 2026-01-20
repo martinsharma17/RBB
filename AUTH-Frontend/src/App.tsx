@@ -113,7 +113,7 @@ function AppContent() {
             {/* Default Route: Redirect root URL to dashboard (which handles auth check) */}
             <Route
               path="/"
-              element={<Navigate to={token ? "/dashboard" : "/login"} />}
+              element={<Navigate to={token ? "/dashboard" : "/login"} replace />}
             />
           </Routes>
         </main>

@@ -33,6 +33,7 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
         case 'kyc':
             return <KycFormMaster {...props} />;
 
+        case 'home':
         case 'dashboard':
             return <AdminDashboardView {...props} />;
 

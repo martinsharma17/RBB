@@ -34,6 +34,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
   const [isEmailVerified, setIsEmailVerified] = useState(initialEmailVerified);
   const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [hasManualReset, setHasManualReset] = useState(false);
 
   // Sync state with props when they change (e.g. starting a new session)
   useEffect(() => {
@@ -50,7 +51,14 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
         let emailVerified = isEmailVerified;
 
         // Step 1: Get/Create Session Metadata if not already provided (e.g. for logged in users)
-        if (token && !currentSessionId) {
+        // Skip if we manually reset the session (prevent auto-loading the just-submitted session)
+        // ALSO SKIP if user is a Maker/Checker/Admin, because they should NOT have a session for themselves.
+        // They must search/verify client emails explicitly.
+        const isStaff = user?.roles?.some((r: string) =>
+          ['Checker', 'Maker', 'Superadmin', 'Admin'].includes(r)
+        );
+
+        if (token && !currentSessionId && !hasManualReset && !isStaff) {
           const sessionResponse = await fetch(`${apiBase}/api/Kyc/my-session`, {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -109,7 +117,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     } else {
       setLoading(false);
     }
-  }, [token, apiBase, sessionId, isEmailVerified]);
+  }, [token, apiBase, sessionId, isEmailVerified, hasManualReset]);
 
   // Calculate age helper
   const calculateAge = (dobAd: string) => {
@@ -401,10 +409,12 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             apiBase={apiBase}
             onVerified={(newSessionId) => {
               if (newSessionId) {
+                // Ensure complete state reset for new session
                 setLoading(true);
                 setKycData(null);
                 setCurrentStep(1);
                 setSessionId(newSessionId);
+                setHasManualReset(false); // Allow normal loading for the new session
               }
               setIsEmailVerified(true);
             }}
@@ -539,9 +549,20 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             </p>
             <button
               className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg hover:shadow-indigo-200 active:scale-95"
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                // Return to initial state (Verification Screen)
+                localStorage.removeItem("kyc_session_id");
+                localStorage.removeItem("kyc_email_verified");
+
+                setHasManualReset(true);
+                setSessionId(null);
+                setIsEmailVerified(false);
+                setKycData(null);
+                setCurrentStep(1);
+                setShowSuccess(false);
+              }}
             >
-              Back to Home
+              Start New Application
             </button>
           </div>
         </div>

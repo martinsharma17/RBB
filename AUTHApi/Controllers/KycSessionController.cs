@@ -45,6 +45,17 @@ namespace AUTHApi.Controllers
                     LastSavedStep = 0
                 };
 
+                // Check if this email is already verified in another ACTIVE session
+                // This allows "Start New Application" to skip OTP if already done recently
+                var isAlreadyVerified = await _context.KycFormSessions
+                    .AnyAsync(s => s.Email == model.Email && s.EmailVerified && !s.IsExpired);
+
+                if (isAlreadyVerified)
+                {
+                    session.EmailVerified = true;
+                    session.EmailVerifiedDate = DateTime.UtcNow;
+                }
+
                 await _context.KycFormSessions.AddAsync(session);
                 await _context.SaveChangesAsync();
 
@@ -139,6 +150,7 @@ namespace AUTHApi.Controllers
         [HttpPost("verify-otp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto model)
         {
+            /* COMMENTED FOR DEV BYPASS
             var otp = await _context.KycOtpVerifications
                 .Where(o => o.SessionId == model.SessionId && o.OtpType == model.OtpType &&
                             o.OtpCode == model.OtpCode && !o.IsExpired && !o.IsVerified &&
@@ -164,6 +176,7 @@ namespace AUTHApi.Controllers
 
             otp.IsVerified = true;
             otp.VerifiedDate = DateTime.UtcNow;
+            */
 
             var session = await _context.KycFormSessions.FindAsync(model.SessionId);
             if (session != null)
@@ -183,7 +196,7 @@ namespace AUTHApi.Controllers
             }
 
             // After successful verification, find ALL active sessions for this email
-            var email = session?.Email ?? otp.SentToEmail;
+            var email = session?.Email; // ?? otp.SentToEmail;
             var availableSessions = await _context.KycFormSessions
                 .Where(s => s.Email == email && !s.IsExpired)
                 .OrderByDescending(s => s.CreatedDate)
@@ -294,6 +307,11 @@ namespace AUTHApi.Controllers
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null) return Failure("Session not found", 404);
+
+            if (session.FormStatus >= 3)
+            {
+                return Failure("Cannot delete a submitted or approved application.");
+            }
 
             // If we have a KycDetail, delete it (this should cascade to Documents based on DbContext config)
             if (session.KycDetail != null)

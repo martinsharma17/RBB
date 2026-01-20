@@ -363,14 +363,12 @@ namespace AUTHApi.Services
 
                 if (lastSubmitted != null)
                 {
-                    var timeSinceSubmission =
-                        DateTime.UtcNow - (lastSubmitted.ModifiedDate ?? lastSubmitted.CreatedDate);
+                    // var timeSinceSubmission = DateTime.UtcNow - (lastSubmitted.ModifiedDate ?? lastSubmitted.CreatedDate);
 
-                    // If submitted less than 5 minutes ago, we return the submitted one (lock-out period)
-                    if (timeSinceSubmission.TotalMinutes < 5)
-                    {
-                        return lastSubmitted;
-                    }
+                    // REMOVED: 5-minute lockout check.
+                    // We want to allow Makers/Checkers to start a new session immediately after submission.
+                    // if (timeSinceSubmission.TotalMinutes < 5) { return lastSubmitted; }
+
                     // Else, we fall through and create a NEW session below (allowing new KYC after 5 mins)
                 }
 
