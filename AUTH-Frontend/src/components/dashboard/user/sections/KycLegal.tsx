@@ -6,6 +6,7 @@ interface KycLegalProps {
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
+    onSaveAndExit?: () => void;
 }
 
 interface KycLegalData {
@@ -17,7 +18,7 @@ interface KycLegalData {
     [key: string]: any;
 }
 
-const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onBack }) => {
+const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
     const { token, apiBase } = useAuth();
 
     const [formData, setFormData] = useState<KycLegalData>({
@@ -43,8 +44,10 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const [isExiting, setIsExiting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+        if (e) e.preventDefault();
         if (!formData.isAgreed) {
             setError("You must agree to the declaration.");
             return;
@@ -57,6 +60,7 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
 
         setSaving(true);
         setError(null);
+        if (shouldExit) setIsExiting(true);
 
         try {
             const response = await fetch(`${apiBase}/api/KycData/save-declarations`, {
@@ -74,19 +78,25 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
             });
 
             if (response.ok) {
-                onNext({ legal: formData });
+                if (shouldExit && onSaveAndExit) {
+                    onSaveAndExit();
+                } else {
+                    onNext({ legal: formData });
+                }
             } else {
                 setError("Failed to save legal section");
+                setIsExiting(false);
             }
         } catch (err) {
             setError("Network error while saving");
+            setIsExiting(false);
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-xl font-bold text-gray-800">Section 7: Declarations</h2>
                 <p className="text-sm text-gray-500">Legal confirmation of the provided information.</p>
@@ -158,6 +168,7 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
                 >
                     {saving ? 'Saving...' : 'Agree & Next'}
                 </button>
+
             </div>
         </form>
     );

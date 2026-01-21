@@ -11,6 +11,7 @@ export interface KycAttachmentProps {
   onComplete?: (mergedKycData: any) => void;
   onSuccess?: (kycData: any) => void;
   allKycFormData?: any;
+  onSaveAndExit?: () => void;
 }
 
 const KycAttachment: React.FC<KycAttachmentProps> = ({
@@ -19,6 +20,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
   onSuccess,
   onComplete,
   allKycFormData,
+  onSaveAndExit,
 }) => {
   const { token, apiBase } = useAuth();
   const navigate = useNavigate();
@@ -70,8 +72,10 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [isExiting, setIsExiting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent | null, shouldExit: boolean = false) => {
+    if (e) e.preventDefault();
 
     if (!photo || !citFront || !citBack || !leftThumb || !rightThumb || !signature) {
       setError("Please upload all required documents: Photo, Citizenship Front/Back, Thumbs, and Signature.");
@@ -85,6 +89,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
 
     setUploading(true);
     setError(null);
+    if (shouldExit) setIsExiting(true);
 
     try {
       await uploadFile(photo, 1);
@@ -141,10 +146,15 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
         }
       } catch { }
 
-      setKycReviewData(reviewData);
-      setCurrentStep('summary'); // Move to summary view
+      if (shouldExit && onSaveAndExit) {
+        onSaveAndExit();
+      } else {
+        setKycReviewData(reviewData);
+        setCurrentStep('summary'); // Move to summary view
+      }
     } catch (err: any) {
       setError(err.message || "Upload failed");
+      setIsExiting(false);
     } finally {
       setUploading(false);
     }
@@ -228,7 +238,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
   // Default: Upload step
   return (
     <>
-      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+      <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6" noValidate>
         <div className="border-b pb-4">
           <h2 className="text-xl font-bold text-gray-800">
             Section 13: Attachments & Finish
@@ -286,6 +296,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
           >
             {uploading ? "Uploading..." : "Final Submit"}
           </button>
+
         </div>
       </form>
     </>

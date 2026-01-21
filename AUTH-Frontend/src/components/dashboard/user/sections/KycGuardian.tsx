@@ -6,6 +6,7 @@ interface KycGuardianProps {
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
+    onSaveAndExit?: () => void;
 }
 
 interface KycGuardianData {
@@ -20,7 +21,7 @@ interface KycGuardianData {
     [key: string]: any;
 }
 
-const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNext, onBack }) => {
+const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
     const { token, apiBase } = useAuth();
 
     const [formData, setFormData] = useState<KycGuardianData>({
@@ -57,8 +58,10 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const [isExiting, setIsExiting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+        if (e) e.preventDefault();
 
         // Guardians are often optional for adults. Check if info is provided.
         if (!formData.name && !formData.relationship) {
@@ -73,6 +76,7 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
 
         setSaving(true);
         setError(null);
+        if (shouldExit) setIsExiting(true);
 
         try {
             const response = await fetch(`${apiBase}/api/KycData/save-guardian`, {
@@ -93,19 +97,25 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
             });
 
             if (response.ok) {
-                onNext({ guardian: formData });
+                if (shouldExit && onSaveAndExit) {
+                    onSaveAndExit();
+                } else {
+                    onNext({ guardian: formData });
+                }
             } else {
                 setError("Failed to save guardian section");
+                setIsExiting(false);
             }
         } catch (err) {
             setError("Network error while saving");
+            setIsExiting(false);
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-xl font-bold text-gray-800">Section 6: Guardian Details (For Minors)</h2>
                 <p className="text-sm text-gray-500">Provide details if the applicant is a minor or requires a guardian.</p>
@@ -204,6 +214,7 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                     >
                         {saving ? 'Saving...' : 'Save & Next'}
                     </button>
+
                 </div>
             </div>
         </form>

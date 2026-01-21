@@ -52,11 +52,11 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
 
         // Step 1: Get/Create Session Metadata if not already provided (e.g. for logged in users)
         // Skip if we manually reset the session (prevent auto-loading the just-submitted session)
-        // ALSO SKIP if user is a Maker/Checker/Admin, because they should NOT have a session for themselves.
-        // They must search/verify client emails explicitly.
-        const isStaff = user?.roles?.some((r: string) =>
-          ['Checker', 'Maker', 'Superadmin', 'Admin'].includes(r)
-        );
+        // 
+        // IMPORTANT: Staff users should NOT auto-load their own session
+        // Staff members need to enter a CUSTOMER's email to access that customer's KYC
+        // Only non-staff (customers) should have their own session auto-loaded
+        const isStaff = !!token && !!user; // Any authenticated user is staff
 
         if (token && !currentSessionId && !hasManualReset && !isStaff) {
           const sessionResponse = await fetch(`${apiBase}/api/Kyc/my-session`, {
@@ -341,6 +341,19 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     }
   };
 
+  const handleSaveAndExit = () => {
+    // Return to initial state (Verification Screen)
+    localStorage.removeItem("kyc_session_id");
+    localStorage.removeItem("kyc_email_verified");
+
+    setHasManualReset(true);
+    setSessionId(null);
+    setIsEmailVerified(false);
+    setKycData(null);
+    setCurrentStep(1);
+    setShowSuccess(false);
+  };
+
   const personalInfo = kycData?.personalInfo || {};
   const familyInitialData = kycData?.family || {};
 
@@ -348,12 +361,28 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-lg border border-gray-100">
       {/* Header / Progress Bar */}
       <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
-          Know Your Customer (KYC)
-        </h1>
-        <p className="text-gray-500">
-          Please complete all {totalVisibleSteps} sections to verify your identity.
-        </p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
+              Know Your Customer (KYC)
+            </h1>
+
+            <p className="text-gray-500">
+              Please complete all {totalVisibleSteps} sections to verify your identity.
+            </p>
+          </div>
+          {isEmailVerified && (
+            <button
+              onClick={handleSaveAndExit}
+              className="px-4 py-2 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-sm font-bold hover:bg-amber-100 transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Save & Exit
+            </button>
+          )}
+        </div>
 
         <div className="mt-6 flex items-center justify-between relative">
           <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-200 -z-10 -translate-y-1/2"></div>
@@ -426,6 +455,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 sessionId={sessionId}
                 initialData={kycData?.personalInfo}
                 onNext={handleNext}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 2 && (
@@ -434,6 +464,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 initialData={kycData}
                 onNext={handleNext}
                 onBack={handlePrev}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 3 && (
@@ -443,6 +474,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 onNext={handleNext}
                 onBack={handlePrev}
                 maritalStatus={personalInfo.maritalStatus}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 4 && (
@@ -451,6 +483,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 initialData={kycData?.bank}
                 onNext={handleNext}
                 onBack={handlePrev}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 5 && (
@@ -459,6 +492,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 initialData={kycData?.occupation}
                 onNext={handleNext}
                 onBack={handlePrev}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 6 && (
@@ -467,6 +501,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 initialData={kycData?.financialDetails}
                 onNext={handleNext}
                 onBack={handlePrev}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 7 && (
@@ -475,6 +510,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 initialData={kycData?.transactionInfo}
                 onNext={handleNext}
                 onBack={handlePrev}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 8 && (
@@ -483,6 +519,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 initialData={kycData?.guardian}
                 onNext={handleNext}
                 onBack={handlePrev}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 9 && (
@@ -491,6 +528,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 initialData={kycData?.amlCompliance}
                 onNext={handleNext}
                 onBack={handlePrev}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 10 && (
@@ -500,6 +538,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 existingImageUrl={kycData?.attachments?.find((a: any) => a.documentType === 10)?.filePath}
                 onNext={handleNext}
                 onBack={handlePrev}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 11 && (
@@ -508,6 +547,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 initialData={kycData?.declarations}
                 onNext={handleNext}
                 onBack={handlePrev}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 12 && (
@@ -516,6 +556,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 initialData={kycData?.agreement}
                 onNext={handleNext}
                 onBack={handlePrev}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
             {Number(currentStep) === 13 && (
@@ -529,6 +570,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                   setCurrentStep(99);
                 }}
                 allKycFormData={kycData}
+                onSaveAndExit={handleSaveAndExit}
               />
             )}
           </>

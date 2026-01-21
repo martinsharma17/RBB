@@ -12,6 +12,7 @@ interface KycAddressProps {
   initialData?: any;
   onNext: (data: any) => void;
   onBack: () => void;
+  onSaveAndExit?: () => void;
 }
 
 const KycAddress: React.FC<KycAddressProps> = ({
@@ -19,6 +20,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
   initialData,
   onNext,
   onBack,
+  onSaveAndExit,
 }) => {
   const { token, apiBase } = useAuth();
 
@@ -225,14 +227,17 @@ const KycAddress: React.FC<KycAddressProps> = ({
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const [isExiting, setIsExiting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+    if (e) e.preventDefault();
     if (!sessionId) {
       setError("KYC session not initialized.");
       return;
     }
     setSaving(true);
     setError(null);
+    if (shouldExit) setIsExiting(true);
 
     try {
       const headers: any = { "Content-Type": "application/json" };
@@ -299,16 +304,21 @@ const KycAddress: React.FC<KycAddressProps> = ({
         }),
       });
 
-      onNext({ address: formData });
+      if (shouldExit && onSaveAndExit) {
+        onSaveAndExit();
+      } else {
+        onNext({ address: formData });
+      }
     } catch (err: any) {
       setError(err.message || "Error saving address information");
+      setIsExiting(false);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+    <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6" noValidate>
       <div className="border-b border-gray-200 pb-4">
         <h2 className="text-xl font-bold text-gray-800">
           Section 2: Address Information
@@ -594,6 +604,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>
+
       </div>
     </form>
   );

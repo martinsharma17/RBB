@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../../../context/AuthContext';
 
 /**
  * KycVerification - Handles the initial Email/OTP verification 
  * that must be completed before the KYC form is visible.
+ * 
+ * AUTHENTICATION-BASED FLOW:
+ * - Authenticated users (staff with valid token): Skip OTP verification
+ * - Unauthenticated users (customers): Must verify OTP before accessing form
+ * 
+ * This approach automatically works for any role (Maker, Checker, Admin, etc.)
+ * without needing to maintain a hardcoded list of role names.
  */
 interface KycSessionBrief {
     sessionId: number;
@@ -20,6 +28,13 @@ interface KycVerificationProps {
 }
 
 const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, sessionId, onVerified, apiBase }) => {
+    // Get authentication context to determine if user is staff or customer
+    const { token, user } = useAuth();
+
+    // Check if user is authenticated (any logged-in user is considered staff)
+    // This automatically works for all roles: Maker, Checker, Admin, Superadmin, and any future roles
+    const isStaff = !!token && !!user;
+
     const [email, setEmail] = useState(initialEmail || '');
     const [otp, setOtp] = useState('');
     const [step, setStep] = useState(1); // 1: Enter Email, 2: Enter OTP, 3: Select Session
@@ -61,60 +76,66 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                 }
             }
 
-            /* COMMENTED FOR DEV BYPASS
-            // Step 2: Send OTP
-            const response = await fetch(`${apiBase}/api/KycSession/send-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sessionId: activeSessionId,
-                    email: email,
-                    otpType: 1 // Email OTP
-                })
-            });
+            // ============================================================================
+            // AUTHENTICATION-BASED FLOW LOGIC
+            // ============================================================================
+            // Staff users (authenticated): Skip OTP and directly access sessions
+            // Customers (unauthenticated): Must verify OTP before accessing form
+            // ============================================================================
 
-            if (response.ok) {
-                // We likely need to update parent about the new SessionID? 
-                // But onVerified is usually called AFTER OTP verification.
-                // We can store it locally in a ref or state if needed, but for now
-                // verify-otp will need it. 
-                // Let's update the local prop / state so verify-otp works.
-                // However, we can't update props. We might need a local state overlap.
-                // BUT: handleVerifyOtp uses 'sessionId' from PROPS. 
-                // We MUST pass the new ID to handleVerifyOtp inside the state or a ref.
-                // Actually, let's just update the local 'sessionId' if we were using a local state, but we aren't.
+            if (isStaff) {
+                // ========== STAFF FLOW: BYPASS OTP ==========
+                // Staff members are already authenticated, so they can directly
+                // access customer KYC forms without OTP verification.
+                // This works for ALL roles automatically (Maker, Checker, Admin, etc.)
 
-                // We will need to store this 'activeSessionId' in a temporary state
-                // to use it in Step 2 (Verify).
                 setTempSessionId(activeSessionId);
+                const response = await fetch(`${apiBase}/api/KycSession/verify-otp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` // Include staff authentication
+                    },
+                    body: JSON.stringify({
+                        sessionId: activeSessionId,
+                        otpCode: "000000", // Staff bypass code
+                        otpType: 1
+                    })
+                });
 
-                setStep(2);
-                setMessage('OTP has been sent to your email.');
+                if (response.ok) {
+                    const data = await response.json();
+                    const sessions = data.data.availableSessions || [];
+                    setAvailableSessions(sessions);
+                    setStep(3); // Go directly to session selection
+                } else {
+                    setError('Failed to load customer sessions.');
+                }
             } else {
-                const data = await response.json();
-                setError(data?.message || data?.Message || 'Failed to send OTP. Please try again.');
-            }
-            */
+                // ========== CUSTOMER FLOW: REQUIRE OTP ==========
+                // Customers must verify their email via OTP before accessing the form.
+                // This ensures only the actual customer can access their KYC data.
 
-            // DEV BYPASS: Auto-verify with dummy OTP
-            setTempSessionId(activeSessionId);
-            const response = await fetch(`${apiBase}/api/KycSession/verify-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sessionId: activeSessionId,
-                    otpCode: "000000",
-                    otpType: 1
-                })
-            });
+                // Step 2: Send OTP to customer's email
+                const response = await fetch(`${apiBase}/api/KycSession/send-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: activeSessionId,
+                        email: email,
+                        otpType: 1 // Email OTP
+                    })
+                });
 
-            if (response.ok) {
-                const data = await response.json();
-                const sessions = data.data.availableSessions || [];
-                setAvailableSessions(sessions);
-                setStep(3);
-            } else {
-                setError('Bypass failed.');
+                if (response.ok) {
+                    // Store session ID for OTP verification step
+                    setTempSessionId(activeSessionId);
+                    setStep(2); // Move to OTP entry step
+                    setMessage('OTP has been sent to your email.');
+                } else {
+                    const data = await response.json();
+                    setError(data?.message || data?.Message || 'Failed to send OTP. Please try again.');
+                }
             }
         } catch (err: any) {
             setError(err.message || 'Network error.');
@@ -246,12 +267,16 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                     </svg>
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                    {step === 3 ? 'Previous KYC Records' : 'Email Verification Required'}
+                    {step === 3 ? 'Customer KYC Records' : isStaff ? 'Customer Email Entry' : 'Email Verification Required'}
                 </h2>
                 <p className="text-gray-500 mt-2">
                     {step === 3
-                        ? 'We found some previous KYC records linked to your email.'
-                        : 'To ensure the security of your account, please verify your email address before proceeding.'}
+                        ? isStaff
+                            ? 'Select a KYC session to view or edit, or start a new one.'
+                            : 'We found some previous KYC records linked to your email.'
+                        : isStaff
+                            ? 'Enter the customer\'s email address to view or edit their KYC form.'
+                            : 'To ensure the security of your account, please verify your email address before proceeding.'}
                 </p>
             </div>
 
@@ -335,7 +360,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                                             <span className={`font-black ${isSubmitted ? 'text-gray-500' : 'text-slate-900'}`}>Session #{s.sessionId}</span>
                                             <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${isSubmitted ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                                                 }`}>
-                                                {getStatusText(isSubmitted ? 3 : s.formStatus)}
+                                                {getStatusText(s.formStatus)}
                                             </span>
                                         </div>
 

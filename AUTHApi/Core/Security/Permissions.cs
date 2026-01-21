@@ -149,6 +149,38 @@ namespace AUTHApi.Core.Security
             public const string Sidebar = "Permissions.Branches.Sidebar";
         }
 
+        public static class Occupation
+        {
+            public const string View = "Permissions.Occupation.View";
+            public const string Create = "Permissions.Occupation.Create";
+            public const string Edit = "Permissions.Occupation.Edit";
+            public const string Delete = "Permissions.Occupation.Delete";
+            public const string Sidebar = "Permissions.Occupation.Sidebar";
+        }
+
+        public static class Address
+        {
+            public const string View = "Permissions.Address.View";
+            public const string Create = "Permissions.Address.Create";
+            public const string Edit = "Permissions.Address.Edit";
+            public const string Delete = "Permissions.Address.Delete";
+            public const string Sidebar = "Permissions.Address.Sidebar";
+        }
+
+        public static class Country
+        {
+            public const string View = "Permissions.Country.View";
+            public const string Create = "Permissions.Country.Create";
+            public const string Edit = "Permissions.Country.Edit";
+            public const string Delete = "Permissions.Country.Delete";
+            public const string Sidebar = "Permissions.Country.Sidebar";
+        }
+
+        public static class MasterData
+        {
+            public const string Sidebar = "Permissions.MasterData.Sidebar";
+        }
+
         // Helper to get all permissions for seeding or listing
         public static List<string> GetAllPermissions()
         {
@@ -177,7 +209,11 @@ namespace AUTHApi.Core.Security
                 Backup.View, Backup.Sidebar,
                 Kyc.View, Kyc.Create, Kyc.Edit, Kyc.Delete, Kyc.Workflow,
                 Kyc.Sidebar, Kyc.GlobalSearch, Kyc.Dashboard, Kyc.Export, Kyc.ApprovedView,
-                Branches.View, Branches.Create, Branches.Edit, Branches.Delete, Branches.Sidebar
+                Branches.View, Branches.Create, Branches.Edit, Branches.Delete, Branches.Sidebar,
+                Occupation.View, Occupation.Create, Occupation.Edit, Occupation.Delete, Occupation.Sidebar,
+                Address.View, Address.Create, Address.Edit, Address.Delete, Address.Sidebar,
+                Country.View, Country.Create, Country.Edit, Country.Delete, Country.Sidebar,
+                MasterData.Sidebar
             };
         }
     }

@@ -53,6 +53,11 @@ const PolicyEditorView: React.FC<PolicyEditorViewProps> = ({ roles, onPermission
         { id: 'kyc_search', name: 'Global KYC Search' },
         { id: 'approved_kyc', name: 'Approved KYC Records' },
 
+        { id: 'occupation', name: 'Occupation Management' },
+        { id: 'address', name: 'Address Management' },
+        { id: 'country', name: 'Country Management' },
+        { id: 'master_data', name: 'Master Data' },
+
     ];
 
     // Available Actions

@@ -6,6 +6,7 @@ interface KycAmlProps {
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
+    onSaveAndExit?: () => void;
 }
 
 interface KycAmlData {
@@ -17,7 +18,7 @@ interface KycAmlData {
     [key: string]: any;
 }
 
-const KycAml: React.FC<KycAmlProps> = ({ sessionId, initialData, onNext, onBack }) => {
+const KycAml: React.FC<KycAmlProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
     const { token, apiBase } = useAuth();
 
     const [formData, setFormData] = useState<KycAmlData>({
@@ -49,14 +50,17 @@ const KycAml: React.FC<KycAmlProps> = ({ sessionId, initialData, onNext, onBack 
         setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const [isExiting, setIsExiting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+        if (e) e.preventDefault();
         if (!sessionId) {
             setError("Session not initialized");
             return;
         }
         setSaving(true);
         setError(null);
+        if (shouldExit) setIsExiting(true);
 
         try {
             const response = await fetch(`${apiBase}/api/KycData/save-aml-compliance`, {
@@ -76,19 +80,25 @@ const KycAml: React.FC<KycAmlProps> = ({ sessionId, initialData, onNext, onBack 
             });
 
             if (response.ok) {
-                onNext({ amlCompliance: formData });
+                if (shouldExit && onSaveAndExit) {
+                    onSaveAndExit();
+                } else {
+                    onNext({ amlCompliance: formData });
+                }
             } else {
                 setError("Failed to save AML compliance");
+                setIsExiting(false);
             }
         } catch (err) {
             setError("Network error while saving");
+            setIsExiting(false);
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-xl font-bold text-gray-800">AML Compliance</h2>
                 <p className="text-sm text-gray-500">Anti-Money Laundering related information.</p>
@@ -181,6 +191,7 @@ const KycAml: React.FC<KycAmlProps> = ({ sessionId, initialData, onNext, onBack 
                 >
                     {saving ? 'Saving...' : 'Save & Next'}
                 </button>
+
             </div>
         </form>
     );

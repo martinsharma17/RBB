@@ -11,6 +11,7 @@ interface KycLocationProps {
   existingImageUrl?: string;
   onNext: (data: any) => void;
   onBack: () => void;
+  onSaveAndExit?: () => void;
 }
 
 interface KycLocationData {
@@ -69,6 +70,7 @@ const KycLocation: React.FC<KycLocationProps> = ({
   existingImageUrl,
   onNext,
   onBack,
+  onSaveAndExit,
 }) => {
   const { token, apiBase } = useAuth();
   const [mapImageFile, setMapImageFile] = useState<File | null>(null);
@@ -159,8 +161,10 @@ const KycLocation: React.FC<KycLocationProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const [isExiting, setIsExiting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+    if (e) e.preventDefault();
     if (!sessionId) {
       setError("Session not initialized");
       return;
@@ -173,6 +177,7 @@ const KycLocation: React.FC<KycLocationProps> = ({
 
     setSaving(true);
     setError(null);
+    if (shouldExit) setIsExiting(true);
 
     try {
       // 1. Upload map image if new one exists
@@ -216,12 +221,18 @@ const KycLocation: React.FC<KycLocationProps> = ({
       });
 
       if (response.ok) {
-        onNext({ locationMap: formData });
+        if (shouldExit && onSaveAndExit) {
+          onSaveAndExit();
+        } else {
+          onNext({ locationMap: formData });
+        }
       } else {
         setError("Failed to save location map");
+        setIsExiting(false);
       }
     } catch (err) {
       setError("Network error while saving");
+      setIsExiting(false);
     } finally {
       setSaving(false);
     }
@@ -234,7 +245,7 @@ const KycLocation: React.FC<KycLocationProps> = ({
       : [27.7172, 85.324];
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
       <div className="border-b border-gray-200 pb-4">
         <h2 className="text-xl font-bold text-gray-800">Location Map</h2>
         <p className="text-sm text-gray-500">
@@ -387,6 +398,7 @@ const KycLocation: React.FC<KycLocationProps> = ({
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>
+
       </div>
     </form>
   );

@@ -16,6 +16,9 @@ import UnifiedKycQueueView from './admin/UnifiedKycQueueView';
 import KycSearchView from './admin/KycSearchView';
 import ApprovedKycListView from './admin/ApprovedKycListView';
 import BranchManagementView from './superadmin/BranchManagementView';
+import OccupationManagementView from './superadmin/OccupationManagementView';
+import AddressManagementView from './superadmin/AddressManagementView';
+import CountryManagementView from './superadmin/CountryManagementView';
 // Placeholder for missing component
 
 const SupportComponent = () => (
@@ -68,6 +71,14 @@ export const getViewComponent = (viewId: string, props: any): React.ReactNode =>
             return <BranchManagementView {...props} />;
         case 'system_customization':
             return <ProjectSettingsView {...props} />;
+
+        // --- Master Data Management ---
+        case 'occupation_management':
+            return <OccupationManagementView {...props} />;
+        case 'address_management':
+            return <AddressManagementView {...props} />;
+        case 'country_management':
+            return <CountryManagementView {...props} />;
 
         // --- Analytics ---
 

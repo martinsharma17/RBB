@@ -6,6 +6,7 @@ interface KycOccupationProps {
   initialData?: any;
   onNext: (data: any) => void;
   onBack: () => void;
+  onSaveAndExit?: () => void;
 }
 
 interface KycOccupationData {
@@ -26,6 +27,7 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
   initialData,
   onNext,
   onBack,
+  onSaveAndExit,
 }) => {
   const { token, apiBase } = useAuth();
   const DEFAULT_OCCUPATIONS = [
@@ -114,14 +116,17 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const [isExiting, setIsExiting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+    if (e) e.preventDefault();
     if (!sessionId) {
       setError("Session not initialized");
       return;
     }
     setSaving(true);
     setError(null);
+    if (shouldExit) setIsExiting(true);
 
     try {
       const response = await fetch(`${apiBase}/api/KycData/save-occupation`, {
@@ -148,19 +153,25 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
       });
 
       if (response.ok) {
-        onNext({ occupation: formData });
+        if (shouldExit && onSaveAndExit) {
+          onSaveAndExit();
+        } else {
+          onNext({ occupation: formData });
+        }
       } else {
         setError("Failed to save occupation section");
+        setIsExiting(false);
       }
     } catch (err) {
       setError("Network error while saving");
+      setIsExiting(false);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
       <div className="border-b border-gray-200 pb-4">
         <h2 className="text-xl font-bold text-gray-800">
           Section 5: Occupation Details
@@ -353,6 +364,7 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>
+
       </div>
     </form>
   );

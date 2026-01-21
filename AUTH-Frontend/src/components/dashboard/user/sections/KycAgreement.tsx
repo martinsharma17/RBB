@@ -6,6 +6,7 @@ interface KycAgreementProps {
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
+    onSaveAndExit?: () => void;
 }
 
 interface KycAgreementData {
@@ -15,7 +16,7 @@ interface KycAgreementData {
     [key: string]: any;
 }
 
-const KycAgreement: React.FC<KycAgreementProps> = ({ sessionId, initialData, onNext, onBack }) => {
+const KycAgreement: React.FC<KycAgreementProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
     const { token, apiBase } = useAuth();
 
     const [formData, setFormData] = useState<KycAgreementData>({
@@ -43,14 +44,17 @@ const KycAgreement: React.FC<KycAgreementProps> = ({ sessionId, initialData, onN
         setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const [isExiting, setIsExiting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+        if (e) e.preventDefault();
         if (!sessionId) {
             setError("Session not initialized");
             return;
         }
         setSaving(true);
         setError(null);
+        if (shouldExit) setIsExiting(true);
 
         try {
             const response = await fetch(`${apiBase}/api/KycData/save-agreement`, {
@@ -68,19 +72,25 @@ const KycAgreement: React.FC<KycAgreementProps> = ({ sessionId, initialData, onN
             });
 
             if (response.ok) {
-                onNext({ agreement: formData });
+                if (shouldExit && onSaveAndExit) {
+                    onSaveAndExit();
+                } else {
+                    onNext({ agreement: formData });
+                }
             } else {
                 setError("Failed to save agreement");
+                setIsExiting(false);
             }
         } catch (err) {
             setError("Network error while saving");
+            setIsExiting(false);
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-xl font-bold text-gray-800">Final Agreement</h2>
                 <p className="text-sm text-gray-500">Terms regarding your trading account.</p>
@@ -135,6 +145,7 @@ const KycAgreement: React.FC<KycAgreementProps> = ({ sessionId, initialData, onN
                 >
                     {saving ? 'Saving...' : 'Save & Next'}
                 </button>
+
             </div>
         </form>
     );

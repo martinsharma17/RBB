@@ -6,6 +6,7 @@ interface KycInvestmentProps {
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
+    onSaveAndExit?: () => void;
 }
 
 interface KycInvestmentData {
@@ -14,7 +15,7 @@ interface KycInvestmentData {
     [key: string]: any;
 }
 
-const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionId, initialData, onNext, onBack }) => {
+const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
     const { token, apiBase } = useAuth();
 
     const [formData, setFormData] = useState<KycInvestmentData>({
@@ -40,8 +41,10 @@ const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionId, initialData, o
         setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const [isExiting, setIsExiting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+        if (e) e.preventDefault();
 
         if (!sessionId) {
             setError("Session not initialized");
@@ -50,6 +53,7 @@ const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionId, initialData, o
 
         setSaving(true);
         setError(null);
+        if (shouldExit) setIsExiting(true);
 
         try {
             const response = await fetch(`${apiBase}/api/KycData/save-financial-details`, {
@@ -65,19 +69,25 @@ const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionId, initialData, o
             });
 
             if (response.ok) {
-                onNext({ investment: formData });
+                if (shouldExit && onSaveAndExit) {
+                    onSaveAndExit();
+                } else {
+                    onNext({ investment: formData });
+                }
             } else {
                 setError("Failed to save investment section");
+                setIsExiting(false);
             }
         } catch (err) {
             setError("Network error while saving");
+            setIsExiting(false);
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-xl font-bold text-gray-800">Section 8: Financial Details</h2>
                 <p className="text-sm text-gray-500">Information about your source of funds and income level.</p>
@@ -129,6 +139,7 @@ const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionId, initialData, o
                 >
                     {saving ? 'Saving...' : 'Save & Next'}
                 </button>
+
             </div>
         </form>
     );

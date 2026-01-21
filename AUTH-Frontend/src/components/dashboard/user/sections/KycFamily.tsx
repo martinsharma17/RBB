@@ -7,6 +7,7 @@ interface KycFamilyProps {
   onNext: (data: any) => void;
   onBack: () => void;
   maritalStatus: string;
+  onSaveAndExit?: () => void;
 }
 
 interface KycFamilyData {
@@ -28,6 +29,7 @@ const KycFamily: React.FC<KycFamilyProps> = ({
   onNext,
   onBack,
   maritalStatus,
+  onSaveAndExit,
 }) => {
   const { token, apiBase } = useAuth();
 
@@ -74,6 +76,7 @@ const KycFamily: React.FC<KycFamilyProps> = ({
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -82,14 +85,15 @@ const KycFamily: React.FC<KycFamilyProps> = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+    if (e) e.preventDefault();
     if (!sessionId) {
       setError("Session not initialized");
       return;
     }
     setSaving(true);
     setError(null);
+    if (shouldExit) setIsExiting(true);
 
     try {
       const response = await fetch(`${apiBase}/api/KycData/save-family`, {
@@ -116,12 +120,18 @@ const KycFamily: React.FC<KycFamilyProps> = ({
       });
 
       if (response.ok) {
-        onNext({ family: formData });
+        if (shouldExit && onSaveAndExit) {
+          onSaveAndExit();
+        } else {
+          onNext({ family: formData });
+        }
       } else {
         setError("Failed to save family section");
+        setIsExiting(false);
       }
     } catch (err) {
       setError("Network error while saving");
+      setIsExiting(false);
     } finally {
       setSaving(false);
     }
@@ -131,7 +141,7 @@ const KycFamily: React.FC<KycFamilyProps> = ({
   const isMarried = String(maritalStatus || "").toLowerCase() === "married";
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
       <div className="border-b border-gray-200 pb-4">
         <h2 className="text-xl font-bold text-gray-800">
           Section 3: Family Details
@@ -297,6 +307,7 @@ const KycFamily: React.FC<KycFamilyProps> = ({
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>
+
       </div>
     </form>
   );
