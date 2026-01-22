@@ -165,10 +165,11 @@ const PublicKyc = () => {
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
                 <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
                     <div className="text-center mb-8">
-                        <div className="w-20 h-20 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-25 h-25   flex items-center justify-center mx-auto mb-4">
+                            <img src="./rbb.png" alt="" />
+                            {/* <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                            </svg> */}
                         </div>
                         <h1 className="text-3xl font-extrabold text-gray-900">Start Your KYC</h1>
                         <p className="text-gray-500 mt-2">Fill out your KYC form securely without logging in.</p>
@@ -224,10 +225,18 @@ const PublicKyc = () => {
                         </button>
                     </form>
 
-                    <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-                        <p className="text-sm text-gray-500">
+                    <div className="mt-8 pt-6 border-t border-gray-100 text-center" data-developer="martin sharma | naya code pvt ltd">
+                        <p className="text-sm text-gray-500 mb-4">
                             Already have an account? <a href="/login" className="text-indigo-600 font-semibold hover:underline">Log in here</a>
                         </p>
+                        <div className="pt-4 border-t border-gray-50 mt-4">
+                            <p className="text-xs font-medium text-gray-500">
+                                © {new Date().getFullYear()} Naya Code Pvt.Ltd. All rights reserved.
+                            </p>
+                            <p className="sr-only">
+                                martin sharma | naya code pvt ltd
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -250,6 +259,15 @@ const PublicKyc = () => {
                                 apiBase={apiBase}
                                 onVerified={handleVerified}
                             />
+
+                            <div className="mt-8 pt-6 border-t border-gray-100 text-center" data-developer="martin sharma | naya code pvt ltd">
+                                <p className="text-xs font-medium text-gray-500">
+                                    © {new Date().getFullYear()} Naya Code Pvt.Ltd. All rights reserved.
+                                </p>
+                                <p className="sr-only">
+                                    martin sharma | naya code pvt ltd
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -316,10 +334,18 @@ const PublicKyc = () => {
                         </div>
                     </div>
 
-                    <div className="bg-gray-50 px-8 py-4 text-center border-t border-gray-100">
-                        <button onClick={() => setStep(1)} className="text-sm text-gray-500 hover:text-indigo-600 hover:underline">
+                    <div className="bg-gray-50 px-8 py-4 text-center border-t border-gray-100" data-developer="martin sharma | naya code pvt ltd">
+                        <button onClick={() => setStep(1)} className="text-sm text-gray-500 hover:text-indigo-600 hover:underline mb-4">
                             Use a different email address?
                         </button>
+                        <div className="pt-4 border-t border-gray-200">
+                            <p className="text-xs font-medium text-gray-500">
+                                © {new Date().getFullYear()} Naya Code Pvt.Ltd. All rights reserved.
+                            </p>
+                            <p className="sr-only">
+                                martin sharma | naya code pvt ltd
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

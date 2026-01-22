@@ -75,7 +75,11 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onViewChange })
                 setError(response.data.message);
             }
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to fetch dashboard stats');
+            if (err.response?.status === 401) {
+                setError('Session expired. Please login again.');
+            } else {
+                setError(err.response?.data?.message || 'Failed to fetch dashboard stats');
+            }
         } finally {
             setLoading(false);
         }

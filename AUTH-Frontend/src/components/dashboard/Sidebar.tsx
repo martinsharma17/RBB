@@ -153,7 +153,9 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
                         toggleMenu(item.id);
                         if (!sidebarOpen) setSidebarOpen(true);
                     } else {
-                        setActiveView(item.id);
+                        // FIX: If item.id is 'dashboard', use 'home' to avoid double /dashboard/dashboard URL
+                        const targetView = item.id === 'dashboard' ? 'home' : item.id;
+                        setActiveView(targetView);
                     }
                 }}
                 disabled={item.disabled}

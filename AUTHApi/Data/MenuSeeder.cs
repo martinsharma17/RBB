@@ -145,6 +145,14 @@ namespace AUTHApi.Data
                     Permission = Permissions.Settings.Sidebar,
                     RequiredPolicyId = GetPolicyId(Permissions.Settings.Sidebar),
                     Order = 12
+                },
+                new MenuItem
+                {
+                    Title = "Master Data", ViewId = "master_data", Icon = "DatabaseIcon",
+                    Url = "/master-data",
+                    Permission = Permissions.MasterData.Sidebar,
+                    RequiredPolicyId = GetPolicyId(Permissions.MasterData.Sidebar),
+                    Order = 13
                 }
             };
 
@@ -160,6 +168,50 @@ namespace AUTHApi.Data
 
             await context.SaveChangesAsync();
 
+
+            // --- Level 2: Master Data Submenus ---
+            var masterDataItem = await context.MenuItems.FirstOrDefaultAsync(m => m.ViewId == "master_data");
+            if (masterDataItem != null)
+            {
+                var occupationItem = new MenuItem
+                {
+                    Title = "Occupation", ViewId = "occupation_management", Icon = "BriefcaseIcon",
+                    Url = "/occupation",
+                    Permission = Permissions.Occupation.Sidebar,
+                    RequiredPolicyId = GetPolicyId(Permissions.Occupation.Sidebar),
+                    Order = 1,
+                    ParentId = masterDataItem.Id
+                };
+
+                var addressItem = new MenuItem
+                {
+                    Title = "Address", ViewId = "address_management", Icon = "MapIcon",
+                    Url = "/address",
+                    Permission = Permissions.Address.Sidebar,
+                    RequiredPolicyId = GetPolicyId(Permissions.Address.Sidebar),
+                    Order = 2,
+                    ParentId = masterDataItem.Id
+                };
+
+                var countryItem = new MenuItem
+                {
+                    Title = "Country", ViewId = "country_management", Icon = "GlobeIcon",
+                    Url = "/country",
+                    Permission = Permissions.Country.Sidebar,
+                    RequiredPolicyId = GetPolicyId(Permissions.Country.Sidebar),
+                    Order = 3,
+                    ParentId = masterDataItem.Id
+                };
+
+                if (!await context.MenuItems.AnyAsync(m => m.ViewId == occupationItem.ViewId))
+                    await context.MenuItems.AddAsync(occupationItem);
+
+                if (!await context.MenuItems.AnyAsync(m => m.ViewId == addressItem.ViewId))
+                    await context.MenuItems.AddAsync(addressItem);
+
+                if (!await context.MenuItems.AnyAsync(m => m.ViewId == countryItem.ViewId))
+                    await context.MenuItems.AddAsync(countryItem);
+            }
 
             // --- Level 2: Task Nesting ---
             /*

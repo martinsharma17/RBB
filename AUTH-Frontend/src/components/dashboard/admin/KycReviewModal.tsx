@@ -52,7 +52,26 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
         setShowDownloadMenu(false);
     };
 
-    const downloadAsPDF = () => {
+    const getImageBase64 = async (id: number): Promise<string | null> => {
+        try {
+            const url = `${apiBase}/api/KycData/document/${id}`;
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (!response.ok) return null;
+            const blob = await response.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+            });
+        } catch (err) {
+            console.error("Failed to fetch image for PDF:", err);
+            return null;
+        }
+    };
+
+    const downloadAsPDF = async () => {
         const data = editedData;
         const doc = new jsPDF();
 
@@ -69,24 +88,93 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
         doc.text(`Email: ${detailData?.workflow?.kycSession?.email || data.email || 'N/A'}`, 80, 32);
         doc.text(`Date: ${new Date().toLocaleString()}`, 150, 32);
 
-        const tableData = Object.entries(data)
-            .filter(([key, value]) => !['id', 'sessionId', 'userId', 'updatedAt', 'branchId'].includes(key) && typeof value !== 'object')
-            .map(([key, value]) => {
-                const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                const formattedValue = value === true ? 'YES' : value === false ? 'NO' : value || '—';
-                return [formattedKey, formattedValue];
-            });
+        // Group data for better readability
+        const sections = [
+            {
+                title: 'Personal Information',
+                fields: ['firstName', 'middleName', 'lastName', 'gender', 'dateOfBirth', 'nationality', 'citizenshipNumber', 'panNumber']
+            },
+            {
+                title: 'Permanent Address',
+                fields: ['permanentState', 'permanentDistrict', 'permanentMunicipality', 'permanentWardNo', 'permanentStreet']
+            },
+            {
+                title: 'Current Address',
+                fields: ['currentState', 'currentDistrict', 'currentMunicipality', 'currentWardNo', 'currentStreet']
+            }
+        ];
 
-        autoTable(doc, {
-            startY: 50,
-            head: [['KYC Field', 'Information Details']],
-            body: tableData,
-            theme: 'grid',
-            headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
-            bodyStyles: { fontSize: 8, cellPadding: 3 },
-            alternateRowStyles: { fillColor: [249, 250, 251] },
-            margin: { top: 50, bottom: 20 }
-        });
+        let startY = 50;
+        for (const section of sections) {
+            const sectionData = Object.entries(data)
+                .filter(([key]) => section.fields.includes(key))
+                .map(([key, value]) => {
+                    const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    const formattedValue = value === true ? 'YES' : value === false ? 'NO' : value || '—';
+                    return [formattedKey, formattedValue];
+                });
+
+            if (sectionData.length > 0) {
+                doc.setTextColor(79, 70, 229);
+                doc.setFontSize(12);
+                doc.text(section.title, 14, startY - 2);
+
+                autoTable(doc, {
+                    startY: startY,
+                    head: [['Field', 'Value']],
+                    body: sectionData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+                    bodyStyles: { fontSize: 8, cellPadding: 2 },
+                    margin: { left: 14, right: 14 }
+                });
+                startY = (doc as any).lastAutoTable.finalY + 15;
+
+                // Add new page if needed
+                if (startY > 270) {
+                    doc.addPage();
+                    startY = 20;
+                }
+            }
+        }
+
+        // Add Supporting Documents (Visual Representation)
+        if (detailData.documents && detailData.documents.length > 0) {
+            doc.addPage();
+            doc.setTextColor(79, 70, 229);
+            doc.setFontSize(18);
+            doc.text("Supporting Documents", 14, 20);
+            doc.line(14, 22, 80, 22);
+
+            // Deduplicate (latest version only)
+            const uniqueMap = new Map();
+            detailData.documents.forEach((d: any) => uniqueMap.set(d.documentType, d));
+            const uniqueDocs = Array.from(uniqueMap.values());
+
+            let photoY = 35;
+            for (const docItem of uniqueDocs) {
+                const base64 = await getImageBase64(docItem.id);
+                if (base64) {
+                    if (photoY + 105 > 285) {
+                        doc.addPage();
+                        photoY = 20;
+                    }
+                    doc.setTextColor(31, 41, 55);
+                    doc.setFontSize(11);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(String(docItem.documentType), 14, photoY);
+                    doc.setFont("helvetica", "normal");
+
+                    try {
+                        doc.addImage(base64, 'JPEG', 14, photoY + 5, 140, 95, undefined, 'FAST');
+                        photoY += 105;
+                    } catch (e) {
+                        console.error("Error adding image:", e);
+                        photoY += 15;
+                    }
+                }
+            }
+        }
 
         // Footer
         const pageCount = (doc as any).internal.getNumberOfPages();
@@ -94,7 +182,7 @@ const KycReviewModal: React.FC<KycReviewModalProps> = ({
             doc.setPage(i);
             doc.setFontSize(8);
             doc.setTextColor(150);
-            doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
+            doc.text(`Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
         }
 
         doc.save(`KYC_Review_${data.firstName || 'User'}_${data.lastName || ''}.pdf`);

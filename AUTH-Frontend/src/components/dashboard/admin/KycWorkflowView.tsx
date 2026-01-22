@@ -66,8 +66,48 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
         setActiveDropdown(null);
     };
 
-    const downloadAsPDF = (record: PendingKyc) => {
+    const getImageBase64 = async (id: number): Promise<string | null> => {
+        try {
+            const url = `${apiBase}/api/KycData/document/${id}`;
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) return null;
+            const blob = await response.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+            });
+        } catch (err) {
+            console.error("Failed to fetch image for PDF:", err);
+            return null;
+        }
+    };
+
+    const downloadAsPDF = async (record: PendingKyc) => {
+        // Fetch full details first
+        setLoading(true);
+        let details: any = null;
+        try {
+            const res = await fetch(`${apiBase}/api/KycApproval/details/${record.id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const json = await res.json();
+            if (json.success) details = json.data;
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+
+        if (!details) {
+            alert("Could not fetch details for PDF.");
+            return;
+        }
+
         const doc = new jsPDF();
+        const data = details.details || {};
 
         // Header
         doc.setFillColor(79, 70, 229); // Indigo-600
@@ -75,31 +115,98 @@ const KycWorkflowView: React.FC<KycWorkflowViewProps> = ({ workflowId, onClearAc
 
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(22);
-        doc.text("Pending KYC Summary", 14, 22);
+        doc.text("KYC Application Record", 14, 22);
 
         doc.setFontSize(9);
         doc.text(`Workflow ID: ${record.id}`, 14, 32);
+        doc.text(`Email: ${record.customerEmail}`, 80, 32);
         doc.text(`Applied: ${new Date(record.createdAt).toLocaleString()}`, 150, 32);
 
-        const tableData = [
-            ["Customer Name", record.customerName || "N/A"],
-            ["Email Address", record.customerEmail],
-            ["Branch", record.branchName || "Global"],
-            ["Current Role", record.currentRoleName],
-            ["Inventory Level", `${record.totalLevels - record.pendingLevel + 1} of ${record.totalLevels}`],
-            ["Last Remarks", record.lastRemarks || "—"]
+        const sections = [
+            {
+                title: 'Personal Information',
+                fields: ['firstName', 'middleName', 'lastName', 'gender', 'dateOfBirth', 'nationality', 'citizenshipNumber', 'panNumber']
+            },
+            {
+                title: 'Permanent Address',
+                fields: ['permanentState', 'permanentDistrict', 'permanentMunicipality', 'permanentWardNo', 'permanentStreet']
+            },
+            {
+                title: 'Current Address',
+                fields: ['currentState', 'currentDistrict', 'currentMunicipality', 'currentWardNo', 'currentStreet']
+            }
         ];
 
-        autoTable(doc, {
-            startY: 50,
-            head: [['KYC Field', 'Information Details']],
-            body: tableData,
-            theme: 'striped',
-            headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255] },
-            bodyStyles: { fontSize: 10 }
-        });
+        let startY = 50;
+        for (const section of sections) {
+            const sectionData = Object.entries(data)
+                .filter(([key]) => section.fields.includes(key))
+                .map(([key, value]) => {
+                    const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    const formattedValue = value === true ? 'YES' : value === false ? 'NO' : value || '—';
+                    return [formattedKey, formattedValue];
+                });
 
-        doc.save(`KYC_Pending_${record.id}.pdf`);
+            if (sectionData.length > 0) {
+                doc.setTextColor(79, 70, 229);
+                doc.setFontSize(12);
+                doc.text(section.title, 14, startY - 2);
+
+                autoTable(doc, {
+                    startY: startY,
+                    head: [['Field', 'Value']],
+                    body: sectionData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+                    bodyStyles: { fontSize: 8, cellPadding: 2 },
+                });
+                startY = (doc as any).lastAutoTable.finalY + 15;
+
+                if (startY > 270) {
+                    doc.addPage();
+                    startY = 20;
+                }
+            }
+        }
+
+        // Add Supporting Documents (Visual Representation)
+        if (details.documents && details.documents.length > 0) {
+            doc.addPage();
+            doc.setTextColor(79, 70, 229);
+            doc.setFontSize(18);
+            doc.text("Supporting Documents", 14, 20);
+            doc.line(14, 22, 80, 22);
+
+            const uniqueMap = new Map();
+            details.documents.forEach((d: any) => uniqueMap.set(d.documentType, d));
+            const uniqueDocs = Array.from(uniqueMap.values());
+
+            let photoY = 35;
+            for (const docItem of uniqueDocs) {
+                const base64 = await getImageBase64(docItem.id);
+                if (base64) {
+                    if (photoY + 105 > 285) {
+                        doc.addPage();
+                        photoY = 20;
+                    }
+                    doc.setTextColor(31, 41, 55);
+                    doc.setFontSize(11);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(String(docItem.documentType), 14, photoY);
+                    doc.setFont("helvetica", "normal");
+
+                    try {
+                        doc.addImage(base64, 'JPEG', 14, photoY + 5, 140, 95, undefined, 'FAST');
+                        photoY += 105;
+                    } catch (e) {
+                        console.error(e);
+                        photoY += 15;
+                    }
+                }
+            }
+        }
+
+        doc.save(`KYC_Workflow_${record.id}.pdf`);
         setActiveDropdown(null);
     };
 

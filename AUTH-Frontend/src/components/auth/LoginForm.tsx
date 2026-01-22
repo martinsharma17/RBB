@@ -252,6 +252,14 @@ const LoginForm = () => {
                             </Link>
                         </div>
                     </form>
+                        <div className="pt-4 border-t border-gray-100 mt-4" data-developer="martin sharma | naya code pvt ltd">
+                        <p className="text-sm font-medium text-gray-600">
+                            © {new Date().getFullYear()} Naya Code Pvt.Ltd. All rights reserved.
+                        </p>
+                        <p className="sr-only">
+                            martin sharma | naya code pvt ltd
+                        </p>
+                    </div>
                 </div>
 
                 {/* Footer */}
@@ -266,14 +274,7 @@ const LoginForm = () => {
                             Privacy Policy
                         </Link>
                     </p> */}
-                    <div className="pt-4 border-t border-gray-100 mt-4">
-                        <p className="text-sm font-medium text-gray-600">
-                            © {new Date().getFullYear()} Naya Code Pvt.Ltd. All rights reserved.
-                        </p>
-                        {/* <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest text-white">
-                           naya code pvt ltd
-                        </p> */}
-                    </div>
+                
                 </div>
             </div>
 

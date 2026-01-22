@@ -403,10 +403,18 @@ const RegisterForm = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="text-center">
+                <div className="text-center space-y-2" data-developer="martin sharma | naya code pvt ltd">
                     <p className="text-xs text-gray-500">
                         Your data is protected with industry-standard encryption
                     </p>
+                    <div className="pt-4 border-t border-gray-100 mt-4">
+                        <p className="text-sm font-medium text-gray-600">
+                            © {new Date().getFullYear()} Naya Code Pvt.Ltd. All rights reserved.
+                        </p>
+                        <p className="sr-only">
+                             naya code pvt ltd 
+                        </p>
+                    </div>
                 </div>
             </div>
 

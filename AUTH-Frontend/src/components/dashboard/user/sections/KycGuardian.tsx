@@ -6,6 +6,7 @@ interface KycGuardianProps {
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
+    onSaveAndExit?: () => void;
 }
 
 interface KycGuardianData {
@@ -17,10 +18,11 @@ interface KycGuardianData {
     panNo: string;
     dob: string;
     issueDistrict: string;
+    occupation: string;
     [key: string]: any;
 }
 
-const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNext, onBack }) => {
+const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
     const { token, apiBase } = useAuth();
 
     const [formData, setFormData] = useState<KycGuardianData>({
@@ -31,7 +33,8 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
         email: initialData?.email || '',
         panNo: initialData?.panNo || '',
         dob: initialData?.dob || '',
-        issueDistrict: initialData?.issueDistrict || ''
+        issueDistrict: initialData?.issueDistrict || '',
+        occupation: initialData?.occupation || initialData?.guardianOccupation || ''
     });
 
     useEffect(() => {
@@ -44,7 +47,8 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                 email: initialData?.email || '',
                 panNo: initialData?.panNo || '',
                 dob: initialData?.dob || '',
-                issueDistrict: initialData?.issueDistrict || ''
+                issueDistrict: initialData?.issueDistrict || '',
+                occupation: initialData?.occupation || initialData?.guardianOccupation || ''
             });
         }
     }, [initialData]);
@@ -57,8 +61,9 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+        if (e) e.preventDefault();
 
         // Guardians are often optional for adults. Check if info is provided.
         if (!formData.name && !formData.relationship) {
@@ -73,6 +78,7 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
 
         setSaving(true);
         setError(null);
+        if (shouldExit) { /* Logic for exit if needed */ }
 
         try {
             const response = await fetch(`${apiBase}/api/KycData/save-guardian`, {
@@ -87,15 +93,18 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                         address: formData.address,
                         contactNo: formData.contactNo,
                         emailId: formData.email,
-                        permanentAccountNo: formData.panNo
+                        permanentAccountNo: formData.panNo,
+                        occupation: formData.occupation
                     }
                 })
             });
 
             if (response.ok) {
-                onNext({ guardian: formData });
-            } else {
-                setError("Failed to save guardian section");
+                if (shouldExit && onSaveAndExit) {
+                    onSaveAndExit();
+                } else {
+                    onNext({ guardian: formData });
+                }
             }
         } catch (err) {
             setError("Network error while saving");
@@ -105,7 +114,7 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-xl font-bold text-gray-800">Section 6: Guardian Details (For Minors)</h2>
                 <p className="text-sm text-gray-500">Provide details if the applicant is a minor or requires a guardian.</p>
@@ -179,6 +188,17 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                         className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     />
                 </div>
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Occupation</label>
+                    <input
+                        type="text"
+                        name="occupation"
+                        value={formData.occupation}
+                        onChange={handleChange}
+                        placeholder="Guardian's occupation"
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    />
+                </div>
             </div>
 
             <div className="flex justify-between pt-6">
@@ -204,6 +224,7 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                     >
                         {saving ? 'Saving...' : 'Save & Next'}
                     </button>
+
                 </div>
             </div>
         </form>

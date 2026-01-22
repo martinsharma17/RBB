@@ -103,13 +103,15 @@ namespace AUTHApi.Services
                     }
 
                     detail.MaritalStatus = p.MaritalStatus;
-
+                    detail.PanNumber = p.PanNo;
+                    detail.NidNumber = p.NidNo;
                     break;
 
                 // Steps 2 & 3: Address Information
                 case AddressDto a:
                     if (stepNumber == 2)
                     {
+                        detail.CurrentCountry = a.Country;
                         detail.CurrentState = a.Province;
                         detail.CurrentDistrict = a.District;
                         detail.CurrentMunicipality = a.MunicipalityName;
@@ -120,11 +122,13 @@ namespace AUTHApi.Services
                     }
                     else if (stepNumber == 3)
                     {
+                        detail.PermanentCountry = a.Country;
                         detail.PermanentState = a.Province;
                         detail.PermanentDistrict = a.District;
                         detail.PermanentMunicipality = a.MunicipalityName;
                         detail.PermanentWardNo = a.WardNo?.ToString();
                         detail.PermanentStreet = a.Tole;
+                        detail.PermanentFullAddress = a.FullAddress;
                     }
 
                     break;
@@ -140,6 +144,7 @@ namespace AUTHApi.Services
                     detail.DaughterInLawName = f.DaughterInLawName;
                     detail.FatherInLawName = f.FatherInLawName;
                     detail.MotherInLawName = f.MotherInLawName;
+                    detail.ChildrenNames = f.ChildrenNames;
                     break;
 
                 // Step 5: Bank Account Details
@@ -186,6 +191,7 @@ namespace AUTHApi.Services
                     detail.GuardianContactNo = g.ContactNo;
                     detail.GuardianEmail = g.EmailId;
                     detail.GuardianPanNumber = g.PermanentAccountNo;
+                    detail.GuardianOccupation = g.Occupation;
                     break;
 
                 // Step 10: AML Compliance Information
@@ -193,6 +199,7 @@ namespace AUTHApi.Services
                     detail.IsPep = aml.IsPoliticallyExposedPerson;
                     detail.PepRelation = aml.PepRelationName ?? aml.PepRelationship;
                     detail.HasBeneficialOwner = aml.HasBeneficialOwner;
+                    detail.BeneficialOwnerDetails = aml.BeneficialOwnerDetails;
                     detail.HasCriminalRecord = aml.HasCriminalRecord;
                     detail.CriminalRecordDetails = aml.CriminalRecordDetails;
                     break;
@@ -253,6 +260,29 @@ namespace AUTHApi.Services
             }
 
             var detail = await GetOrCreateDetailAsync(sessionId);
+
+            // CRITICAL FIX: Replace existing document of the same type to avoid duplicates in PDF and DB
+            var existingDoc = await _context.KycDocuments
+                .FirstOrDefaultAsync(d => d.KycDetailId == detail.Id && d.DocumentType == documentType);
+
+            if (existingDoc != null)
+            {
+                try
+                {
+                    if (File.Exists(existingDoc.FilePath))
+                    {
+                        File.Delete(existingDoc.FilePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log and continue
+                    Console.WriteLine($"Warning: Failed to delete old file {existingDoc.FilePath}: {ex.Message}");
+                }
+
+                _context.KycDocuments.Remove(existingDoc);
+                // We will save changes after adding the new one to keep it atomic in one transaction
+            }
 
             var wwwRoot = _env.WebRootPath;
             if (string.IsNullOrEmpty(wwwRoot))
@@ -363,14 +393,12 @@ namespace AUTHApi.Services
 
                 if (lastSubmitted != null)
                 {
-                    var timeSinceSubmission =
-                        DateTime.UtcNow - (lastSubmitted.ModifiedDate ?? lastSubmitted.CreatedDate);
+                    // var timeSinceSubmission = DateTime.UtcNow - (lastSubmitted.ModifiedDate ?? lastSubmitted.CreatedDate);
 
-                    // If submitted less than 5 minutes ago, we return the submitted one (lock-out period)
-                    if (timeSinceSubmission.TotalMinutes < 5)
-                    {
-                        return lastSubmitted;
-                    }
+                    // REMOVED: 5-minute lockout check.
+                    // We want to allow Makers/Checkers to start a new session immediately after submission.
+                    // if (timeSinceSubmission.TotalMinutes < 5) { return lastSubmitted; }
+
                     // Else, we fall through and create a NEW session below (allowing new KYC after 5 mins)
                 }
 

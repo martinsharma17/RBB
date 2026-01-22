@@ -3,11 +3,12 @@ import { CheckCircle2, User, MapPin, Users, Briefcase, DollarSign, FileText, Shi
 
 interface KycSummaryReviewProps {
     kycData: any;
+    apiBase: string;
     onNext: () => void;
     onBack: () => void;
 }
 
-const KycSummaryReview: React.FC<KycSummaryReviewProps> = ({ kycData, onNext, onBack }) => {
+const KycSummaryReview: React.FC<KycSummaryReviewProps> = ({ kycData, apiBase, onNext, onBack }) => {
     const SummarySection = ({ title, icon: Icon, children }: any) => (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
@@ -88,11 +89,11 @@ const KycSummaryReview: React.FC<KycSummaryReviewProps> = ({ kycData, onNext, on
                 <Field label="Father's Name" value={kycData.family?.fatherName} />
                 <Field label="Mother's Name" value={kycData.family?.motherName} />
                 <Field label="Spouse's Name" value={kycData.family?.spouseName} />
-                <Field label="Son's Name" value={kycData.family?.sonName} />
-                <Field label="Daughter's Name" value={kycData.family?.daughterName} />
-                <Field label="Daughter-in-law's Name" value={kycData.family?.daughterInLawName} />
                 <Field label="Father-in-law's Name" value={kycData.family?.fatherInLawName} />
                 <Field label="Mother-in-law's Name" value={kycData.family?.motherInLawName} />
+                <div className="col-span-2">
+                    <Field label="Children Names" value={kycData.family?.childrenNames} />
+                </div>
             </SummarySection>
 
             {/* Occupation & Bank */}
@@ -121,23 +122,28 @@ const KycSummaryReview: React.FC<KycSummaryReviewProps> = ({ kycData, onNext, on
                 <Field label="Longitude" value={kycData.locationMap?.longitude} />
                 <div className="col-span-2 mt-2">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Map Preview</span>
-                    {kycData.attachments?.find((a: any) => a.documentType === 10) ? (
-                        <img
-                            src={kycData.attachments.find((a: any) => a.documentType === 10).filePath}
-                            alt="Location Map"
-                            className="w-full max-w-md h-auto rounded-lg border border-slate-200 mt-2"
-                        />
-                    ) : (
-                        <p className="text-sm text-slate-400 italic mt-1">No map image captured yet.</p>
-                    )}
+                    {(() => {
+                        const attachments = kycData.attachments || [];
+                        const mapAtt = [...attachments].reverse().find((a: any) => a.documentType === 10);
+                        if (mapAtt) {
+                            return (
+                                <img
+                                    src={`${apiBase}${mapAtt.filePath}`}
+                                    alt="Location Map"
+                                    className="w-full max-w-md h-auto rounded-lg border border-slate-200 mt-2"
+                                />
+                            );
+                        }
+                        return <p className="text-sm text-slate-400 italic mt-1">No map image captured yet.</p>;
+                    })()}
                 </div>
             </SummarySection>
 
             {/* Compliance & Risk */}
             <SummarySection title="Compliance & Risk Assessment" icon={Shield}>
-                <Field label="Politically Exposed Person" value={kycData.isPep ? 'Yes' : 'No'} />
-                <Field label="Has Beneficial Owner" value={kycData.hasBeneficialOwner ? 'Yes' : 'No'} />
-                <Field label="Criminal Record" value={kycData.hasCriminalRecord ? 'Yes' : 'No'} />
+                <Field label="Politically Exposed Person" value={kycData.amlCompliance?.isPoliticallyExposedPerson ? `Yes (${kycData.amlCompliance?.pepRelationName || '-'})` : 'No'} />
+                <Field label="Has Beneficial Owner" value={kycData.amlCompliance?.hasBeneficialOwner ? `Yes (${kycData.amlCompliance?.beneficialOwnerDetails || '-'})` : 'No'} />
+                <Field label="Criminal Record" value={kycData.amlCompliance?.hasCriminalRecord ? `Yes (${kycData.amlCompliance?.criminalRecordDetails || '-'})` : 'No'} />
                 <Field label="CIB Blacklisted" value={kycData.isCibBlacklisted ? 'Yes' : 'No'} />
             </SummarySection>
 
@@ -160,9 +166,39 @@ const KycSummaryReview: React.FC<KycSummaryReviewProps> = ({ kycData, onNext, on
 
             {/* Documents */}
             <SummarySection title="Uploaded Documents" icon={FileText}>
-                <Field label="Passport Photo" value={kycData.documents?.photo || '✓ Uploaded'} />
-                <Field label="Citizenship Front" value={kycData.documents?.citizenship?.front || '✓ Uploaded'} />
-                <Field label="Citizenship Back" value={kycData.documents?.citizenship?.back || '✓ Uploaded'} />
+                {[
+                    { label: "Passport Photo", type: 1 },
+                    { label: "Citizenship Front", type: 2 },
+                    { label: "Citizenship Back", type: 3 },
+                    { label: "Signature", type: 4 },
+                    { label: "Left Thumbprint", type: 5 },
+                    { label: "Right Thumbprint", type: 6 }
+                ].map((docItem) => {
+                    // Find the LATEST attachment of this type (searching from end of array)
+                    const attachments = kycData.attachments || [];
+                    const att = [...attachments].reverse().find((a: any) => a.documentType === docItem.type);
+                    return (
+                        <div key={docItem.type} className="flex flex-col space-y-2 mb-4">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{docItem.label}</span>
+                            {att ? (
+                                <div className="group relative">
+                                    <img
+                                        src={`${apiBase}${att.filePath}`}
+                                        alt={docItem.label}
+                                        className="w-full h-32 object-cover rounded-lg border border-slate-200 cursor-zoom-in group-hover:bg-slate-50 transition-all"
+                                    />
+                                    <div className="absolute inset-x-0 bottom-0 bg-black/50 text-white text-[10px] p-1 text-center opacity-0 group-hover:opacity-100 transition-opacity rounded-b-lg">
+                                        Click to enlarge
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="w-full h-32 bg-slate-100 rounded-lg flex items-center justify-center border border-dashed border-slate-200">
+                                    <span className="text-xs text-slate-400 font-medium italic">No document uploaded</span>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </SummarySection>
 
             {/* Action Buttons */}

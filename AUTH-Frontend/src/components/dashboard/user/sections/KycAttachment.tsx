@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import KycSummaryReview from "./KycSummaryReview";
 import AgreementModal from "./AgreementModal";
-import { CheckCircle2 } from "lucide-react";
 
 export interface KycAttachmentProps {
   sessionId: number | null;
@@ -11,6 +10,7 @@ export interface KycAttachmentProps {
   onComplete?: (mergedKycData: any) => void;
   onSuccess?: (kycData: any) => void;
   allKycFormData?: any;
+  onSaveAndExit?: () => void;
 }
 
 const KycAttachment: React.FC<KycAttachmentProps> = ({
@@ -19,6 +19,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
   onSuccess,
   onComplete,
   allKycFormData,
+  onSaveAndExit,
 }) => {
   const { token, apiBase } = useAuth();
   const navigate = useNavigate();
@@ -38,6 +39,32 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
   const [currentStep, setCurrentStep] = useState<'upload' | 'summary' | 'agreement' | 'success'>('upload');
   const [kycReviewData, setKycReviewData] = useState<any>(null);
   const [showAgreementModal, setShowAgreementModal] = useState(false);
+  const [backendData, setBackendData] = useState<any>(null);
+
+  // Fetch existing data on mount to ensure we have latest attachments
+  useEffect(() => {
+    const fetchLatest = async () => {
+      if (!sessionId || !token) return;
+      try {
+        const res = await fetch(`${apiBase}/api/KycData/all-details/${sessionId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          setBackendData(data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch documents:", err);
+      }
+    };
+    fetchLatest();
+  }, [sessionId, token, apiBase]);
+
+  // Helper to check if a document type already exists in backend data
+  const getExistingDoc = (type: number) => {
+    const source = backendData || allKycFormData;
+    return source?.attachments?.find((a: any) => a.documentType === type);
+  };
 
   const parseError = async (res: Response, fallback: string) => {
     try {
@@ -70,10 +97,19 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
 
-    if (!photo || !citFront || !citBack || !leftThumb || !rightThumb || !signature) {
+  const handleSubmit = async (e: React.FormEvent | null, shouldExit: boolean = false) => {
+    if (e) e.preventDefault();
+
+    // Check if we have either a NEW file or an EXISTING record for all required fields
+    const hasPhoto = photo || getExistingDoc(1);
+    const hasCitFront = citFront || getExistingDoc(2);
+    const hasCitBack = citBack || getExistingDoc(3);
+    const hasSignature = signature || getExistingDoc(4);
+    const hasLeftThumb = leftThumb || getExistingDoc(5);
+    const hasRightThumb = rightThumb || getExistingDoc(6);
+
+    if (!hasPhoto || !hasCitFront || !hasCitBack || !hasLeftThumb || !hasRightThumb || !hasSignature) {
       setError("Please upload all required documents: Photo, Citizenship Front/Back, Thumbs, and Signature.");
       return;
     }
@@ -87,62 +123,35 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
     setError(null);
 
     try {
-      await uploadFile(photo, 1);
-      await uploadFile(citFront, 2);
-      await uploadFile(citBack, 3);
-      await uploadFile(signature, 4);
-      await uploadFile(leftThumb, 5);
-      await uploadFile(rightThumb, 6);
+      // Only upload if a NEW file was selected
+      if (photo) await uploadFile(photo, 1);
+      if (citFront) await uploadFile(citFront, 2);
+      if (citBack) await uploadFile(citBack, 3);
+      if (signature) await uploadFile(signature, 4);
+      if (leftThumb) await uploadFile(leftThumb, 5);
+      if (rightThumb) await uploadFile(rightThumb, 6);
 
-      // Merge allKycFormData with backend data
-      let reviewData: any = allKycFormData
-        ? {
-          ...allKycFormData,
-          sessionId,
-          documents: {
-            photo: photo.name,
-            citizenship: {
-              front: citFront.name,
-              back: citBack.name,
-            },
-            signature: signature.name,
-            thumbs: {
-              left: leftThumb.name,
-              right: rightThumb.name,
-            }
-          },
-        }
-        : {
-          sessionId,
-          documents: {
-            photo: photo.name,
-            citizenship: {
-              front: citFront.name,
-              back: citBack.name,
-            },
-            signature: signature.name,
-            thumbs: {
-              left: leftThumb.name,
-              right: rightThumb.name,
-            }
-          },
-        };
-
+      // Fetch latest data from backend after uploads to get updated attachment list
+      let reviewData: any = { ...allKycFormData, sessionId };
       try {
-        const res = await fetch(
-          `${apiBase}/api/KycData/all-details/${sessionId}`,
-          {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          }
-        );
+        const res = await fetch(`${apiBase}/api/KycData/all-details/${sessionId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         const backendRes = await res.json();
         if (backendRes.success) {
-          reviewData = { ...reviewData, ...backendRes.data };
+          reviewData = { ...backendRes.data };
+          setBackendData(backendRes.data); // Update local cache to sync UI if user goes back
         }
-      } catch { }
+      } catch (err) {
+        console.error("Failed to fetch updated kyc details:", err);
+      }
 
-      setKycReviewData(reviewData);
-      setCurrentStep('summary'); // Move to summary view
+      if (shouldExit && onSaveAndExit) {
+        onSaveAndExit();
+      } else {
+        setKycReviewData(reviewData);
+        setCurrentStep('summary');
+      }
     } catch (err: any) {
       setError(err.message || "Upload failed");
     } finally {
@@ -188,6 +197,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
       <>
         <KycSummaryReview
           kycData={kycReviewData}
+          apiBase={apiBase}
           onNext={handleNextFromSummary}
           onBack={() => setCurrentStep('upload')}
         />
@@ -228,7 +238,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
   // Default: Upload step
   return (
     <>
-      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+      <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6" noValidate>
         <div className="border-b pb-4">
           <h2 className="text-xl font-bold text-gray-800">
             Section 13: Attachments & Finish
@@ -247,26 +257,60 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
         {/* Upload fields */}
         <div className="grid gap-6">
           {[
-            ["Passport Size Photo", setPhoto],
-            ["Citizenship Front", setCitFront],
-            ["Citizenship Back", setCitBack],
-            ["Signature", setSignature],
-            ["Left Thumbprint", setLeftThumb],
-            ["Right Thumbprint", setRightThumb],
-          ].map(([label, setter]: any, i) => (
-            <div
-              key={i}
-              className="p-4 border border-dashed rounded hover:border-indigo-400"
-            >
-              <label className="block font-semibold mb-2">{label} *</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setter(e.target.files?.[0] || null)}
-                className="w-full text-sm file:bg-indigo-50 file:text-indigo-700 file:rounded"
-              />
-            </div>
-          ))}
+            ["Passport Size Photo", setPhoto, 1],
+            ["Citizenship Front", setCitFront, 2],
+            ["Citizenship Back", setCitBack, 3],
+            ["Signature", setSignature, 4],
+            ["Left Thumbprint", setLeftThumb, 5],
+            ["Right Thumbprint", setRightThumb, 6],
+          ].map(([label, setter, type]: any, i) => {
+            const existing = getExistingDoc(type);
+            return (
+              <div
+                key={i}
+                className={`p-4 border rounded-xl transition-all ${existing ? "bg-green-50/30 border-green-200" : "border-slate-200 border-dashed hover:border-indigo-400"}`}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <label className="block font-bold text-slate-700">{label} *</label>
+                  {existing && (
+                    <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                      Previously Uploaded
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setter(e.target.files?.[0] || null)}
+                      className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all cursor-pointer"
+                    />
+                    {existing && !setter.value && (
+                      <p className="mt-2 text-xs text-slate-400 italic flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        Current: {existing.documentName || existing.originalFileName || "document.jpg"}
+                      </p>
+                    )}
+                  </div>
+
+                  {existing && (
+                    <div className="w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-white flex-shrink-0">
+                      <img
+                        src={`${apiBase}${existing.filePath}`}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as any).src = "https://via.placeholder.com/50?text=Doc";
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className="flex justify-between pt-6 border-t">
@@ -284,8 +328,9 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
             className={`px-10 py-3 bg-green-600 text-white rounded font-bold ${uploading ? "opacity-50 cursor-not-allowed" : ""
               }`}
           >
-            {uploading ? "Uploading..." : "Final Submit"}
+            {uploading ? "Uploading..." : "Save & Preview"}
           </button>
+
         </div>
       </form>
     </>

@@ -132,6 +132,27 @@ export const PERMISSION_CONSTANTS = {
     KYC_DASHBOARD: 'Permissions.Kyc.Dashboard',
     KYC_EXPORT: 'Permissions.Kyc.Export',
     KYC_APPROVED: 'Permissions.Kyc.ApprovedView',
+
+    // Occupation
+    OCCUPATION_VIEW: 'Permissions.Occupation.View',
+    OCCUPATION_CREATE: 'Permissions.Occupation.Create',
+    OCCUPATION_EDIT: 'Permissions.Occupation.Edit',
+    OCCUPATION_DELETE: 'Permissions.Occupation.Delete',
+    OCCUPATION_SIDEBAR: 'Permissions.Occupation.Sidebar',
+
+    // Address
+    ADDRESS_VIEW: 'Permissions.Address.View',
+    ADDRESS_CREATE: 'Permissions.Address.Create',
+    ADDRESS_EDIT: 'Permissions.Address.Edit',
+    ADDRESS_DELETE: 'Permissions.Address.Delete',
+    ADDRESS_SIDEBAR: 'Permissions.Address.Sidebar',
+
+    // Country
+    COUNTRY_VIEW: 'Permissions.Country.View',
+    COUNTRY_CREATE: 'Permissions.Country.Create',
+    COUNTRY_EDIT: 'Permissions.Country.Edit',
+    COUNTRY_DELETE: 'Permissions.Country.Delete',
+    COUNTRY_SIDEBAR: 'Permissions.Country.Sidebar',
 } as const;
 
 /**
@@ -299,6 +320,33 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             export: permSet.has(PERMISSION_CONSTANTS.KYC_EXPORT),
         },
 
+        // Occupation
+        occupation: {
+            create: permSet.has(PERMISSION_CONSTANTS.OCCUPATION_CREATE),
+            read: permSet.has(PERMISSION_CONSTANTS.OCCUPATION_VIEW),
+            update: permSet.has(PERMISSION_CONSTANTS.OCCUPATION_EDIT),
+            delete: permSet.has(PERMISSION_CONSTANTS.OCCUPATION_DELETE),
+            sidebar: permSet.has(PERMISSION_CONSTANTS.OCCUPATION_SIDEBAR),
+        },
+
+        // Address
+        address: {
+            create: permSet.has(PERMISSION_CONSTANTS.ADDRESS_CREATE),
+            read: permSet.has(PERMISSION_CONSTANTS.ADDRESS_VIEW),
+            update: permSet.has(PERMISSION_CONSTANTS.ADDRESS_EDIT),
+            delete: permSet.has(PERMISSION_CONSTANTS.ADDRESS_DELETE),
+            sidebar: permSet.has(PERMISSION_CONSTANTS.ADDRESS_SIDEBAR),
+        },
+
+        // Country
+        country: {
+            create: permSet.has(PERMISSION_CONSTANTS.COUNTRY_CREATE),
+            read: permSet.has(PERMISSION_CONSTANTS.COUNTRY_VIEW),
+            update: permSet.has(PERMISSION_CONSTANTS.COUNTRY_EDIT),
+            delete: permSet.has(PERMISSION_CONSTANTS.COUNTRY_DELETE),
+            sidebar: permSet.has(PERMISSION_CONSTANTS.COUNTRY_SIDEBAR),
+        },
+
         // Computed permissions for convenience
         create_users: permSet.has(PERMISSION_CONSTANTS.USERS_CREATE),
         read_users: permSet.has(PERMISSION_CONSTANTS.USERS_VIEW),
@@ -353,6 +401,9 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
         view_approved_kyc: permSet.has(PERMISSION_CONSTANTS.KYC_APPROVED),
 
         view_branches: permSet.has(PERMISSION_CONSTANTS.BRANCHES_SIDEBAR),
+        view_occupation: permSet.has(PERMISSION_CONSTANTS.OCCUPATION_SIDEBAR),
+        view_address: permSet.has(PERMISSION_CONSTANTS.ADDRESS_SIDEBAR),
+        view_country: permSet.has(PERMISSION_CONSTANTS.COUNTRY_SIDEBAR),
 
         dashboard: true, // Dashboard is always visible
     };
@@ -509,6 +560,27 @@ export function mapFrontendPermissionsToBackend(frontendPermissions: Permissions
     if (frontendPermissions.approved_kyc?.read || frontendPermissions.approved_kyc?.sidebar) {
         pushIfTrue(true, PERMISSION_CONSTANTS.KYC_APPROVED);
     }
+
+    // Occupation
+    pushIfTrue(frontendPermissions.occupation?.create, PERMISSION_CONSTANTS.OCCUPATION_CREATE);
+    pushIfTrue(frontendPermissions.occupation?.read, PERMISSION_CONSTANTS.OCCUPATION_VIEW);
+    pushIfTrue(frontendPermissions.occupation?.update, PERMISSION_CONSTANTS.OCCUPATION_EDIT);
+    pushIfTrue(frontendPermissions.occupation?.delete, PERMISSION_CONSTANTS.OCCUPATION_DELETE);
+    pushIfTrue(frontendPermissions.occupation?.sidebar, PERMISSION_CONSTANTS.OCCUPATION_SIDEBAR);
+
+    // Address
+    pushIfTrue(frontendPermissions.address?.create, PERMISSION_CONSTANTS.ADDRESS_CREATE);
+    pushIfTrue(frontendPermissions.address?.read, PERMISSION_CONSTANTS.ADDRESS_VIEW);
+    pushIfTrue(frontendPermissions.address?.update, PERMISSION_CONSTANTS.ADDRESS_EDIT);
+    pushIfTrue(frontendPermissions.address?.delete, PERMISSION_CONSTANTS.ADDRESS_DELETE);
+    pushIfTrue(frontendPermissions.address?.sidebar, PERMISSION_CONSTANTS.ADDRESS_SIDEBAR);
+
+    // Country
+    pushIfTrue(frontendPermissions.country?.create, PERMISSION_CONSTANTS.COUNTRY_CREATE);
+    pushIfTrue(frontendPermissions.country?.read, PERMISSION_CONSTANTS.COUNTRY_VIEW);
+    pushIfTrue(frontendPermissions.country?.update, PERMISSION_CONSTANTS.COUNTRY_EDIT);
+    pushIfTrue(frontendPermissions.country?.delete, PERMISSION_CONSTANTS.COUNTRY_DELETE);
+    pushIfTrue(frontendPermissions.country?.sidebar, PERMISSION_CONSTANTS.COUNTRY_SIDEBAR);
 
     return permissions;
 }

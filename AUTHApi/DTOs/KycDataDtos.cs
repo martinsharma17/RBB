@@ -19,6 +19,7 @@ namespace AUTHApi.DTOs
         public int? BranchId { get; set; }
         public string? PanNo { get; set; }
         public string? MaritalStatus { get; set; }
+        public string? NidNo { get; set; }
     }
 
     public class AddressDto
@@ -30,6 +31,7 @@ namespace AUTHApi.DTOs
         public string? MunicipalityName { get; set; }
         public int? WardNo { get; set; }
         public string? Tole { get; set; }
+        public string? FullAddress { get; set; }
         public string? TelephoneNo { get; set; }
         public string MobileNo { get; set; } = string.Empty;
         public string? EmailId { get; set; }
@@ -46,6 +48,7 @@ namespace AUTHApi.DTOs
         public string? DaughterInLawName { get; set; }
         public string? FatherInLawName { get; set; }
         public string? MotherInLawName { get; set; }
+        public string? ChildrenNames { get; set; }
     }
 
     public class BankDto
@@ -93,6 +96,7 @@ namespace AUTHApi.DTOs
         public string? ContactNo { get; set; }
         public string? EmailId { get; set; }
         public string? PermanentAccountNo { get; set; }
+        public string? Occupation { get; set; }
     }
 
     public class AmlComplianceDto
@@ -102,6 +106,7 @@ namespace AUTHApi.DTOs
         public string? PepRelationName { get; set; }
         public string? PepRelationship { get; set; }
         public bool HasBeneficialOwner { get; set; }
+        public string? BeneficialOwnerDetails { get; set; }
         public bool HasCriminalRecord { get; set; }
         public string? CriminalRecordDetails { get; set; }
     }

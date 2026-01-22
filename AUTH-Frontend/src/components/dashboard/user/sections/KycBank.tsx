@@ -6,6 +6,7 @@ interface KycBankProps {
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
+    onSaveAndExit?: () => void;
 }
 
 interface KycBankData {
@@ -16,7 +17,7 @@ interface KycBankData {
     [key: string]: any;
 }
 
-const KycBank: React.FC<KycBankProps> = ({ sessionId, initialData, onNext, onBack }) => {
+const KycBank: React.FC<KycBankProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
     const { token, apiBase } = useAuth();
 
     const [formData, setFormData] = useState<KycBankData>({
@@ -45,14 +46,17 @@ const KycBank: React.FC<KycBankProps> = ({ sessionId, initialData, onNext, onBac
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
+    const [isExiting, setIsExiting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+        if (e) e.preventDefault();
         if (!sessionId) {
             setError("Session not initialized");
             return;
         }
         setSaving(true);
         setError(null);
+        if (shouldExit) setIsExiting(true);
 
         try {
             const response = await fetch(`${apiBase}/api/KycData/save-bank-account`, {
@@ -71,19 +75,25 @@ const KycBank: React.FC<KycBankProps> = ({ sessionId, initialData, onNext, onBac
             });
 
             if (response.ok) {
-                onNext({ bank: formData });
+                if (shouldExit && onSaveAndExit) {
+                    onSaveAndExit();
+                } else {
+                    onNext({ bank: formData });
+                }
             } else {
                 setError("Failed to save bank section");
+                setIsExiting(false);
             }
         } catch (err) {
             setError("Network error while saving");
+            setIsExiting(false);
         } finally {
             setSaving(false);
         }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
             <div className="border-b border-gray-200 pb-4">
                 <h2 className="text-xl font-bold text-gray-800">Section 4: Bank Account Details</h2>
                 <p className="text-sm text-gray-500">Provide bank details where you want to receive payments.</p>
@@ -158,6 +168,7 @@ const KycBank: React.FC<KycBankProps> = ({ sessionId, initialData, onNext, onBac
                 >
                     {saving ? 'Saving...' : 'Save & Next'}
                 </button>
+
             </div>
         </form>
     );

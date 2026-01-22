@@ -136,7 +136,7 @@ namespace AUTHApi.Services
             };
 
             _context.KycWorkflowMasters.Add(workflow);
-            if (session != null) session.FormStatus = 2; // Submitted / InReview
+            if (session != null) session.FormStatus = 3; // 3 = Submitted (Maker Finished)
 
             await _context.SaveChangesAsync();
 

@@ -6,7 +6,9 @@ import NepaliDate from 'nepali-date-converter';
 interface KycPersonalInfoProps {
   sessionId: number | null;
   initialData?: any;
+
   onNext: (data: any) => void;
+  onSaveAndExit?: () => void;
 }
 
 interface KycPersonalInfoData {
@@ -44,6 +46,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
   sessionId,
   initialData,
   onNext,
+  onSaveAndExit,
 }) => {
   const { token, apiBase } = useAuth();
   const [branches, setBranches] = useState<any[]>([]);
@@ -98,6 +101,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
       initialData?.CitizenshipIssueDistrict ||
       "",
     panNo: initialData?.panNo || initialData?.PanNo || "",
+    nidNo: initialData?.nidNo || initialData?.NidNo || initialData?.nidNumber || initialData?.NidNumber || "",
     branchId: initialData?.branchId || initialData?.BranchId || "",
   });
 
@@ -143,6 +147,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
           initialData?.CitizenshipIssueDistrict ||
           "",
         panNo: initialData?.panNo || initialData?.PanNo || "",
+        nidNo: initialData?.nidNo || initialData?.NidNo || initialData?.nidNumber || initialData?.NidNumber || "",
         branchId: initialData?.branchId || initialData?.BranchId || "",
       });
     }
@@ -167,17 +172,26 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+    if (name === "panNo") {
+      // Allow only numbers and limit to 9 digits
+      const cleaned = value.replace(/\D/g, "").slice(0, 9);
+      setFormData((prev) => ({ ...prev, [name]: cleaned }));
+      return;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
+    if (e) e.preventDefault();
     if (!sessionId) {
       setError("KYC Session not initialized correctly.");
       return;
     }
     setSaving(true);
     setError(null);
+    if (shouldExit) { /* Logic for exit if needed */ }
 
     // Map frontend data to backend PersonalInfoDto
     const mappedData = {
@@ -208,6 +222,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
         ? parseInt(formData.branchId.toString())
         : null,
       maritalStatus: formData.maritalStatus || null,
+      nidNo: formData.nidNo || null,
     };
 
     const headers: any = {
@@ -230,11 +245,15 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
       );
 
       if (response.ok) {
-        onNext({
-          personalInfo: formData,
-          gender: formData.gender,
-          maritalStatus: formData.maritalStatus,
-        });
+        if (shouldExit && onSaveAndExit) {
+          onSaveAndExit();
+        } else {
+          onNext({
+            personalInfo: formData,
+            gender: formData.gender,
+            maritalStatus: formData.maritalStatus,
+          });
+        }
       } else {
         const data = await response.json();
         if (data.errors) {
@@ -256,7 +275,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
       <div className="border-b border-gray-200 pb-4">
         <h2 className="text-xl font-bold text-gray-800">
           Section 1: Personal Information
@@ -482,6 +501,21 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
             name="panNo"
             value={formData.panNo}
             onChange={handleChange}
+            placeholder="9 digit PAN number"
+            className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            National ID (NID)
+          </label>
+          <input
+            type="text"
+            name="nidNo"
+            value={formData.nidNo}
+            onChange={handleChange}
+            placeholder="NID Number"
             className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
           />
         </div>
@@ -521,6 +555,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
             <option value="Widowed">Widowed</option>
           </select>
         </div>
+
       </div>
 
       <div className="flex justify-end pt-6">
@@ -532,8 +567,9 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
         >
           {saving ? "Saving..." : "Save & Next"}
         </button>
+
       </div>
-    </form>
+    </form >
   );
 };
 

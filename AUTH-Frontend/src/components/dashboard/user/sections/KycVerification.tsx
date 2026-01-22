@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../../../context/AuthContext';
 
 /**
  * KycVerification - Handles the initial Email/OTP verification 
  * that must be completed before the KYC form is visible.
+ * 
+ * AUTHENTICATION-BASED FLOW:
+ * - Authenticated users (staff with valid token): Skip OTP verification
+ * - Unauthenticated users (customers): Must verify OTP before accessing form
+ * 
+ * This approach automatically works for any role (Maker, Checker, Admin, etc.)
+ * without needing to maintain a hardcoded list of role names.
  */
 interface KycSessionBrief {
     sessionId: number;
@@ -20,9 +28,17 @@ interface KycVerificationProps {
 }
 
 const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, sessionId, onVerified, apiBase }) => {
+    // Get authentication context to determine if user is staff or customer
+    const { token, user } = useAuth();
+
+    // Check if user is authenticated (any logged-in user is considered staff)
+    // This automatically works for all roles: Maker, Checker, Admin, Superadmin, and any future roles
+    const isStaff = !!token && !!user;
+
     const [email, setEmail] = useState(initialEmail || '');
     const [otp, setOtp] = useState('');
     const [step, setStep] = useState(1); // 1: Enter Email, 2: Enter OTP, 3: Select Session
+    const [tempSessionId, setTempSessionId] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState('');
@@ -33,25 +49,81 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
         setLoading(true);
         setError('');
         try {
-            const response = await fetch(`${apiBase}/api/KycSession/send-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sessionId: Number(sessionId || 0),
-                    email: email,
-                    otpType: 1 // Email OTP
-                })
-            });
 
-            if (response.ok) {
-                setStep(2);
-                setMessage('OTP has been sent to your email.');
+
+            if (isStaff) {
+                // ========== STAFF FLOW: LIST SESSIONS WITHOUT AUTO-CREATE ==========
+                // Staff members see existing sessions first.
+                // No session is created until they click 'Start Brand New KYC'.
+
+                const response = await fetch(`${apiBase}/api/KycSession/list-by-email?email=${encodeURIComponent(email)}`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        setAvailableSessions(data.data || []);
+                        setStep(3); // Go to session selection (might be empty)
+                    } else {
+                        setError(data.message || 'Failed to search for customer sessions.');
+                    }
+                } else {
+                    setError('Failed to load customer sessions.');
+                }
             } else {
-                const data = await response.json();
-                setError(data || 'Failed to send OTP. Please try again.');
+                // ========== CUSTOMER FLOW: REQUIRE OTP ==========
+                // Customers must verify their email via OTP before accessing the form.
+                // This ensures only the actual customer can access their KYC data.
+
+                let activeSessionId = Number(sessionId || 0);
+
+                // Step 1: If no session ID, initialize one first (Customers Only)
+                if (!activeSessionId) {
+                    const initRes = await fetch(`${apiBase}/api/KycSession/initialize`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: email,
+                            ForceNew: false // Try to find existing first
+                        })
+                    });
+
+                    if (initRes.ok) {
+                        const initData = await initRes.json();
+                        if (initData.success && initData.data?.sessionId) {
+                            activeSessionId = initData.data.sessionId;
+                        } else {
+                            throw new Error(initData.message || 'Failed to initialize session');
+                        }
+                    } else {
+                        throw new Error('Failed to start session');
+                    }
+                }
+
+                // Step 2: Send OTP to customer's email
+                const response = await fetch(`${apiBase}/api/KycSession/send-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: activeSessionId,
+                        email: email,
+                        otpType: 1 // Email OTP
+                    })
+                });
+
+                if (response.ok) {
+                    // Store session ID for OTP verification step
+                    setTempSessionId(activeSessionId);
+                    setStep(2); // Move to OTP entry step
+                    setMessage('OTP has been sent to your email.');
+                } else {
+                    const data = await response.json();
+                    setError(data?.message || data?.Message || 'Failed to send OTP. Please try again.');
+                }
             }
-        } catch (err) {
-            setError('Network error. Please check your connection.');
+        } catch (err: any) {
+            setError(err.message || 'Network error.');
         } finally {
             setLoading(false);
         }
@@ -66,7 +138,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    sessionId: Number(sessionId || 0),
+                    sessionId: Number(tempSessionId || sessionId || 0),
                     otpCode: otp,
                     otpType: 1
                 })
@@ -75,13 +147,8 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
             if (response.ok) {
                 const data = await response.json();
                 const sessions = data.data.availableSessions || [];
-                if (sessions.length > 0) {
-                    setAvailableSessions(sessions);
-                    setStep(3);
-                } else {
-                    // No sessions found, start a new one automatically
-                    handleStartNew();
-                }
+                setAvailableSessions(sessions);
+                setStep(3);
             } else {
                 setError('Invalid or expired OTP. Please try again.');
             }
@@ -100,7 +167,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     email: email,
-                    forceNew: true
+                    ForceNew: true
                 })
             });
 
@@ -119,21 +186,43 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
         }
     };
 
+    const handleDelete = async (e: React.MouseEvent, sid: number) => {
+        e.stopPropagation();
+        if (!window.confirm("Are you sure you want to delete this incomplete application? This action cannot be undone.")) return;
+
+        setLoading(true);
+        try {
+            const response = await fetch(`${apiBase}/api/KycSession/${sid}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                setAvailableSessions(prev => prev.filter(s => s.sessionId !== sid));
+                setMessage("Application deleted successfully.");
+            } else {
+                setError("Failed to delete application.");
+            }
+        } catch (err) {
+            setError("Error deleting application.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const getStatusText = (status: number) => {
         switch (status) {
             case 0: return 'Not Started';
             case 1: return 'In Progress';
-            case 2: return 'Ready for Submission';
-            case 3:
-            case 4: return 'Submitted';
+            case 2: return 'Reference Check'; // Changed from 'Ready for Submission' to avoid confusion if waiting
+            case 3: return 'Application Submitted';
+            case 4: return 'Approved';
+            case 5: return 'Rejected';
             default: return 'Completed';
         }
     };
 
     const getStepLabel = (step: number) => {
-        // Re-aligning with KycFormMaster's visibleSteps logic
-        // KycFormMaster mapping: 
-        // 1: Personal, 2: Address, 3: Family, 4: Bank, 5: Occupation, 6: Financial, 7: Transaction, 8: Guardian, 9: AML, 10: Location, 11: Legal, 12: Agreement, 13: Attachments
+        // ... (keep same)
         const masterLabels: { [key: number]: string } = {
             1: "Personal Information",
             2: "Address Details",
@@ -155,6 +244,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
 
     return (
         <div className="max-w-md mx-auto py-12 px-4">
+            {/* ... (Header same) ... */}
             <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,12 +252,16 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                     </svg>
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                    {step === 3 ? 'Previous KYC Records' : 'Email Verification Required'}
+                    {step === 3 ? 'Customer KYC Records' : isStaff ? 'Customer Email Entry' : 'Email Verification Required'}
                 </h2>
                 <p className="text-gray-500 mt-2">
                     {step === 3
-                        ? 'We found some previous KYC records linked to your email.'
-                        : 'To ensure the security of your account, please verify your email address before proceeding.'}
+                        ? isStaff
+                            ? 'Select a KYC session to view or edit, or start a new one.'
+                            : 'We found some previous KYC records linked to your email.'
+                        : isStaff
+                            ? 'Enter the customer\'s email address to view or edit their KYC form.'
+                            : 'To ensure the security of your account, please verify your email address before proceeding.'}
                 </p>
             </div>
 
@@ -185,7 +279,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                             required
                             placeholder="your@email.com"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                            disabled={!!initialEmail} // Disable if already provided by Auth
+                        // disabled={!!initialEmail} // Removed to allow role to enter different customer emails
                         />
                     </div>
                     <button
@@ -233,20 +327,24 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                 <div className="space-y-4">
                     <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
                         {availableSessions.map((s) => {
-                            const isSubmitted = s.formStatus >= 3;
+                            const isSubmitted = s.formStatus >= 2;
+                            const isFinalized = s.formStatus >= 3;
                             return (
                                 <div
                                     key={s.sessionId}
                                     onClick={() => !isSubmitted && onVerified(s.sessionId)}
-                                    className={`p-5 border-2 rounded-2xl transition-all flex justify-between items-center group ${isSubmitted
-                                        ? 'bg-slate-50 border-slate-100 cursor-not-allowed'
-                                        : 'bg-white border-slate-100 hover:border-indigo-500 cursor-pointer shadow-sm hover:shadow-indigo-100'
+                                    className={`p-5 border rounded-2xl transition-all flex justify-between items-center group relative overflow-hidden ${isSubmitted
+                                        ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
+                                        : 'bg-white border-slate-200 hover:border-indigo-500 cursor-pointer shadow-sm hover:shadow-md'
                                         }`}
                                 >
+                                    {isSubmitted && (
+                                        <div className="absolute inset-0 z-10 bg-white/10" />
+                                    )}
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-black text-slate-900">Session #{s.sessionId}</span>
-                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${isSubmitted ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                            <span className={`font-black ${isSubmitted ? 'text-gray-500' : 'text-slate-900'}`}>Session #{s.sessionId}</span>
+                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${isFinalized ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                                                 }`}>
                                                 {getStatusText(s.formStatus)}
                                             </span>
@@ -262,29 +360,38 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                                                     Last Step: {getStepLabel(s.currentStep || s.lastSavedStep + 1)}
                                                 </div>
                                             )}
-                                            {isSubmitted && (
-                                                <div className="text-xs font-bold text-slate-400 mt-1 italic">
-                                                    Review in Progress (Locked)
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
 
-                                    {!isSubmitted && (
-                                        <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                            </svg>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center gap-2 relative z-20">
+                                        {!isSubmitted && (
+                                            <button
+                                                onClick={(e) => handleDelete(e, s.sessionId)}
+                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                                title="Delete Application"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        )}
 
-                                    {isSubmitted && (
-                                        <div className="text-slate-300">
-                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5z" />
-                                            </svg>
-                                        </div>
-                                    )}
+                                        {!isSubmitted && (
+                                            <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center transition-all transform group-hover:bg-indigo-600 group-hover:text-white">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                                </svg>
+                                            </div>
+                                        )}
+
+                                        {isSubmitted && (
+                                            <div className="text-indigo-400 pr-2">
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}

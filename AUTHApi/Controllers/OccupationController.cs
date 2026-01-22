@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using AUTHApi.Entities;
 using AUTHApi.Data;
+using AUTHApi.Core.Security;
 
 namespace AUTHApi.Controllers
 {
@@ -17,10 +19,10 @@ namespace AUTHApi.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous]
-        public IActionResult GetAll()
+        [Authorize(Policy = Permissions.Occupation.View)]
+        public async Task<IActionResult> GetAll()
         {
-            var list = _context.Occupations.ToList();
+            var list = await _context.Occupations.ToListAsync();
             if (!list.Any())
             {
                 // Emergency seeding if startup seeder missed it
@@ -36,41 +38,46 @@ namespace AUTHApi.Controllers
                     new Occupation { Name = "Others" }
                 };
                 _context.Occupations.AddRange(defaults);
-                _context.SaveChanges();
-                list = _context.Occupations.ToList();
+                await _context.SaveChangesAsync();
+                list = await _context.Occupations.ToListAsync();
             }
 
             return Ok(list);
         }
 
         [HttpPost]
-        // [Authorize(Roles = "SuperAdmin")]
-        public IActionResult Create([FromBody] Occupation occupation)
+        [Authorize(Policy = Permissions.Occupation.Create)]
+        public async Task<IActionResult> Create([FromBody] Occupation occupation)
         {
+            if (string.IsNullOrWhiteSpace(occupation.Name))
+                return BadRequest("Occupation name is required.");
+
             _context.Occupations.Add(occupation);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return Ok(occupation);
         }
 
         [HttpPut("{id}")]
-        // [Authorize(Roles = "SuperAdmin")]
-        public IActionResult Update(int id, [FromBody] Occupation occupation)
+        [Authorize(Policy = Permissions.Occupation.Edit)]
+        public async Task<IActionResult> Update(int id, [FromBody] Occupation occupation)
         {
-            var occ = _context.Occupations.Find(id);
+            var occ = await _context.Occupations.FindAsync(id);
             if (occ == null) return NotFound();
+
             occ.Name = occupation.Name;
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return Ok(occ);
         }
 
         [HttpDelete("{id}")]
-        // [Authorize(Roles = "SuperAdmin")]
-        public IActionResult Delete(int id)
+        [Authorize(Policy = Permissions.Occupation.Delete)]
+        public async Task<IActionResult> Delete(int id)
         {
-            var occ = _context.Occupations.Find(id);
+            var occ = await _context.Occupations.FindAsync(id);
             if (occ == null) return NotFound();
+
             _context.Occupations.Remove(occ);
-            _context.SaveChanges();
+            await _context.SaveChangesAsync();
             return Ok();
         }
     }
