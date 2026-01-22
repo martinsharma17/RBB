@@ -161,7 +161,6 @@ const KycLocation: React.FC<KycLocationProps> = ({
     }
   };
 
-  const [isExiting, setIsExiting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
     if (e) e.preventDefault();
@@ -177,7 +176,7 @@ const KycLocation: React.FC<KycLocationProps> = ({
 
     setSaving(true);
     setError(null);
-    if (shouldExit) setIsExiting(true);
+    if (shouldExit) { /* Logic for exit if needed */ }
 
     try {
       // 1. Upload map image if new one exists
@@ -228,11 +227,9 @@ const KycLocation: React.FC<KycLocationProps> = ({
         }
       } else {
         setError("Failed to save location map");
-        setIsExiting(false);
       }
     } catch (err) {
       setError("Network error while saving");
-      setIsExiting(false);
     } finally {
       setSaving(false);
     }
@@ -365,8 +362,9 @@ const KycLocation: React.FC<KycLocationProps> = ({
               type="text"
               name="latitude"
               value={formData.latitude}
-              readOnly
-              className="ml-2 p-1 border rounded text-xs"
+              onChange={handleChange}
+              className="ml-2 p-1 border rounded text-xs focus:ring-1 focus:ring-indigo-500"
+              placeholder="e.g. 27.7172"
             />
           </div>
           <div>
@@ -375,8 +373,9 @@ const KycLocation: React.FC<KycLocationProps> = ({
               type="text"
               name="longitude"
               value={formData.longitude}
-              readOnly
-              className="ml-2 p-1 border rounded text-xs"
+              onChange={handleChange}
+              className="ml-2 p-1 border rounded text-xs focus:ring-1 focus:ring-indigo-500"
+              placeholder="e.g. 85.324"
             />
           </div>
         </div>

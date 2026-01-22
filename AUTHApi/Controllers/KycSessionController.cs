@@ -299,6 +299,27 @@ namespace AUTHApi.Controllers
             return Success(new { nextStep = model.StepNumber + 1 });
         }
 
+        [HttpGet("list-by-email")]
+        public async Task<IActionResult> ListSessionsByEmail([FromQuery] string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return Failure("Email required", 400);
+
+            var availableSessions = await _context.KycFormSessions
+                .Where(s => s.Email == email && !s.IsExpired)
+                .OrderByDescending(s => s.CreatedDate)
+                .Select(s => new KycSessionBriefDto
+                {
+                    SessionId = s.Id,
+                    CreatedDate = s.CreatedDate,
+                    CurrentStep = s.CurrentStep,
+                    LastSavedStep = s.LastSavedStep,
+                    FormStatus = s.FormStatus
+                })
+                .ToListAsync();
+
+            return Success(availableSessions);
+        }
+
         [HttpDelete("{sessionId}")]
         public async Task<IActionResult> DeleteSession(int sessionId)
         {

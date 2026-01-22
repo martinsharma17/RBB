@@ -89,6 +89,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // API CONFIG: Looks for VITE_API_URL or defaults to localhost
     const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
+    // --- LOGOUT FUNCTION ---
+    // Clears all authentication data.
+    const logout = useCallback((): void => {
+        console.log('Logging out.');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userRoles');
+        setToken(null);
+        setUser(null);
+        setPermissions(null); // Clear permissions on logout
+    }, []);
+
     // --- EFFECT: INITIAL AUTH CHECK ---
     // Runs once when the app mounts.
     useEffect(() => {
@@ -180,13 +191,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                 setPermissions(frontendPermissions);
             } else {
                 console.error('❌ Failed to fetch permissions:', response.status, response.statusText);
+                if (response.status === 401) {
+                    console.log('🚪 Session expired (401), logging out...');
+                    logout();
+                }
                 setPermissions(null);
             }
         } catch (error) {
             console.error('❌ Error fetching permissions:', error);
             setPermissions(null);
         }
-    }, [apiBase]);
+    }, [apiBase, logout]);
 
     // --- FETCH USER PROFILE FUNCTION ---
     const fetchUserProfile = useCallback(async (authToken: string): Promise<void> => {
@@ -212,11 +227,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                         name: profileData.userName || profileData.name || prev.name
                     };
                 });
+            } else if (response.status === 401) {
+                console.log('🚪 Session expired (401), logging out...');
+                logout();
             }
         } catch (error) {
             console.error('❌ Error fetching user profile:', error);
         }
-    }, [apiBase]);
+    }, [apiBase, logout]);
 
     // ============================================================================
     // TAB-ISOLATED SESSION - Fetch permissions on focus + periodic refresh
@@ -311,17 +329,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.error('Login error:', error);
             return { success: false, message: 'Network error. Check backend server.' };
         }
-    };
-
-    // --- LOGOUT FUNCTION ---
-    // Clears all authentication data.
-    const logout = (): void => {
-        console.log('Logging out.');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userRoles');
-        setToken(null);
-        setUser(null);
-        setPermissions(null); // Clear permissions on logout
     };
 
     const value: AuthContextValue = {

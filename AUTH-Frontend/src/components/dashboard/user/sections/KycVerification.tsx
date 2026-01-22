@@ -49,65 +49,25 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
         setLoading(true);
         setError('');
         try {
-            let activeSessionId = Number(sessionId || 0);
 
-            // Step 1: If no session ID, initialize one first
-            if (!activeSessionId) {
-                const initRes = await fetch(`${apiBase}/api/KycSession/initialize`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: email,
-                        ForceNew: false // Try to find existing first
-                    })
-                });
-
-                if (initRes.ok) {
-                    const initData = await initRes.json();
-                    if (initData.success && initData.data?.sessionId) {
-                        activeSessionId = initData.data.sessionId;
-                        // Determine if we should jump straight to next step if already verified? 
-                        // For now, let's just proceed to send OTP to verify "current user" access
-                    } else {
-                        throw new Error(initData.message || 'Failed to initialize session');
-                    }
-                } else {
-                    throw new Error('Failed to start session');
-                }
-            }
-
-            // ============================================================================
-            // AUTHENTICATION-BASED FLOW LOGIC
-            // ============================================================================
-            // Staff users (authenticated): Skip OTP and directly access sessions
-            // Customers (unauthenticated): Must verify OTP before accessing form
-            // ============================================================================
 
             if (isStaff) {
-                // ========== STAFF FLOW: BYPASS OTP ==========
-                // Staff members are already authenticated, so they can directly
-                // access customer KYC forms without OTP verification.
-                // This works for ALL roles automatically (Maker, Checker, Admin, etc.)
+                // ========== STAFF FLOW: LIST SESSIONS WITHOUT AUTO-CREATE ==========
+                // Staff members see existing sessions first.
+                // No session is created until they click 'Start Brand New KYC'.
 
-                setTempSessionId(activeSessionId);
-                const response = await fetch(`${apiBase}/api/KycSession/verify-otp`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}` // Include staff authentication
-                    },
-                    body: JSON.stringify({
-                        sessionId: activeSessionId,
-                        otpCode: "000000", // Staff bypass code
-                        otpType: 1
-                    })
+                const response = await fetch(`${apiBase}/api/KycSession/list-by-email?email=${encodeURIComponent(email)}`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                 });
 
                 if (response.ok) {
                     const data = await response.json();
-                    const sessions = data.data.availableSessions || [];
-                    setAvailableSessions(sessions);
-                    setStep(3); // Go directly to session selection
+                    if (data.success) {
+                        setAvailableSessions(data.data || []);
+                        setStep(3); // Go to session selection (might be empty)
+                    } else {
+                        setError(data.message || 'Failed to search for customer sessions.');
+                    }
                 } else {
                     setError('Failed to load customer sessions.');
                 }
@@ -115,6 +75,31 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                 // ========== CUSTOMER FLOW: REQUIRE OTP ==========
                 // Customers must verify their email via OTP before accessing the form.
                 // This ensures only the actual customer can access their KYC data.
+
+                let activeSessionId = Number(sessionId || 0);
+
+                // Step 1: If no session ID, initialize one first (Customers Only)
+                if (!activeSessionId) {
+                    const initRes = await fetch(`${apiBase}/api/KycSession/initialize`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: email,
+                            ForceNew: false // Try to find existing first
+                        })
+                    });
+
+                    if (initRes.ok) {
+                        const initData = await initRes.json();
+                        if (initData.success && initData.data?.sessionId) {
+                            activeSessionId = initData.data.sessionId;
+                        } else {
+                            throw new Error(initData.message || 'Failed to initialize session');
+                        }
+                    } else {
+                        throw new Error('Failed to start session');
+                    }
+                }
 
                 // Step 2: Send OTP to customer's email
                 const response = await fetch(`${apiBase}/api/KycSession/send-otp`, {
@@ -342,13 +327,14 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                 <div className="space-y-4">
                     <div className="max-h-64 overflow-y-auto space-y-3 pr-2">
                         {availableSessions.map((s) => {
-                            const isSubmitted = s.formStatus >= 3;
+                            const isSubmitted = s.formStatus >= 2;
+                            const isFinalized = s.formStatus >= 3;
                             return (
                                 <div
                                     key={s.sessionId}
                                     onClick={() => !isSubmitted && onVerified(s.sessionId)}
                                     className={`p-5 border rounded-2xl transition-all flex justify-between items-center group relative overflow-hidden ${isSubmitted
-                                        ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-80'
+                                        ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
                                         : 'bg-white border-slate-200 hover:border-indigo-500 cursor-pointer shadow-sm hover:shadow-md'
                                         }`}
                                 >
@@ -358,7 +344,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className={`font-black ${isSubmitted ? 'text-gray-500' : 'text-slate-900'}`}>Session #{s.sessionId}</span>
-                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${isSubmitted ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${isFinalized ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                                                 }`}>
                                                 {getStatusText(s.formStatus)}
                                             </span>
@@ -399,9 +385,9 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                                         )}
 
                                         {isSubmitted && (
-                                            <div className="text-gray-400 pr-2">
-                                                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5z" />
+                                            <div className="text-indigo-400 pr-2">
+                                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                                 </svg>
                                             </div>
                                         )}

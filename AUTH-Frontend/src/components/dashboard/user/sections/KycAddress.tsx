@@ -43,17 +43,28 @@ const KycAddress: React.FC<KycAddressProps> = ({
     permanentDistrictId: "",
     permanentMunicipalityId: "",
     permanentWardNo: "",
-    permanentCountry: "Nepal",
-    permanentTole: "",
+    permanentCountry: initialData?.permanentAddress?.country || "Nepal",
+    permanentFullAddress: initialData?.permanentAddress?.fullAddress || "",
+    currentFullAddress: initialData?.currentAddress?.fullAddress || "",
+    permanentTole: initialData?.permanentAddress?.tole || "",
     currentProvinceId: "",
     currentDistrictId: "",
     currentMunicipalityId: "",
     currentTole: "",
     wardNo: "",
-    currentCountry: "Nepal",
+    currentCountry: initialData?.currentAddress?.country || initialData?.personalInfo?.nationality || "Nepal",
     contactNumber: "",
     email: initialData?.currentAddress?.emailId || initialData?.email || "",
   });
+
+  const [countries, setCountries] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`${apiBase}/api/Country`)
+      .then((res) => res.json())
+      .then((data) => setCountries(data))
+      .catch((err) => console.error("Failed to load countries", err));
+  }, [apiBase]);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -227,7 +238,6 @@ const KycAddress: React.FC<KycAddressProps> = ({
     }));
   };
 
-  const [isExiting, setIsExiting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
     if (e) e.preventDefault();
@@ -237,7 +247,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
     }
     setSaving(true);
     setError(null);
-    if (shouldExit) setIsExiting(true);
+    if (shouldExit) { /* Logic for exit if needed */ }
 
     try {
       const headers: any = { "Content-Type": "application/json" };
@@ -273,11 +283,12 @@ const KycAddress: React.FC<KycAddressProps> = ({
           stepNumber: 3,
           data: {
             country: formData.permanentCountry,
-            province: pProv,
-            district: pDist,
-            tole: formData.permanentTole,
-            municipalityName: pMun,
-            wardNo: parseInt(formData.permanentWardNo) || null,
+            province: formData.permanentCountry === "Nepal" ? pProv : null,
+            district: formData.permanentCountry === "Nepal" ? pDist : null,
+            tole: formData.permanentCountry === "Nepal" ? formData.permanentTole : null,
+            municipalityName: formData.permanentCountry === "Nepal" ? pMun : null,
+            wardNo: formData.permanentCountry === "Nepal" ? (parseInt(formData.permanentWardNo) || null) : null,
+            fullAddress: formData.permanentCountry !== "Nepal" ? formData.permanentFullAddress : null,
             mobileNo: formData.contactNumber,
             emailId: formData.email,
           },
@@ -311,7 +322,6 @@ const KycAddress: React.FC<KycAddressProps> = ({
       }
     } catch (err: any) {
       setError(err.message || "Error saving address information");
-      setIsExiting(false);
     } finally {
       setSaving(false);
     }
@@ -341,106 +351,131 @@ const KycAddress: React.FC<KycAddressProps> = ({
           </h3>
         </div>
 
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Current Province *
-          </label>
-          <select
-            name="currentProvinceId"
-            value={formData.currentProvinceId}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          >
-            <option value="">Select Province</option>
-            {currProvinces.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Current District *
-          </label>
-          <select
-            name="currentDistrictId"
-            value={formData.currentDistrictId}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          >
-            <option value="">Select District</option>
-            {currDistricts.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Current Municipality *
-          </label>
-          <select
-            name="currentMunicipalityId"
-            value={formData.currentMunicipalityId}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          >
-            <option value="">Select Municipality</option>
-            {currMunicipalities.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Current Ward No. *
-          </label>
-          <input
-            type="text"
-            name="wardNo"
-            value={formData.wardNo}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Current Tole
-          </label>
-          <input
-            type="text"
-            name="currentTole"
-            value={formData.currentTole}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-
-        <div className="flex flex-col">
+        <div className="flex flex-col col-span-full">
           <label className="text-sm font-semibold text-gray-700 mb-1">
             Current Country *
           </label>
-          <input
-            type="text"
+          <select
             name="currentCountry"
             value={formData.currentCountry}
             onChange={handleChange}
-            className="p-2 border rounded"
+            className="p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             required
-          />
+          >
+            <option value="">Select Country</option>
+            {countries.map((c: any) => (
+              <option key={c.id} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </div>
+
+        {formData.currentCountry === "Nepal" ? (
+          <>
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Current Province *
+              </label>
+              <select
+                name="currentProvinceId"
+                value={formData.currentProvinceId}
+                onChange={handleChange}
+                className="p-2 border rounded focus:ring-2 focus:ring-indigo-500"
+                required
+              >
+                <option value="">Select Province</option>
+                {currProvinces.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Current District *
+              </label>
+              <select
+                name="currentDistrictId"
+                value={formData.currentDistrictId}
+                onChange={handleChange}
+                className="p-2 border rounded focus:ring-2 focus:ring-indigo-500"
+                required
+              >
+                <option value="">Select District</option>
+                {currDistricts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Current Municipality *
+              </label>
+              <select
+                name="currentMunicipalityId"
+                value={formData.currentMunicipalityId}
+                onChange={handleChange}
+                className="p-2 border rounded focus:ring-2 focus:ring-indigo-500"
+                required
+              >
+                <option value="">Select Municipality</option>
+                {currMunicipalities.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Current Ward No. *
+              </label>
+              <input
+                type="text"
+                name="wardNo"
+                value={formData.wardNo}
+                onChange={handleChange}
+                className="p-2 border rounded focus:ring-2 focus:ring-indigo-500"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Current Tole
+              </label>
+              <input
+                type="text"
+                name="currentTole"
+                value={formData.currentTole}
+                onChange={handleChange}
+                className="p-2 border rounded focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col col-span-full animate-in fade-in slide-in-from-top-2">
+            <label className="text-sm font-semibold text-gray-700 mb-1">
+              Current Full Address (International) *
+            </label>
+            <textarea
+              name="currentFullAddress"
+              value={(formData as any).currentFullAddress || ""}
+              onChange={(e) => handleChange(e as any)}
+              rows={4}
+              placeholder="Enter complete current international address..."
+              className="p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              required
+            />
+          </div>
+        )}
 
         <div className="col-span-full border-t border-gray-100 my-4"></div>
 
@@ -457,106 +492,131 @@ const KycAddress: React.FC<KycAddressProps> = ({
           </button>
         </div>
 
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent Province *
-          </label>
-          <select
-            name="permanentProvinceId"
-            value={formData.permanentProvinceId}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          >
-            <option value="">Select Province</option>
-            {permProvinces.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent District *
-          </label>
-          <select
-            name="permanentDistrictId"
-            value={formData.permanentDistrictId}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          >
-            <option value="">Select District</option>
-            {permDistricts.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent Municipality *
-          </label>
-          <select
-            name="permanentMunicipalityId"
-            value={formData.permanentMunicipalityId}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          >
-            <option value="">Select Municipality</option>
-            {permMunicipalities.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent Ward No. *
-          </label>
-          <input
-            type="text"
-            name="permanentWardNo"
-            value={formData.permanentWardNo}
-            onChange={handleChange}
-            className="p-2 border rounded"
-            required
-          />
-        </div>
-
-        <div className="flex flex-col">
-          <label className="text-sm font-semibold text-gray-700 mb-1">
-            Permanent Tole
-          </label>
-          <input
-            type="text"
-            name="permanentTole"
-            value={formData.permanentTole}
-            onChange={handleChange}
-            className="p-2 border rounded"
-          />
-        </div>
-
-        <div className="flex flex-col">
+        <div className="flex flex-col col-span-full">
           <label className="text-sm font-semibold text-gray-700 mb-1">
             Permanent Country *
           </label>
-          <input
-            type="text"
+          <select
             name="permanentCountry"
             value={formData.permanentCountry}
             onChange={handleChange}
-            className="p-2 border rounded"
+            className="p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             required
-          />
+          >
+            <option value="">Select Country</option>
+            {countries.map((c: any) => (
+              <option key={c.id} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
         </div>
+
+        {formData.permanentCountry === "Nepal" ? (
+          <>
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Permanent Province *
+              </label>
+              <select
+                name="permanentProvinceId"
+                value={formData.permanentProvinceId}
+                onChange={handleChange}
+                className="p-2 border rounded"
+                required
+              >
+                <option value="">Select Province</option>
+                {permProvinces.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Permanent District *
+              </label>
+              <select
+                name="permanentDistrictId"
+                value={formData.permanentDistrictId}
+                onChange={handleChange}
+                className="p-2 border rounded"
+                required
+              >
+                <option value="">Select District</option>
+                {permDistricts.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Permanent Municipality *
+              </label>
+              <select
+                name="permanentMunicipalityId"
+                value={formData.permanentMunicipalityId}
+                onChange={handleChange}
+                className="p-2 border rounded"
+                required
+              >
+                <option value="">Select Municipality</option>
+                {permMunicipalities.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Permanent Ward No. *
+              </label>
+              <input
+                type="text"
+                name="permanentWardNo"
+                value={formData.permanentWardNo}
+                onChange={handleChange}
+                className="p-2 border rounded"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">
+                Permanent Tole
+              </label>
+              <input
+                type="text"
+                name="permanentTole"
+                value={formData.permanentTole}
+                onChange={handleChange}
+                className="p-2 border rounded"
+              />
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col col-span-full animate-in fade-in slide-in-from-top-2">
+            <label className="text-sm font-semibold text-gray-700 mb-1">
+              Full Address (International) *
+            </label>
+            <textarea
+              name="permanentFullAddress"
+              value={formData.permanentFullAddress}
+              onChange={(e) => handleChange(e as any)}
+              rows={4}
+              placeholder="Enter complete international address..."
+              className="p-2 border rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              required
+            />
+          </div>
+        )}
 
         <h3 className="col-span-full text-md font-semibold text-indigo-700 border-l-4 border-indigo-600 pl-2 mt-4">
           Contact Info

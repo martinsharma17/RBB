@@ -54,6 +54,25 @@ const ApprovedKycListView: React.FC = () => {
         }
     };
 
+    const getImageBase64 = async (id: number): Promise<string | null> => {
+        try {
+            const url = `${apiBase}/api/KycData/document/${id}`;
+            const response = await fetch(url, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+            if (!response.ok) return null;
+            const blob = await response.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(blob);
+            });
+        } catch (err) {
+            console.error("Failed to fetch image for PDF:", err);
+            return null;
+        }
+    };
+
     const processDownload = async (type: 'pdf' | 'csv') => {
         setProcessingDownload(true);
         try {
@@ -76,7 +95,7 @@ const ApprovedKycListView: React.FC = () => {
                     doc.setFontSize(22);
                     doc.text("Approved KYC Record", 14, 22);
                     doc.setFontSize(10);
-                    doc.text(`ID: ${detail.workflowId}`, 14, 32);
+                    doc.text(`Workflow ID: ${detail.workflow?.id || 'N/A'}`, 14, 32);
                     doc.text(`Generated: ${new Date().toLocaleString()}`, 150, 32);
 
                     const d = detail.details || {};
@@ -105,21 +124,49 @@ const ApprovedKycListView: React.FC = () => {
                         headStyles: { fillColor: [16, 185, 129] }
                     });
 
-                    // Add Documents Section
-                    if (detail.attachments && detail.attachments.length > 0) {
-                        const docRows = detail.attachments.map((a: any) => [
-                            getDocTypeName(a.documentType),
-                            `${a.documentName || 'File'} (Size: ${(a.fileSize / 1024).toFixed(2)} KB)`
-                        ]);
+                    // Supporting Documents Rendering (Improved: No table, only large photos)
+                    const rawAtts = detail.documents || detail.attachments || [];
+                    if (rawAtts.length > 0) {
+                        const uniqueMap = new Map();
+                        rawAtts.forEach((a: any) => uniqueMap.set(a.documentType, a));
+                        const uniqueAtts = Array.from(uniqueMap.values());
 
-                        autoTable(doc, {
-                            startY: (doc as any).lastAutoTable.finalY + 10,
-                            head: [['Document Type', 'File Details']],
-                            body: docRows,
-                            theme: 'grid',
-                            headStyles: { fillColor: [100, 116, 139] },
-                            styles: { fontSize: 8 },
-                        });
+                        // Start documents on a new page for better organization
+                        doc.addPage();
+                        doc.setTextColor(16, 185, 129);
+                        doc.setFontSize(18);
+                        doc.text("Supporting Documents", 14, 20);
+                        doc.setDrawColor(16, 185, 129);
+                        doc.line(14, 22, 80, 22);
+
+                        let photoY = 35;
+                        for (const att of uniqueAtts) {
+                            const base64 = await getImageBase64(att.id);
+                            if (base64) {
+                                // Add Bold Label
+                                doc.setTextColor(31, 41, 55);
+                                doc.setFontSize(11);
+                                doc.setFont("helvetica", "bold");
+                                const label = typeof att.documentType === 'number' ? getDocTypeName(att.documentType) : att.documentType;
+                                doc.text(label, 14, photoY);
+                                doc.setFont("helvetica", "normal");
+
+                                // Check for page overflow (Image height 80 + label 10 + padding)
+                                if (photoY + 100 > 280) {
+                                    doc.addPage();
+                                    photoY = 20;
+                                }
+
+                                try {
+                                    // Use larger image size (Width: 140mm, Height: approx 95mm)
+                                    doc.addImage(base64, 'JPEG', 14, photoY + 5, 140, 95, undefined, 'FAST');
+                                    photoY += 105;
+                                } catch (e) {
+                                    console.error("Error adding image to PDF:", e);
+                                    photoY += 10;
+                                }
+                            }
+                        }
                     }
                 }
 

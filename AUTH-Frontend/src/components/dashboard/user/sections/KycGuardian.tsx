@@ -18,6 +18,7 @@ interface KycGuardianData {
     panNo: string;
     dob: string;
     issueDistrict: string;
+    occupation: string;
     [key: string]: any;
 }
 
@@ -32,7 +33,8 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
         email: initialData?.email || '',
         panNo: initialData?.panNo || '',
         dob: initialData?.dob || '',
-        issueDistrict: initialData?.issueDistrict || ''
+        issueDistrict: initialData?.issueDistrict || '',
+        occupation: initialData?.occupation || initialData?.guardianOccupation || ''
     });
 
     useEffect(() => {
@@ -45,7 +47,8 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                 email: initialData?.email || '',
                 panNo: initialData?.panNo || '',
                 dob: initialData?.dob || '',
-                issueDistrict: initialData?.issueDistrict || ''
+                issueDistrict: initialData?.issueDistrict || '',
+                occupation: initialData?.occupation || initialData?.guardianOccupation || ''
             });
         }
     }, [initialData]);
@@ -58,7 +61,6 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const [isExiting, setIsExiting] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
         if (e) e.preventDefault();
@@ -76,7 +78,7 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
 
         setSaving(true);
         setError(null);
-        if (shouldExit) setIsExiting(true);
+        if (shouldExit) { /* Logic for exit if needed */ }
 
         try {
             const response = await fetch(`${apiBase}/api/KycData/save-guardian`, {
@@ -91,7 +93,8 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                         address: formData.address,
                         contactNo: formData.contactNo,
                         emailId: formData.email,
-                        permanentAccountNo: formData.panNo
+                        permanentAccountNo: formData.panNo,
+                        occupation: formData.occupation
                     }
                 })
             });
@@ -102,13 +105,9 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                 } else {
                     onNext({ guardian: formData });
                 }
-            } else {
-                setError("Failed to save guardian section");
-                setIsExiting(false);
             }
         } catch (err) {
             setError("Network error while saving");
-            setIsExiting(false);
         } finally {
             setSaving(false);
         }
@@ -186,6 +185,17 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
                         name="panNo"
                         value={formData.panNo}
                         onChange={handleChange}
+                        className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                    />
+                </div>
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold text-gray-700 mb-1">Occupation</label>
+                    <input
+                        type="text"
+                        name="occupation"
+                        value={formData.occupation}
+                        onChange={handleChange}
+                        placeholder="Guardian's occupation"
                         className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
                     />
                 </div>

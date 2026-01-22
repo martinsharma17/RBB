@@ -111,7 +111,12 @@ export const fetchDynamicMenu = async (apiBase: string, token: string): Promise<
             const res = await response.json();
             return res.data || [];
         } else {
-            console.error("Failed to fetch menu:", response.status);
+            if (response.status === 401) {
+                // Return empty but don't log as much - AuthContext will handle logout
+                console.warn("fetchDynamicMenu: Unauthorized (401). Stale token detected.");
+            } else {
+                console.error("Failed to fetch menu:", response.status);
+            }
             return [];
         }
     } catch (error) {

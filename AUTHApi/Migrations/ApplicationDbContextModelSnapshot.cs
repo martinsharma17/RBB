@@ -341,12 +341,19 @@ namespace AUTHApi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("BeneficialOwnerDetails")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<int?>("BranchId")
                         .HasColumnType("integer");
 
                     b.Property<string>("BusinessType")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ChildrenNames")
+                        .HasColumnType("text");
 
                     b.Property<string>("CibBlacklistDetails")
                         .HasMaxLength(500)
@@ -366,6 +373,10 @@ namespace AUTHApi.Migrations
                     b.Property<string>("CriminalRecordDetails")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<string>("CurrentCountry")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("CurrentDistrict")
                         .HasMaxLength(100)
@@ -443,6 +454,10 @@ namespace AUTHApi.Migrations
                         .HasColumnType("character varying(100)");
 
                     b.Property<string>("GuardianName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("GuardianOccupation")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -526,6 +541,10 @@ namespace AUTHApi.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("NidNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<bool>("NoOtherFinancialLiability")
                         .HasColumnType("boolean");
 
@@ -557,9 +576,16 @@ namespace AUTHApi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("PermanentCountry")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("PermanentDistrict")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PermanentFullAddress")
+                        .HasColumnType("text");
 
                     b.Property<string>("PermanentMunicipality")
                         .HasMaxLength(100)

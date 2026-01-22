@@ -452,7 +452,8 @@ namespace AUTHApi.Controllers
                 d.DocumentType,
                 d.OriginalFileName,
                 d.ContentType,
-                d.UploadedAt
+                d.UploadedAt,
+                d.FileSize
             }).ToList() ?? new List<object>();
 
             return Success(new

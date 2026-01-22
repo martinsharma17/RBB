@@ -35,6 +35,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
   const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
   const [showSuccess, setShowSuccess] = useState(false);
   const [hasManualReset, setHasManualReset] = useState(false);
+  const [pdfGenerating, setPdfGenerating] = useState(false);
 
   // Sync state with props when they change (e.g. starting a new session)
   useEffect(() => {
@@ -93,12 +94,18 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             const detailsRes = await detailsResponse.json();
             if (detailsRes.success && detailsRes.data) {
               setKycData(detailsRes.data);
-              // Handle both PascalCase and camelCase for currentStep
-              const stepFromApi =
-                detailsRes.data.CurrentStep || detailsRes.data.currentStep;
+              // Map Backend Step -> Frontend Step
+              // Backend: 1=PersonalInfo, 2=CurrAddr, 3=PermAddr, 4=Family, 5=Bank, 6=Occupation...
+              // Frontend: 1=Personal, 2=Address(2&3), 3=Family(4), 4=Bank(5), 5=Occupation(6)...
+              const stepFromApi = detailsRes.data.CurrentStep || detailsRes.data.currentStep;
               if (stepFromApi !== undefined && stepFromApi !== null) {
-                const sNum = Number(stepFromApi);
-                setCurrentStep(sNum > 0 ? sNum : 1);
+                const bStep = Number(stepFromApi);
+                let fStep = 1;
+                if (bStep <= 1) fStep = 1;
+                else if (bStep <= 3) fStep = 2; // Both addresses in section 2
+                else fStep = bStep - 1; // Offset of 1 for subsequent steps
+
+                setCurrentStep(fStep);
               }
             }
           }
@@ -134,10 +141,31 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
 
   const isMinorAge = calculateAge(kycData?.personalInfo?.dobAd);
 
-  const handleDownloadKycPdf = (data: any = null) => {
+  const handleDownloadKycPdf = async (data: any = null) => {
     const d = data || kycData;
     if (!d) return;
+    setPdfGenerating(true);
     const doc = new jsPDF();
+
+    // Helper: Fetch image as Base64 for PDF embedding
+    const getImageBase64 = async (path: string): Promise<string | null> => {
+      try {
+        const url = path.startsWith('http') ? path : `${apiBase}${path}`;
+        const response = await fetch(url, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (!response.ok) return null;
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      } catch (err) {
+        console.error("Failed to fetch image for PDF:", err);
+        return null;
+      }
+    };
 
     // Brand Header
     doc.setFillColor(79, 70, 229); // Indigo-600
@@ -163,95 +191,141 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
         theme: 'grid',
         headStyles: { fillColor: [255, 255, 255] },
         columnStyles: {
-          0: { cellWidth: 80, fontStyle: 'bold', textColor: [107, 114, 128] }, // Label column
+          0: { cellWidth: 70, fontStyle: 'bold', textColor: [107, 114, 128] }, // Label column
           1: { textColor: [31, 41, 55] } // Value column
         },
-        styles: { fontSize: 9, cellPadding: 4 },
+        styles: { fontSize: 8, cellPadding: 3 },
         margin: { left: 14, right: 14 },
-        didDrawPage: (data) => {
-          // Optional: Header/Footer on new pages
-        }
       });
       // @ts-ignore
-      currentY = doc.lastAutoTable.finalY + 15;
+      currentY = doc.lastAutoTable.finalY + 10;
     };
 
     // 1. Personal Information
+    const p = d.personalInfo || d;
     const personalInfo = [
-      ['Full Name', `${d.firstName || d.personalInfo?.firstName || ''} ${d.middleName || d.personalInfo?.middleName || ''} ${d.lastName || d.personalInfo?.lastName || ''}`],
-      ['Date of Birth', new Date(d.dateOfBirth || d.personalInfo?.dateOfBirthAd).toLocaleDateString()],
-      ['Gender', d.gender || d.personalInfo?.gender || '-'],
-      ['Marital Status', d.maritalStatus || d.personalInfo?.maritalStatus || '-'],
-      ['Nationality', d.nationality || d.personalInfo?.nationality || '-'],
-      ['Citizenship No', d.citizenshipNumber || d.personalInfo?.citizenshipNo || '-'],
-      ['PAN Number', d.panNumber || d.personalInfo?.panNo || '-'],
-      ['Mobile Number', d.mobileNumber || '-']
+      ['Full Name', `${p.firstName || ''} ${p.middleName || ''} ${p.lastName || ''}`.trim() || p.fullName || '-'],
+      ['Date of Birth (AD)', p.dateOfBirthAd ? new Date(p.dateOfBirthAd).toLocaleDateString() : (p.dateOfBirth ? new Date(p.dateOfBirth).toLocaleDateString() : '-')],
+      ['Gender', p.gender === 1 ? 'Male' : (p.gender === 2 ? 'Female' : (p.gender === 3 ? 'Other' : (p.gender || '-')))],
+      ['Marital Status', p.maritalStatus || '-'],
+      ['Nationality', p.nationality || (p.isNepali ? 'Nepali' : (p.otherNationality || '-'))],
+      ['Citizenship No', p.citizenshipNo || p.citizenshipNumber || '-'],
+      ['National ID (NID)', p.nidNo || p.nidNumber || '-'],
+      ['PAN Number', p.panNo || p.panNumber || '-'],
+      ['Mobile Number', d.mobileNumber || p.mobileNumber || '-']
     ];
-    addSection("Personal Information", personalInfo);
+    addSection("1. Personal Information", personalInfo);
 
     // 2. Addresses
+    const ca = d.currentAddress || {};
+    const pa = d.permanentAddress || {};
     const addressInfo = [
-      ['Permanent Address', `${d.permanentAddress?.tole || ''}, ${d.permanentAddress?.municipalityName || ''}-${d.permanentAddress?.wardNo || ''}, ${d.permanentAddress?.district || ''}, ${d.permanentAddress?.province || ''}`],
-      ['Current Address', `${d.currentAddress?.tole || ''}, ${d.currentAddress?.municipalityName || ''}-${d.currentAddress?.wardNo || ''}, ${d.currentAddress?.district || ''}, ${d.currentAddress?.province || ''}`]
+      ['Current Address', `${ca.country || 'Nepal'}: ${ca.province || ''}, ${ca.district || ''}, ${ca.municipalityName || ''}, Ward ${ca.wardNo || ''}, ${ca.tole || ''}`],
+      ['Permanent Address', pa.fullAddress || `${pa.country || 'Nepal'}: ${pa.province || ''}, ${pa.district || ''}, ${pa.municipalityName || ''}, Ward ${pa.wardNo || ''}, ${pa.tole || ''}`]
     ];
-    addSection("Address Details", addressInfo);
+    addSection("2. Address Details", addressInfo);
 
     // 3. Family
+    const f = d.family || {};
     const familyInfo = [
-      ['Grandfather', d.family?.grandFatherName || '-'],
-      ['Father', d.family?.fatherName || '-'],
-      ['Mother', d.family?.motherName || '-'],
-      ['Spouse', d.family?.spouseName || '-']
+      ['Grandfather', f.grandFatherName || '-'],
+      ['Father', f.fatherName || '-'],
+      ['Mother', f.motherName || '-'],
+      ['Spouse', f.spouseName || '-'],
+      ['Father-in-law', f.fatherInLawName || '-'],
+      ['Mother-in-law', f.motherInLawName || '-'],
+      ['Children', f.childrenNames || '-']
     ];
-    addSection("Family Information", familyInfo);
+    addSection("3. Family Information", familyInfo);
 
-    // 4. Work & Financials
+    // 4. Occupations & Financials
+    const occ = d.occupation || {};
+    const fin = d.financialDetails || {};
     const financialInfo = [
-      ['Occupation', d.occupation?.occupationType || '-'],
-      ['Organization', d.occupation?.organizationName || '-'],
-      ['Annual Income', d.occupation?.annualIncomeRange || '-'],
-      ['Bank', d.bank?.bankName || '-'],
-      ['Account No', d.bank?.bankAccountNo || '-'],
-      ['Source of Funds', d.sourceOfFunds || '-'],
-      ['Major Income Source', d.majorSourceOfIncome || '-']
+      ['Occupation', occ.occupationType || '-'],
+      ['Organization', occ.organizationName || '-'],
+      ['Designation', occ.designation || '-'],
+      ['Annual Income Range', occ.annualIncomeRange || fin.annualIncomeRange || '-'],
+      ['Bank Name', d.bank?.bankName || '-'],
+      ['Bank Account No', d.bank?.bankAccountNo || d.bank?.bankAccountNumber || '-'],
+      ['Bank Address', d.bank?.bankAddress || d.bank?.bankBranch || '-']
     ];
-    addSection("Work & Financial Details", financialInfo);
+    addSection("4. Work & Financial Details", financialInfo);
 
-    // 5. Declarations
-    const declarations = [
-      ['Politically Exposed (PEP)', d.isPep ? 'Yes' : 'No'],
-      ['Beneficial Owner', d.hasBeneficialOwner ? 'Yes' : 'No'],
-      ['Criminal Record', d.hasCriminalRecord ? 'Yes' : 'No'],
-      ['Terms Agreed', 'Yes']
+    // 5. AML & Compliance
+    const aml = d.amlCompliance || {};
+    const amlInfo = [
+      ['Politically Exposed (PEP)', aml.isPoliticallyExposedPerson ? `Yes (${aml.pepRelationName || '-'})` : 'No'],
+      ['Beneficial Owner', aml.hasBeneficialOwner ? `Yes (${aml.beneficialOwnerDetails || '-'})` : 'No'],
+      ['Criminal Record', aml.hasCriminalRecord ? `Yes (${aml.criminalRecordDetails || '-'})` : 'No']
     ];
-    addSection("Declarations & Compliance", declarations);
+    addSection("5. AML & Compliance", amlInfo);
 
-    // 6. Documents
-    let docRows: any[] = [];
-    if (d.attachments && Array.isArray(d.attachments) && d.attachments.length > 0) {
+    // 6. Location & Landmark
+    const loc = d.locationMap || {};
+    const locationInfo = [
+      ['Landmark', loc.landmark || '-'],
+      ['Distance from Road', loc.distanceFromMainRoad || '-'],
+      ['Latitude', loc.latitude || '-'],
+      ['Longitude', loc.longitude || '-']
+    ];
+    addSection("6. Location Details", locationInfo);
+
+    // 7. Documents Page(s)
+    let attachments = d.attachments || [];
+
+    // Filter out duplicates (only keep the latest for each documentType)
+    const uniqueAttachments = new Map();
+    attachments.forEach((att: any) => {
+      // If multiple exist, the later ones in the array (usually newer) will overwrite
+      uniqueAttachments.set(att.documentType, att);
+    });
+    attachments = Array.from(uniqueAttachments.values());
+
+    if (attachments.length > 0) {
+      doc.addPage();
+      doc.setTextColor(79, 70, 229);
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("KYC Supporting Documents", 14, 20);
+      doc.setDrawColor(79, 70, 229);
+      doc.line(14, 24, 60, 24);
+
+      let imgY = 35;
       const getDocName = (type: number) => {
         const map: any = { 1: 'Passport Photo', 2: 'Citizenship Front', 3: 'Citizenship Back', 4: 'Signature', 5: 'Left Thumb', 6: 'Right Thumb', 10: 'Location Map' };
         return map[type] || `Document ${type}`;
       };
-      docRows = d.attachments.map((a: any) => [
-        getDocName(a.documentType),
-        a.documentName || '-'
-      ]);
-    } else if (d.documents) {
-      // Fallback for local state structure
-      if (d.documents.photo) docRows.push(['Passport Photo', d.documents.photo]);
-      if (d.documents.citizenship?.front) docRows.push(['Citizenship Front', d.documents.citizenship.front]);
-      if (d.documents.citizenship?.back) docRows.push(['Citizenship Back', d.documents.citizenship.back]);
-      if (d.documents.signature) docRows.push(['Signature', d.documents.signature]);
-      if (d.documents.thumbs?.left) docRows.push(['Left Thumb', d.documents.thumbs.left]);
-      if (d.documents.thumbs?.right) docRows.push(['Right Thumb', d.documents.thumbs.right]);
+
+      for (const att of attachments) {
+        const base64 = await getImageBase64(att.filePath);
+        if (base64) {
+          // Add label
+          doc.setTextColor(31, 41, 55);
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "bold");
+          doc.text(getDocName(att.documentType), 14, imgY);
+
+          // Check if space remains on page
+          if (imgY + 80 > 280) {
+            doc.addPage();
+            imgY = 20;
+          }
+
+          try {
+            // Embed image
+            doc.addImage(base64, 'JPEG', 14, imgY + 5, 80, 60);
+            imgY += 80;
+          } catch (e) {
+            console.error("Error adding image to PDF:", e);
+            imgY += 20;
+          }
+        }
+      }
     }
 
-    if (docRows.length > 0) {
-      addSection("Attached Documents", docRows);
-    }
-
-    doc.save(`KYC_Submission_${sessionId}.pdf`);
+    doc.save(`KYC_Full_Details_${sessionId}_${new Date().getTime()}.pdf`);
+    setPdfGenerating(false);
   };
 
   const allStepsConfig = [
@@ -576,6 +650,16 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
           </>
         )}
       </div>
+
+      {pdfGenerating && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-indigo-900/20 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center border border-indigo-100">
+            <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-indigo-900 font-bold">Preparing KYC PDF with Documents...</p>
+            <p className="text-gray-500 text-xs mt-1">Fetching images, please wait.</p>
+          </div>
+        </div>
+      )}
 
       {showSuccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-100/50 backdrop-blur-sm animate-in fade-in duration-300">

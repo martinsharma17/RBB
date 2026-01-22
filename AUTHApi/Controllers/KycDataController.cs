@@ -66,7 +66,8 @@ namespace AUTHApi.Controllers
                     CitizenshipIssueDate = detail.CitizenshipIssuedDate,
                     BranchId = detail.BranchId,
                     PanNo = detail.PanNumber,
-                    MaritalStatus = detail.MaritalStatus
+                    MaritalStatus = detail.MaritalStatus,
+                    NidNo = detail.NidNumber
                 },
                 CurrentAddress = new AddressDto
                 {
@@ -75,6 +76,7 @@ namespace AUTHApi.Controllers
                     MunicipalityName = detail.CurrentMunicipality,
                     WardNo = int.TryParse(detail.CurrentWardNo, out var currentWard) ? currentWard : null,
                     Tole = detail.CurrentStreet,
+                    Country = detail.CurrentCountry ?? "Nepal",
                     MobileNo = detail.MobileNumber ?? string.Empty
                 },
                 PermanentAddress = new AddressDto
@@ -83,7 +85,9 @@ namespace AUTHApi.Controllers
                     District = detail.PermanentDistrict,
                     MunicipalityName = detail.PermanentMunicipality,
                     WardNo = int.TryParse(detail.PermanentWardNo, out var permWard) ? permWard : null,
-                    Tole = detail.PermanentStreet
+                    Tole = detail.PermanentStreet,
+                    Country = detail.PermanentCountry ?? "Nepal",
+                    FullAddress = detail.PermanentFullAddress
                 },
                 Family = new FamilyDto
                 {
@@ -95,7 +99,8 @@ namespace AUTHApi.Controllers
                     DaughterName = detail.DaughterName,
                     DaughterInLawName = detail.DaughterInLawName,
                     FatherInLawName = detail.FatherInLawName,
-                    MotherInLawName = detail.MotherInLawName
+                    MotherInLawName = detail.MotherInLawName,
+                    ChildrenNames = detail.ChildrenNames
                 },
                 Bank = new BankDto
                 {
@@ -128,13 +133,15 @@ namespace AUTHApi.Controllers
                     Address = detail.GuardianAddress,
                     ContactNo = detail.GuardianContactNo,
                     EmailId = detail.GuardianEmail,
-                    PermanentAccountNo = detail.GuardianPanNumber
+                    PermanentAccountNo = detail.GuardianPanNumber,
+                    Occupation = detail.GuardianOccupation
                 },
                 AmlCompliance = new AmlComplianceDto
                 {
                     IsPoliticallyExposedPerson = detail.IsPep,
                     PepRelationName = detail.PepRelation,
                     HasBeneficialOwner = detail.HasBeneficialOwner,
+                    BeneficialOwnerDetails = detail.BeneficialOwnerDetails,
                     HasCriminalRecord = detail.HasCriminalRecord,
                     CriminalRecordDetails = detail.CriminalRecordDetails
                 },

@@ -26,19 +26,24 @@ namespace AUTHApi.Entities
         [MaxLength(10)] public string? Gender { get; set; } // Male, Female, Other
         [MaxLength(20)] public string? MaritalStatus { get; set; }
         [MaxLength(50)] public string? Nationality { get; set; }
+        [MaxLength(50)] public string? NidNumber { get; set; }
+        public string? ChildrenNames { get; set; }
         [Phone] [MaxLength(20)] public string? MobileNumber { get; set; }
         [EmailAddress] [MaxLength(100)] public string? Email { get; set; }
 
         // --- 2. Address Details ---
 
         // Permanent Address
+        [MaxLength(100)] public string? PermanentCountry { get; set; }
         [MaxLength(100)] public string? PermanentState { get; set; }
         [MaxLength(100)] public string? PermanentDistrict { get; set; }
         [MaxLength(100)] public string? PermanentMunicipality { get; set; }
         [MaxLength(10)] public string? PermanentWardNo { get; set; }
         [MaxLength(200)] public string? PermanentStreet { get; set; }
+        public string? PermanentFullAddress { get; set; }
 
         // Current Address
+        [MaxLength(100)] public string? CurrentCountry { get; set; }
         [MaxLength(100)] public string? CurrentState { get; set; }
         [MaxLength(100)] public string? CurrentDistrict { get; set; }
         [MaxLength(100)] public string? CurrentMunicipality { get; set; }
@@ -98,11 +103,13 @@ namespace AUTHApi.Entities
         [MaxLength(20)] public string? GuardianContactNo { get; set; }
         [MaxLength(100)] public string? GuardianEmail { get; set; }
         [MaxLength(50)] public string? GuardianPanNumber { get; set; }
+        [MaxLength(100)] public string? GuardianOccupation { get; set; }
 
         // --- 8. AML & Compliance ---
         public bool IsPep { get; set; } // Politically Exposed Person
         [MaxLength(100)] public string? PepRelation { get; set; }
         public bool HasBeneficialOwner { get; set; }
+        [MaxLength(500)] public string? BeneficialOwnerDetails { get; set; }
         public bool HasCriminalRecord { get; set; }
         [MaxLength(500)] public string? CriminalRecordDetails { get; set; }
 

@@ -68,6 +68,10 @@ export interface Permissions {
   kyc_workflow?: PermissionSet;
   kyc_unified_queue?: PermissionSet;
   kyc_search?: PermissionSet;
+  branches?: PermissionSet;
+  occupation?: PermissionSet;
+  address?: PermissionSet;
+  country?: PermissionSet;
 
   // Computed permissions
   create_users?: boolean;
@@ -110,6 +114,10 @@ export interface Permissions {
   view_settings?: boolean;
   view_security?: boolean;
   view_backup?: boolean;
+  view_branches?: boolean;
+  view_occupation?: boolean;
+  view_address?: boolean;
+  view_country?: boolean;
 
   dashboard?: boolean;
   [key: string]: any;

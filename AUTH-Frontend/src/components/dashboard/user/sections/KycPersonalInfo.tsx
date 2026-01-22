@@ -101,6 +101,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
       initialData?.CitizenshipIssueDistrict ||
       "",
     panNo: initialData?.panNo || initialData?.PanNo || "",
+    nidNo: initialData?.nidNo || initialData?.NidNo || initialData?.nidNumber || initialData?.NidNumber || "",
     branchId: initialData?.branchId || initialData?.BranchId || "",
   });
 
@@ -146,6 +147,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
           initialData?.CitizenshipIssueDistrict ||
           "",
         panNo: initialData?.panNo || initialData?.PanNo || "",
+        nidNo: initialData?.nidNo || initialData?.NidNo || initialData?.nidNumber || initialData?.NidNumber || "",
         branchId: initialData?.branchId || initialData?.BranchId || "",
       });
     }
@@ -170,10 +172,16 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+    if (name === "panNo") {
+      // Allow only numbers and limit to 9 digits
+      const cleaned = value.replace(/\D/g, "").slice(0, 9);
+      setFormData((prev) => ({ ...prev, [name]: cleaned }));
+      return;
+    }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const [isExiting, setIsExiting] = useState(false);
+
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
     if (e) e.preventDefault();
@@ -183,7 +191,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
     }
     setSaving(true);
     setError(null);
-    if (shouldExit) setIsExiting(true);
+    if (shouldExit) { /* Logic for exit if needed */ }
 
     // Map frontend data to backend PersonalInfoDto
     const mappedData = {
@@ -214,6 +222,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
         ? parseInt(formData.branchId.toString())
         : null,
       maritalStatus: formData.maritalStatus || null,
+      nidNo: formData.nidNo || null,
     };
 
     const headers: any = {
@@ -257,11 +266,9 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
         } else {
           setError(data.message || data.title || "Failed to save section");
         }
-        setIsExiting(false);
       }
     } catch (err) {
       setError("Network error while saving");
-      setIsExiting(false);
     } finally {
       setSaving(false);
     }
@@ -494,6 +501,21 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
             name="panNo"
             value={formData.panNo}
             onChange={handleChange}
+            placeholder="9 digit PAN number"
+            className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+          />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="text-sm font-semibold text-gray-700 mb-1">
+            National ID (NID)
+          </label>
+          <input
+            type="text"
+            name="nidNo"
+            value={formData.nidNo}
+            onChange={handleChange}
+            placeholder="NID Number"
             className="p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
           />
         </div>
@@ -533,6 +555,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
             <option value="Widowed">Widowed</option>
           </select>
         </div>
+
       </div>
 
       <div className="flex justify-end pt-6">
@@ -546,7 +569,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
         </button>
 
       </div>
-    </form>
+    </form >
   );
 };
 
