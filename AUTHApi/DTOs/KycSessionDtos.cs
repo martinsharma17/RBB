@@ -19,7 +19,7 @@ namespace AUTHApi.DTOs
 
     public class VerifyOtpDto
     {
-        public int SessionId { get; set; }
+        public Guid SessionToken { get; set; }
         public string? Email { get; set; }
         public string? OtpCode { get; set; }
         public int OtpType { get; set; } // 1=Email, 2=Mobile
@@ -28,13 +28,14 @@ namespace AUTHApi.DTOs
     public class VerifyOtpResponseDto
     {
         public bool Success { get; set; }
-        public int? SessionId { get; set; } // The ID used for verification
+        public Guid? SessionToken { get; set; }
         public List<KycSessionBriefDto> AvailableSessions { get; set; } = new();
     }
 
     public class KycSessionBriefDto
     {
         public int SessionId { get; set; }
+        public Guid SessionToken { get; set; }
         public DateTime CreatedDate { get; set; }
         public int CurrentStep { get; set; }
         public int LastSavedStep { get; set; }
@@ -70,10 +71,17 @@ namespace AUTHApi.DTOs
         public bool IsRequired { get; set; }
     }
 
-    public class SaveStepDto<T>
+    public class SaveStepDto<T, TKey>
     {
-        public int SessionId { get; set; }
+        public TKey SessionToken { get; set; } = default!;
         public int StepNumber { get; set; }
         public T Data { get; set; } = default!;
+    }
+
+    public class StepCompletionDto
+    {
+        public Guid SessionToken { get; set; }
+        public int StepNumber { get; set; }
+        public int? RecordId { get; set; }
     }
 }

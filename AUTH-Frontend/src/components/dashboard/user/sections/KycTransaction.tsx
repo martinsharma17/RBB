@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+
+import api from "../../../../services/api";
 
 interface KycTransactionProps {
-    sessionId: number | null;
+    sessionToken: string | null;
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
@@ -18,8 +19,7 @@ interface KycTransactionData {
     [key: string]: any;
 }
 
-const KycTransaction: React.FC<KycTransactionProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
-    const { token, apiBase } = useAuth();
+const KycTransaction: React.FC<KycTransactionProps> = ({ sessionToken, initialData, onNext, onBack, onSaveAndExit }) => {
 
     const [formData, setFormData] = useState<KycTransactionData>({
         sourceOfFunds: initialData?.sourceOfNetWorth || initialData?.majorSourceOfIncome || '',
@@ -52,42 +52,38 @@ const KycTransaction: React.FC<KycTransactionProps> = ({ sessionId, initialData,
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
         if (e) e.preventDefault();
-        if (!sessionId) {
-            setError("Session not initialized");
+        if (!sessionToken) {
+            setError("Session token not found");
             return;
         }
         setSaving(true);
         setError(null);
 
         try {
-            const response = await fetch(`${apiBase}/api/KycData/save-transaction-info`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    sessionId: sessionId,
-                    stepNumber: 8,
-                    data: {
-                        sourceOfNetWorth: formData.sourceOfFunds,
-                        majorSourceOfIncome: formData.sourceOfFunds,
-                        hasOtherBrokerAccount: formData.hasOtherBrokerAccount,
-                        otherBrokerNames: formData.otherBrokerNames,
-                        isCibBlacklisted: formData.isCibBlacklisted,
-                        cibBlacklistDetails: formData.cibBlacklistDetails
-                    }
-                })
+            const response = await api.post(`/api/KycData/save-transaction-info`, {
+                sessionToken: sessionToken,
+                stepNumber: 8,
+                data: {
+                    sourceOfNetWorth: formData.sourceOfFunds,
+                    majorSourceOfIncome: formData.sourceOfFunds,
+                    hasOtherBrokerAccount: formData.hasOtherBrokerAccount,
+                    otherBrokerNames: formData.otherBrokerNames,
+                    isCibBlacklisted: formData.isCibBlacklisted,
+                    cibBlacklistDetails: formData.cibBlacklistDetails
+                }
             });
 
-            if (response.ok) {
+            if (response.data.success) {
                 if (shouldExit && onSaveAndExit) {
                     onSaveAndExit();
                 } else {
                     onNext({ transactionInfo: formData });
                 }
             } else {
-                setError("Failed to save transaction information");
+                setError(response.data.message || "Failed to save transaction information");
             }
-        } catch (err) {
-            setError("Network error while saving");
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Network error while saving");
         } finally {
             setSaving(false);
         }

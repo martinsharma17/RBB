@@ -41,6 +41,7 @@ export interface PermissionSet {
   delete?: boolean;
   sidebar?: boolean;
   export?: boolean;
+  dashboard?: boolean;
 }
 
 export interface Permissions {
@@ -134,6 +135,7 @@ export interface LoginResult {
 
 export interface AuthContextValue {
   token: string | null;
+  refreshToken: string | null;
   user: User | null;
   permissions: Permissions | null;
   loading: boolean;
@@ -156,6 +158,8 @@ export interface ApiResponse<T> {
 
 export interface LoginData {
   token: string;
+  refreshToken: string;
+  refreshTokenExpiration: string;
   roles: string[];
 }
 

@@ -84,39 +84,27 @@ namespace AUTHApi.Controllers
             });
         }
 
-        /// <summary>
-        /// Sends an OTP (One-Time Password) for email verification.
-        /// If a new email is provided in the model, it updates the session email before sending.
-        /// </summary>
-        /// <param name="model">DTO containing session ID and OTP type (1=Email).</param>
-        /// <returns>Success message with OTP code (for dev/test) and expiry.</returns>
         [HttpPost("send-otp")]
         public async Task<IActionResult> SendOtp([FromBody] VerifyOtpDto model)
         {
-            var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+            var session = await _context.KycFormSessions.FirstOrDefaultAsync(s => s.SessionToken == model.SessionToken);
             if (session == null) return Failure("Session not found", 404);
 
-            // Update session email if a new one is provided and different from existing
-            // This handles cases where user entered a typo initially or wants to change email
             if (model.OtpType == 1 && !string.IsNullOrWhiteSpace(model.Email) &&
                 !session.Email.Equals(model.Email, StringComparison.OrdinalIgnoreCase))
             {
                 session.Email = model.Email;
-                // Reset verification status if email changes
                 session.EmailVerified = false;
                 await _context.SaveChangesAsync();
             }
 
-            // Invalidate any existing active OTPs of the same type for this session
             var oldOtps = await _context.KycOtpVerifications
-                .Where(o => o.SessionId == model.SessionId && o.OtpType == model.OtpType && !o.IsExpired)
+                .Where(o => o.SessionId == session.Id && o.OtpType == model.OtpType && !o.IsExpired)
                 .ToListAsync();
 
             foreach (var old in oldOtps) old.IsExpired = true;
 
             string otpCode = new Random().Next(100000, 999999).ToString();
-
-            // Determine target for OTP based on type
             string? sentToEmail = model.OtpType == 1 ? session.Email : null;
             string? sentToMobile = model.OtpType == 2 ? session.MobileNo : null;
 
@@ -133,18 +121,14 @@ namespace AUTHApi.Controllers
             await _context.KycOtpVerifications.AddAsync(otp);
             await _context.SaveChangesAsync();
 
-            // Send actual email if type is email
             if (model.OtpType == 1 && !string.IsNullOrEmpty(sentToEmail))
             {
                 string subject = "Your KYC Verification OTP";
-                string body = $@"
-                    <h3>KYC Verification</h3>
-                    <p>Your OTP code for email verification is: <strong>{otpCode}</strong></p>
-                    <p>This code will expire in 10 minutes.</p>";
+                string body = $@"<h3>KYC Verification</h3><p>Your OTP code is: <strong>{otpCode}</strong></p><p>Expires in 10 mins.</p>";
                 await _emailService.SendEmailAsync(sentToEmail, subject, body);
             }
 
-            return Success(new { otpCode, expiry = otp.ExpiryDate }, "OTP sent successfully");
+            return Success(new { otpCode, expiry = otp.ExpiryDate }, "OTP sent");
         }
 
         [HttpPost("verify-otp")]
@@ -178,7 +162,7 @@ namespace AUTHApi.Controllers
             otp.VerifiedDate = DateTime.UtcNow;
             */
 
-            var session = await _context.KycFormSessions.FindAsync(model.SessionId);
+            var session = await _context.KycFormSessions.FirstOrDefaultAsync(s => s.SessionToken == model.SessionToken);
             if (session != null)
             {
                 if (model.OtpType == 1)
@@ -198,11 +182,11 @@ namespace AUTHApi.Controllers
             // After successful verification, find ALL active sessions for this email
             var email = session?.Email; // ?? otp.SentToEmail;
             var availableSessions = await _context.KycFormSessions
-                .Where(s => s.Email == email && !s.IsExpired)
+                .Where(s => s.Email == session.Email && !s.IsExpired)
                 .OrderByDescending(s => s.CreatedDate)
                 .Select(s => new KycSessionBriefDto
                 {
-                    SessionId = s.Id,
+                    SessionToken = s.SessionToken,
                     CreatedDate = s.CreatedDate,
                     CurrentStep = s.CurrentStep,
                     LastSavedStep = s.LastSavedStep,
@@ -213,23 +197,23 @@ namespace AUTHApi.Controllers
             return Success(new VerifyOtpResponseDto
             {
                 Success = true,
-                SessionId = model.SessionId,
+                SessionToken = model.SessionToken,
                 AvailableSessions = availableSessions
             }, "Verification successful");
         }
 
-        [HttpGet("progress/{sessionId}")]
-        public async Task<IActionResult> GetProgress(int sessionId)
+        [HttpGet("progress/{sessionToken}")]
+        public async Task<IActionResult> GetProgress(Guid sessionToken)
         {
             var session = await _context.KycFormSessions
                 .Include(s => s.StepCompletions)
-                .FirstOrDefaultAsync(s => s.Id == sessionId);
+                .FirstOrDefaultAsync(s => s.SessionToken == sessionToken);
 
             if (session == null) return Failure("Session not found", 404);
 
             var stepsMaster = await _context.KycFormSteps.OrderBy(s => s.DisplayOrder).ToListAsync();
 
-            var response = new KycProgressDto
+            return Success(new KycProgressDto
             {
                 Session = new KycSessionResponseDto
                 {
@@ -256,18 +240,19 @@ namespace AUTHApi.Controllers
                         IsRequired = m.IsRequired
                     };
                 }).ToList()
-            };
-
-            return Success(response);
+            });
         }
 
         [HttpPost("complete-step")]
         public async Task<IActionResult> CompleteStep([FromBody] StepCompletionDto model)
         {
-            var completion = await _context.KycStepCompletions
-                .FirstOrDefaultAsync(sc => sc.SessionId == model.SessionId && sc.StepNumber == model.StepNumber);
+            var session = await _context.KycFormSessions.FirstOrDefaultAsync(s => s.SessionToken == model.SessionToken);
+            if (session == null) return Failure("Session not found", 404);
 
-            if (completion == null) return Failure("Step tracking not found", 404);
+            var completion = await _context.KycStepCompletions
+                .FirstOrDefaultAsync(sc => sc.SessionId == session.Id && sc.StepNumber == model.StepNumber);
+
+            if (completion == null) return Failure("Step not found", 404);
 
             completion.IsCompleted = true;
             completion.CompletedDate = DateTime.UtcNow;
@@ -275,25 +260,15 @@ namespace AUTHApi.Controllers
             completion.SavedDate = DateTime.UtcNow;
             if (model.RecordId.HasValue) completion.RecordId = model.RecordId;
 
-            var session = await _context.KycFormSessions.FindAsync(model.SessionId);
-            if (session != null)
-            {
-                session.LastSavedStep = model.StepNumber;
-                session.CurrentStep = model.StepNumber + 1;
-                session.LastActivityDate = DateTime.UtcNow;
+            session.LastSavedStep = model.StepNumber;
+            session.CurrentStep = model.StepNumber + 1;
+            session.LastActivityDate = DateTime.UtcNow;
 
-                var requiredSteps = await _context.KycFormSteps.Where(s => s.IsRequired).Select(s => s.StepNumber)
-                    .ToListAsync();
-                var completedRequired = await _context.KycStepCompletions
-                    .Where(sc =>
-                        sc.SessionId == model.SessionId && sc.IsCompleted && requiredSteps.Contains(sc.StepNumber))
-                    .CountAsync();
+            var requiredSteps = await _context.KycFormSteps.Where(s => s.IsRequired).Select(s => s.StepNumber).ToListAsync();
+            var completedRequired = await _context.KycStepCompletions
+                .CountAsync(sc => sc.SessionId == session.Id && sc.IsCompleted && requiredSteps.Contains(sc.StepNumber));
 
-                if (completedRequired >= requiredSteps.Count)
-                {
-                    session.FormStatus = 2;
-                }
-            }
+            if (completedRequired >= requiredSteps.Count) session.FormStatus = 2;
 
             await _context.SaveChangesAsync();
             return Success(new { nextStep = model.StepNumber + 1 });
@@ -309,7 +284,7 @@ namespace AUTHApi.Controllers
                 .OrderByDescending(s => s.CreatedDate)
                 .Select(s => new KycSessionBriefDto
                 {
-                    SessionId = s.Id,
+                    SessionToken = s.SessionToken,
                     CreatedDate = s.CreatedDate,
                     CurrentStep = s.CurrentStep,
                     LastSavedStep = s.LastSavedStep,
@@ -320,40 +295,22 @@ namespace AUTHApi.Controllers
             return Success(availableSessions);
         }
 
-        [HttpDelete("{sessionId}")]
-        public async Task<IActionResult> DeleteSession(int sessionId)
+        [HttpDelete("{sessionToken}")]
+        public async Task<IActionResult> DeleteSession(Guid sessionToken)
         {
             var session = await _context.KycFormSessions
                 .Include(s => s.KycDetail)
-                .FirstOrDefaultAsync(s => s.Id == sessionId);
+                .FirstOrDefaultAsync(s => s.SessionToken == sessionToken);
 
             if (session == null) return Failure("Session not found", 404);
 
-            if (session.FormStatus >= 3)
-            {
-                return Failure("Cannot delete a submitted or approved application.");
-            }
+            if (session.FormStatus >= 3) return Failure("Cannot delete submitted KYC.");
 
-            // If we have a KycDetail, delete it (this should cascade to Documents based on DbContext config)
-            if (session.KycDetail != null)
-            {
-                _context.KycDetails.Remove(session.KycDetail);
-            }
-
-            // StepCompletions and OtpVerifications should cascade delete from session 
-            // as configured in ApplicationDbContext.
+            if (session.KycDetail != null) _context.KycDetails.Remove(session.KycDetail);
             _context.KycFormSessions.Remove(session);
 
             await _context.SaveChangesAsync();
-
-            return Success(true, "Session deleted successfully");
+            return Success(true, "Session deleted");
         }
-    }
-
-    public class StepCompletionDto
-    {
-        public int SessionId { get; set; }
-        public int StepNumber { get; set; }
-        public int? RecordId { get; set; }
     }
 }

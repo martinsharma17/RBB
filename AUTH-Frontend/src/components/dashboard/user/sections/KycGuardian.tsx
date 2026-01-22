@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+
+import api from "../../../../services/api";
 
 interface KycGuardianProps {
-    sessionId: number | null;
+    sessionToken: string | null;
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
@@ -22,8 +23,7 @@ interface KycGuardianData {
     [key: string]: any;
 }
 
-const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
-    const { token, apiBase } = useAuth();
+const KycGuardian: React.FC<KycGuardianProps> = ({ sessionToken, initialData, onNext, onBack, onSaveAndExit }) => {
 
     const [formData, setFormData] = useState<KycGuardianData>({
         name: initialData?.fullName || initialData?.name || '',
@@ -71,43 +71,40 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionId, initialData, onNex
             return;
         }
 
-        if (!sessionId) {
-            setError("Session not initialized");
+        if (!sessionToken) {
+            setError("Session token not found");
             return;
         }
 
         setSaving(true);
         setError(null);
-        if (shouldExit) { /* Logic for exit if needed */ }
 
         try {
-            const response = await fetch(`${apiBase}/api/KycData/save-guardian`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    sessionId: sessionId,
-                    stepNumber: 9, // Guardian is step 9 in backend
-                    data: {
-                        fullName: formData.name,
-                        relationship: formData.relationship,
-                        address: formData.address,
-                        contactNo: formData.contactNo,
-                        emailId: formData.email,
-                        permanentAccountNo: formData.panNo,
-                        occupation: formData.occupation
-                    }
-                })
+            const response = await api.post(`/api/KycData/save-guardian`, {
+                sessionToken: sessionToken,
+                stepNumber: 9, // Guardian is step 9 in backend
+                data: {
+                    fullName: formData.name,
+                    relationship: formData.relationship,
+                    address: formData.address,
+                    contactNo: formData.contactNo,
+                    emailId: formData.email,
+                    permanentAccountNo: formData.panNo,
+                    occupation: formData.occupation
+                }
             });
 
-            if (response.ok) {
+            if (response.data.success) {
                 if (shouldExit && onSaveAndExit) {
                     onSaveAndExit();
                 } else {
                     onNext({ guardian: formData });
                 }
+            } else {
+                setError(response.data.message || "Failed to save guardian section");
             }
-        } catch (err) {
-            setError("Network error while saving");
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Network error while saving");
         } finally {
             setSaving(false);
         }

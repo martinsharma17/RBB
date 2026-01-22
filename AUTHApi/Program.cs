@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using AUTHApi.Core.Security;
 using AUTHApi.Services;
+using AspNetCoreRateLimit;
 
 
 /// <summary>
@@ -59,7 +60,7 @@ internal class Program
                     builder.WithOrigins(
                             "http://localhost:5173",
                             "http://localhost:3000",
-                            "http://192.168.100.67:3000", // Second laptop frontend
+                        
                             "http://192.168.100.99:3001" // Backend API (for self-reference if needed)
                         )
                         .AllowAnyHeader() // Allow any HTTP headers (e.g., Authorization, Content-Type)
@@ -169,15 +170,15 @@ internal class Program
 
         // --- Core Services Registration ---
         builder.Services.AddScoped<ITokenService, TokenService>();
-
-        // Register the email service for password reset and other email functionality
         builder.Services.AddScoped<AUTHApi.Services.IEmailService, AUTHApi.Services.EmailService>();
-
-        // Register the KYC service for document and data handling
         builder.Services.AddScoped<AUTHApi.Services.IKycService, AUTHApi.Services.KycService>();
-
-        // Register the Dynamic KYC Workflow Service
         builder.Services.AddScoped<AUTHApi.Services.IKycWorkflowService, AUTHApi.Services.KycWorkflowService>();
+
+        // --- Rate Limiting Infrastructure ---
+        builder.Services.AddMemoryCache();
+        builder.Services.Configure<AspNetCoreRateLimit.IpRateLimitOptions>(builder.Configuration.GetSection("IpRateLimiting"));
+        builder.Services.AddInMemoryRateLimiting();
+        builder.Services.AddSingleton<AspNetCoreRateLimit.IRateLimitConfiguration, AspNetCoreRateLimit.RateLimitConfiguration>();
 
 
         var app = builder.Build();
@@ -246,12 +247,14 @@ internal class Program
             app.UseSwaggerUI(options => { options.SwaggerEndpoint("/swagger/v1/swagger.json", "AUTHApi"); });
         }
 
-        // Global Exception Handling Headers
+        // Global Security & Exception Handling
         app.UseMiddleware<AUTHApi.Middlewares.ExceptionMiddleware>();
+        app.UseMiddleware<AUTHApi.Middlewares.SecurityHeadersMiddleware>();
 
-        app.UseHttpsRedirection(); // Redirect HTTP to HTTPS
+        app.UseHttpsRedirection();
         app.UseStaticFiles(); // Enable serving static files from wwwroot
-        app.UseCors("AllowSpecificOrigin"); // Enable CORS (Must be before Auth)
+        app.UseCors("AllowSpecificOrigin");
+        app.UseIpRateLimiting();
 
 
         // Enable Authentication (Who are you?)

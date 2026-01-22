@@ -5,6 +5,7 @@ using AUTHApi.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography;
 
 namespace AUTHApi.Services
 {
@@ -15,6 +16,7 @@ namespace AUTHApi.Services
     public interface ITokenService
     {
         Task<string> GenerateJwtToken(ApplicationUser user, string? picture = null);
+        RefreshToken GenerateRefreshToken(string userId, string ipAddress);
     }
 
     public class TokenService : ITokenService
@@ -43,7 +45,6 @@ namespace AUTHApi.Services
             var roles = await _userManager.GetRolesAsync(user);
 
             // 2. Aggregate Permissions (Policies) from all Roles
-            // Improved Query: Resolve Role IDs first, then fetch policies. Safer for EF Core translation.
             var roleIds = await _context.Roles
                 .Where(r => roles.Contains(r.Name))
                 .Select(r => r.Id)
@@ -66,20 +67,16 @@ namespace AUTHApi.Services
                 new Claim(ClaimTypes.NameIdentifier, user.Id)
             };
 
-            // Add profile picture if available (for Google OAuth)
             if (!string.IsNullOrEmpty(picture))
             {
                 claims.Add(new Claim("picture", picture));
             }
 
-            // 4. Inject Role Claims (for backward compatibility if needed)
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
             }
 
-            // 5. Inject Permission Claims
-            // These enable our policy-based [Authorize(Policy = "...")] checks
             foreach (var permission in permissions)
             {
                 claims.Add(new Claim("Permission", permission));
@@ -95,11 +92,26 @@ namespace AUTHApi.Services
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(int.Parse(_configuration["Jwt:ExpireMinutes"] ?? "1440")),
+                expires: DateTime.UtcNow.AddMinutes(double.Parse(_configuration["Jwt:ExpireMinutes"] ?? "10")),
                 signingCredentials: creds
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        /// <summary>
+        /// Generates a secure random refresh token.
+        /// </summary>
+        public RefreshToken GenerateRefreshToken(string userId, string ipAddress)
+        {
+            return new RefreshToken
+            {
+                Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+                Expires = DateTime.UtcNow.AddDays(7),
+                Created = DateTime.UtcNow,
+                CreatedByIp = ipAddress,
+                UserId = userId
+            };
         }
     }
 }

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../../../../context/AuthContext";
+import api from "../../../../services/api";
 
 interface KycOccupationProps {
-  sessionId: number | null;
+  sessionToken: string | null;
   initialData?: any;
   onNext: (data: any) => void;
   onBack: () => void;
@@ -23,37 +23,20 @@ interface KycOccupationData {
 }
 
 const KycOccupation: React.FC<KycOccupationProps> = ({
-  sessionId,
+  sessionToken,
   initialData,
   onNext,
   onBack,
   onSaveAndExit,
 }) => {
-  const { token, apiBase } = useAuth();
   const [occupationOptions, setOccupationOptions] = useState<
     { value: string; label: string }[]
   >([]);
 
-  // Normalize API base URL
-  const baseUrl = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
-
   useEffect(() => {
-    if (!token) return;
-
-    const fetchOptions = {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    };
-
-    fetch(`${baseUrl}/api/Occupation`, fetchOptions)
+    api.get(`/api/Occupation`)
       .then((res) => {
-        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        console.log("[Occupation] Raw data:", data);
-        let items = Array.isArray(data) ? data : (data.success && data.data ? data.data : []);
+        let items = Array.isArray(res.data) ? res.data : (res.data.success && res.data.data ? res.data.data : []);
 
         if (items.length > 0) {
           let options: { value: string; label: string }[] = items.map((item: any) => ({
@@ -61,7 +44,6 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
             label: item.name ?? item.Name ?? "",
           }));
 
-          // Ensure "Others" is always there
           if (!options.some(o => o.value === "Others" || o.label === "Others")) {
             options.push({ value: "Others", label: "Others" });
           }
@@ -84,7 +66,7 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
           { value: "Others", label: "Others" }
         ]);
       });
-  }, [baseUrl, token]);
+  }, []);
 
   const [formData, setFormData] = useState<KycOccupationData>({
     occupation: initialData?.occupationType || initialData?.occupation || "",
@@ -124,48 +106,41 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
     if (e) e.preventDefault();
-    if (!sessionId) {
-      setError("Session not initialized");
+    if (!sessionToken) {
+      setError("Session token not found");
       return;
     }
     setSaving(true);
     setError(null);
 
     try {
-      const response = await fetch(`${baseUrl}/api/KycData/save-occupation`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await api.post(`/api/KycData/save-occupation`, {
+        sessionToken: sessionToken,
+        stepNumber: 6,
+        data: {
+          occupationType: formData.occupation,
+          otherOccupation: formData.otherOccupation,
+          serviceSector: formData.serviceSector,
+          businessType: formData.businessType,
+          organizationName: formData.orgName,
+          organizationAddress: formData.orgAddress,
+          designation: formData.designation,
+          employeeIdNo: formData.employeeIdNo,
+          annualIncomeRange: formData.annualIncomeBracket,
         },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          stepNumber: 6, // Adjusted to match backend
-          data: {
-            occupationType: formData.occupation,
-            otherOccupation: formData.otherOccupation,
-            serviceSector: formData.serviceSector,
-            businessType: formData.businessType,
-            organizationName: formData.orgName,
-            organizationAddress: formData.orgAddress,
-            designation: formData.designation,
-            employeeIdNo: formData.employeeIdNo,
-            annualIncomeRange: formData.annualIncomeBracket,
-          },
-        }),
       });
 
-      if (response.ok) {
+      if (response.data.success) {
         if (shouldExit && onSaveAndExit) {
           onSaveAndExit();
         } else {
           onNext({ occupation: formData });
         }
       } else {
-        setError("Failed to save occupation section");
+        setError(response.data.message || "Failed to save occupation section");
       }
-    } catch (err) {
-      setError("Network error while saving");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Network error while saving");
     } finally {
       setSaving(false);
     }

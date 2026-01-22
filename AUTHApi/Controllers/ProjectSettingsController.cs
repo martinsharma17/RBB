@@ -1,6 +1,7 @@
 using AUTHApi.Data;
 using AUTHApi.DTOs;
 using AUTHApi.Entities;
+using AUTHApi.Core.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -48,7 +49,11 @@ namespace AUTHApi.Controllers
             });
         }
 
-        [Authorize(Roles = "SuperAdmin")]
+        /// <summary>
+        /// Updates global project settings (Application Name, Logo).
+        /// Restricted to users with Settings Edit permissions.
+        /// </summary>
+        [Authorize(Policy = Permissions.Settings.Edit)]
         [HttpPost("update")]
         public async Task<IActionResult> UpdateSettings([FromForm] UpdateProjectSettingsDto dto)
         {

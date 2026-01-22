@@ -9,6 +9,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using AUTHApi.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace AUTHApi.Controllers
 {
@@ -164,13 +165,75 @@ namespace AUTHApi.Controllers
             }
 
             // 4. Generate JWT Token
-            // This token now contains granular Permission claims instead of just Roles.
             var token = await _tokenService.GenerateJwtToken(user);
+            
+            // 5. Generate Refresh Token
+            var ipAddress = Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var refreshToken = _tokenService.GenerateRefreshToken(user.Id, ipAddress);
+            
+            // 6. Save Refresh Token to Database
+            var dbContext = HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            dbContext.RefreshTokens.Add(refreshToken);
+            
+            // Cleanup: remove old expired tokens for this user to keep DB clean
+            var expiredTokens = await dbContext.RefreshTokens
+                .Where(t => t.UserId == user.Id && (t.Expires <= DateTime.UtcNow || t.Revoked != null))
+                .ToListAsync();
+            dbContext.RefreshTokens.RemoveRange(expiredTokens);
+            
+            await dbContext.SaveChangesAsync();
 
-            // 5. Get Roles for frontend (so frontend knows what UI to show)
+            // 7. Get Roles for frontend
             var roles = await _userManager.GetRolesAsync(user);
 
-            return Success(new { token = token, roles = roles });
+            return Success(new { 
+                token = token, 
+                refreshToken = refreshToken.Token,
+                refreshTokenExpiration = refreshToken.Expires,
+                roles = roles 
+            });
+        }
+
+        /// <summary>
+        /// Exchanges a valid Refresh Token for a new Access Token and a new Refresh Token (Rotation).
+        /// Endpoint: POST /api/UserAuth/refresh-token
+        /// </summary>
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDto model)
+        {
+            if (string.IsNullOrEmpty(model.RefreshToken))
+                return Failure("Refresh token is required.");
+
+            var dbContext = HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            var refreshToken = await dbContext.RefreshTokens
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(t => t.Token == model.RefreshToken);
+
+            if (refreshToken == null || !refreshToken.IsActive)
+                return Failure("Invalid or expired refresh token", 401);
+
+            // Token Rotation: Revoke current token and issue a new one
+            var ipAddress = Request.Headers["X-Forwarded-For"].FirstOrDefault() ?? HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            
+            var newRefreshToken = _tokenService.GenerateRefreshToken(refreshToken.UserId, ipAddress);
+            
+            // Revoke the old one
+            refreshToken.Revoked = DateTime.UtcNow;
+            refreshToken.RevokedByIp = ipAddress;
+            refreshToken.ReplacedByToken = newRefreshToken.Token;
+            refreshToken.ReasonRevoked = "Replaced by new token";
+
+            dbContext.RefreshTokens.Add(newRefreshToken);
+            await dbContext.SaveChangesAsync();
+
+            // Generate new Access Token
+            var newAccessToken = await _tokenService.GenerateJwtToken(refreshToken.User!);
+
+            return Success(new { 
+                token = newAccessToken, 
+                refreshToken = newRefreshToken.Token,
+                refreshTokenExpiration = newRefreshToken.Expires
+            });
         }
 
         /// <summary>

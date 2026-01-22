@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+
+import api from "../../../../services/api";
 
 interface KycAmlProps {
-    sessionId: number | null;
+    sessionToken: string | null;
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
@@ -19,8 +20,7 @@ interface KycAmlData {
     [key: string]: any;
 }
 
-const KycAml: React.FC<KycAmlProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
-    const { token, apiBase } = useAuth();
+const KycAml: React.FC<KycAmlProps> = ({ sessionToken, initialData, onNext, onBack, onSaveAndExit }) => {
 
     const [formData, setFormData] = useState<KycAmlData>({
         isPoliticallyExposedPerson: initialData?.isPoliticallyExposedPerson || false,
@@ -56,43 +56,38 @@ const KycAml: React.FC<KycAmlProps> = ({ sessionId, initialData, onNext, onBack,
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
         if (e) e.preventDefault();
-        if (!sessionId) {
-            setError("Session not initialized");
+        if (!sessionToken) {
+            setError("Session token not found");
             return;
         }
         setSaving(true);
         setError(null);
-        if (shouldExit) { /* Logic for exit if needed */ }
 
         try {
-            const response = await fetch(`${apiBase}/api/KycData/save-aml-compliance`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    sessionId: sessionId,
-                    stepNumber: 10,
-                    data: {
-                        isPoliticallyExposedPerson: formData.isPoliticallyExposedPerson,
-                        pepRelationName: formData.pepRelationName,
-                        hasBeneficialOwner: formData.hasBeneficialOwner,
-                        beneficialOwnerDetails: formData.beneficialOwnerDetails,
-                        hasCriminalRecord: formData.hasCriminalRecord,
-                        criminalRecordDetails: formData.criminalRecordDetails
-                    }
-                })
+            const response = await api.post(`/api/KycData/save-aml-compliance`, {
+                sessionToken: sessionToken,
+                stepNumber: 10,
+                data: {
+                    isPoliticallyExposedPerson: formData.isPoliticallyExposedPerson,
+                    pepRelationName: formData.pepRelationName,
+                    hasBeneficialOwner: formData.hasBeneficialOwner,
+                    beneficialOwnerDetails: formData.beneficialOwnerDetails,
+                    hasCriminalRecord: formData.hasCriminalRecord,
+                    criminalRecordDetails: formData.criminalRecordDetails
+                }
             });
 
-            if (response.ok) {
+            if (response.data.success) {
                 if (shouldExit && onSaveAndExit) {
                     onSaveAndExit();
                 } else {
                     onNext({ amlCompliance: formData });
                 }
             } else {
-                setError("Failed to save AML compliance");
+                setError(response.data.message || "Failed to save AML compliance");
             }
-        } catch (err) {
-            setError("Network error while saving");
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Network error while saving");
         } finally {
             setSaving(false);
         }

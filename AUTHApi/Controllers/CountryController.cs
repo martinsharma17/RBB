@@ -9,7 +9,7 @@ namespace AUTHApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class CountryController : ControllerBase
+    public class CountryController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
 

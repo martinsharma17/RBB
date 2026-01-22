@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+import React, { useState, useEffect } from "react";
+import api from "../../../../services/api";
 
 interface KycInvestmentProps {
-    sessionId: number | null;
+    sessionToken: string | null;
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
@@ -15,8 +15,7 @@ interface KycInvestmentData {
     [key: string]: any;
 }
 
-const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
-    const { token, apiBase } = useAuth();
+const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionToken, initialData, onNext, onBack, onSaveAndExit }) => {
 
     const [formData, setFormData] = useState<KycInvestmentData>({
         details: initialData?.annualIncomeRange || initialData?.details || '',
@@ -41,46 +40,37 @@ const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionId, initialData, o
         setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
-    const [isExiting, setIsExiting] = useState(false);
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
         if (e) e.preventDefault();
 
-        if (!sessionId) {
-            setError("Session not initialized");
+        if (!sessionToken) {
+            setError("Session token not found");
             return;
         }
 
         setSaving(true);
         setError(null);
-        if (shouldExit) setIsExiting(true);
 
         try {
-            const response = await fetch(`${apiBase}/api/KycData/save-financial-details`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    sessionId: sessionId,
-                    stepNumber: 7, // Financial details is step 7 in backend
-                    data: {
-                        annualIncomeRange: formData.details
-                    }
-                })
+            const response = await api.post(`/api/KycData/save-financial-details`, {
+                sessionToken: sessionToken,
+                stepNumber: 7, // Financial details is step 7 in backend
+                data: {
+                    annualIncomeRange: formData.details
+                }
             });
 
-            if (response.ok) {
+            if (response.data.success) {
                 if (shouldExit && onSaveAndExit) {
                     onSaveAndExit();
                 } else {
                     onNext({ investment: formData });
                 }
             } else {
-                setError("Failed to save investment section");
-                setIsExiting(false);
+                setError(response.data.message || "Failed to save investment section");
             }
-        } catch (err) {
-            setError("Network error while saving");
-            setIsExiting(false);
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Network error while saving");
         } finally {
             setSaving(false);
         }

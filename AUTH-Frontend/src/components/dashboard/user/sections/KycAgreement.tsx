@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+
+import api from "../../../../services/api";
 
 interface KycAgreementProps {
-    sessionId: number | null;
+    sessionToken: string | null;
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
@@ -16,8 +17,7 @@ interface KycAgreementData {
     [key: string]: any;
 }
 
-const KycAgreement: React.FC<KycAgreementProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
-    const { token, apiBase } = useAuth();
+const KycAgreement: React.FC<KycAgreementProps> = ({ sessionToken, initialData, onNext, onBack, onSaveAndExit }) => {
 
     const [formData, setFormData] = useState<KycAgreementData>({
         tradingLimit: initialData?.tradingLimit || '',
@@ -44,46 +44,37 @@ const KycAgreement: React.FC<KycAgreementProps> = ({ sessionId, initialData, onN
         setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     };
 
-    const [isExiting, setIsExiting] = useState(false);
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
         if (e) e.preventDefault();
-        if (!sessionId) {
-            setError("Session not initialized");
+        if (!sessionToken) {
+            setError("Session token not found");
             return;
         }
         setSaving(true);
         setError(null);
-        if (shouldExit) setIsExiting(true);
 
         try {
-            const response = await fetch(`${apiBase}/api/KycData/save-agreement`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    sessionId: sessionId,
-                    stepNumber: 13,
-                    data: {
-                        tradingLimit: formData.tradingLimit,
-                        marginTradingFacility: formData.marginTradingFacility,
-                        agreementDate: formData.agreementDate
-                    }
-                })
+            const response = await api.post(`/api/KycData/save-agreement`, {
+                sessionToken: sessionToken,
+                stepNumber: 13,
+                data: {
+                    tradingLimit: formData.tradingLimit,
+                    marginTradingFacility: formData.marginTradingFacility,
+                    agreementDate: formData.agreementDate
+                }
             });
 
-            if (response.ok) {
+            if (response.data.success) {
                 if (shouldExit && onSaveAndExit) {
                     onSaveAndExit();
                 } else {
                     onNext({ agreement: formData });
                 }
             } else {
-                setError("Failed to save agreement");
-                setIsExiting(false);
+                setError(response.data.message || "Failed to save agreement");
             }
-        } catch (err) {
-            setError("Network error while saving");
-            setIsExiting(false);
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Network error while saving");
         } finally {
             setSaving(false);
         }

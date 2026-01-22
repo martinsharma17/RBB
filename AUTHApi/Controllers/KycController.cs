@@ -64,25 +64,20 @@ namespace AUTHApi.Controllers
             }
         }
 
-        /// <summary>
-        /// Submits the KYC session for verification (Maker action).
-        /// </summary>
-        [HttpPost("submit/{sessionId}")]
-        public async Task<IActionResult> SubmitKyc(int sessionId)
+        [HttpPost("submit/{sessionToken}")]
+        public async Task<IActionResult> SubmitKyc(Guid sessionToken)
         {
-            var session = await _context.KycFormSessions.FindAsync(sessionId);
+            var session = await _context.KycFormSessions.FirstOrDefaultAsync(s => s.SessionToken == sessionToken);
             if (session == null) return Failure("Session not found", 404);
 
-            /* COMMENTED FOR DEV BYPASS
-            if (!session.EmailVerified)
-                return Failure("Email verification is required before submission.");
-            */
+            // Ownership Check
+            if (session.UserId != null && session.UserId != User.FindFirstValue(ClaimTypes.NameIdentifier))
+                return Forbid();
 
             // Verify all required steps are completed
-            var requiredSteps = await _context.KycFormSteps.Where(s => s.IsRequired).Select(s => s.StepNumber)
-                .ToListAsync();
+            var requiredSteps = await _context.KycFormSteps.Where(s => s.IsRequired).Select(s => s.StepNumber).ToListAsync();
             var completedSteps = await _context.KycStepCompletions
-                .Where(sc => sc.SessionId == sessionId && sc.IsCompleted)
+                .Where(sc => sc.SessionId == session.Id && sc.IsCompleted)
                 .Select(sc => sc.StepNumber)
                 .ToListAsync();
 
@@ -91,29 +86,20 @@ namespace AUTHApi.Controllers
                 var missingStepNumbers = requiredSteps.Except(completedSteps).ToList();
                 var missingStepNames = await _context.KycFormSteps
                     .Where(s => missingStepNumbers.Contains(s.StepNumber))
-                    .Select(s => s.StepName)
-                    .ToListAsync();
+                    .Select(s => s.StepName).ToListAsync();
 
-                return Failure(
-                    $"Please complete all required sections before submission. Missing: {string.Join(", ", missingStepNames)}");
+                return Failure($"Please complete all required sections: {string.Join(", ", missingStepNames)}");
             }
 
             session.FormStatus = 3; // Submitted
             session.ModifiedDate = DateTime.UtcNow;
-
             await _context.SaveChangesAsync();
 
-            // Dynamic Workflow Initiation
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var (wfSuccess, wfMessage) = await _workflowService.InitiateWorkflowAsync(sessionId, userId ?? "System");
+            var (wfSuccess, wfMessage) = await _workflowService.InitiateWorkflowAsync(session.Id, userId ?? "System");
 
-            if (!wfSuccess)
-            {
-                _logger.LogError("KYC {SessionId} submitted but workflow failed: {Message}", sessionId, wfMessage);
-                return Failure("Submission partially failed: " + wfMessage, 500);
-            }
-
-            return Success("KYC submitted successfully for review.");
+            if (!wfSuccess) return Failure("Submission partially failed: " + wfMessage, 500);
+            return Success("KYC submitted successfully.");
         }
 
         // --- Unauthenticated Flows (New) ---
@@ -154,37 +140,21 @@ namespace AUTHApi.Controllers
             }
         }
 
-        /// <summary>
-        /// Verifies the email for an unauthenticated KYC session.
-        /// </summary>
         [HttpGet("verify-email")]
-        public async Task<IActionResult> VerifyKycEmail([FromQuery] string sessionToken,
-            [FromQuery] string verificationToken, [FromQuery] int sessionId)
+        public async Task<IActionResult> VerifyKycEmail([FromQuery] string sessionToken, [FromQuery] string verificationToken)
         {
-            if (string.IsNullOrEmpty(sessionToken) || string.IsNullOrEmpty(verificationToken) || sessionId <= 0)
-            {
+            if (string.IsNullOrEmpty(sessionToken) || string.IsNullOrEmpty(verificationToken))
                 return Failure("Invalid verification link.", 400);
-            }
 
             try
             {
-                // Note: The logic expects verificationToken, but service might use sessionToken as verificationToken
-                // Adjusting based on Logic in service: VerifyKycEmailAsync(sessionToken, verificationToken)
                 var isVerified = await _kycService.VerifyKycEmailAsync(sessionToken, verificationToken);
-
-                if (isVerified)
-                {
-                    return Success("Email verified successfully. You can now proceed with your KYC application.");
-                }
-                else
-                {
-                    return Failure("Invalid or expired verification link.", 400);
-                }
+                return isVerified ? Success("Email verified successfully.") : Failure("Invalid verification link.", 400);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error verifying KYC email for session {SessionId}", sessionId);
-                return InternalServerError("An unexpected error occurred during email verification.");
+                _logger.LogError(ex, "Error verifying KYC email {Token}", sessionToken);
+                return InternalServerError("An unexpected error occurred.");
             }
         }
 
@@ -212,34 +182,18 @@ namespace AUTHApi.Controllers
             }
         }
 
-        /// <summary>
-        /// Saves or updates the KYC data for a specific step within an unauthenticated session.
-        /// </summary>
-        [HttpPut("save-data/{sessionId}/{stepNumber}")]
-        public async Task<IActionResult> SaveKycData(
-            [FromRoute] int sessionId,
-            [FromRoute] int stepNumber,
-            [FromBody] JsonElement data)
+        [HttpPut("save-data/{sessionToken}/{stepNumber}")]
+        public async Task<IActionResult> SaveKycData(Guid sessionToken, int stepNumber, [FromBody] JsonElement data)
         {
-            if (sessionId <= 0 || stepNumber <= 0)
-            {
-                return Failure("Invalid session ID or step number.", 400);
-            }
-
             try
             {
-                await _kycService.UpdateDetailWithJsonAsync(sessionId, stepNumber, data);
-                return Success(new { sessionId, stepNumber, message = "KYC data saved successfully." });
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning(ex, "Validation error saving KYC data: {Message}", ex.Message);
-                return Failure(ex.Message, 400);
+                await _kycService.UpdateDetailWithJsonAsync(sessionToken, stepNumber, data);
+                return Success(new { sessionToken, stepNumber, message = "KYC data saved successfully." });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error saving KYC data");
-                return InternalServerError("An unexpected error occurred while saving KYC data.");
+                return Failure(ex.Message, 400);
             }
         }
     }

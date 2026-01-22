@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import html2canvas from "html2canvas";
-import { useAuth } from "../../../../context/AuthContext";
+
 import { Camera, Upload, Check } from "lucide-react";
+import api from "../../../../services/api";
 
 interface KycLocationProps {
-  sessionId: number | null;
+  sessionToken: string | null;
   initialData?: any;
   existingImageUrl?: string;
   onNext: (data: any) => void;
@@ -23,12 +24,12 @@ interface KycLocationData {
   [key: string]: any;
 }
 
-const fetchNearestLandmarkAndRoad = async (lat: string, lng: string, apiBase: string) => {
+const fetchNearestLandmarkAndRoad = async (lat: string, lng: string) => {
   try {
-    const response = await fetch(
-      `${apiBase}/api/KycData/reverse-geocode?lat=${lat}&lon=${lng}`
+    const response = await api.get(
+      `/api/KycData/reverse-geocode?lat=${lat}&lon=${lng}`
     );
-    const data = await response.json();
+    const data = response.data;
     // Try to get a landmark or display name
     const landmark =
       data?.namedetails?.name ||
@@ -65,14 +66,13 @@ const LocationPicker: React.FC<{
 };
 
 const KycLocation: React.FC<KycLocationProps> = ({
-  sessionId,
+  sessionToken,
   initialData,
   existingImageUrl,
   onNext,
   onBack,
   onSaveAndExit,
 }) => {
-  const { token, apiBase } = useAuth();
   const [mapImageFile, setMapImageFile] = useState<File | null>(null);
   const [mapImageUrl, setMapImageUrl] = useState<string | null>(existingImageUrl || null);
   const [capturing, setCapturing] = useState(false);
@@ -113,7 +113,7 @@ const KycLocation: React.FC<KycLocationProps> = ({
       longitude: lng,
     }));
     setAutoFilling(true);
-    const { landmark, road } = await fetchNearestLandmarkAndRoad(lat, lng, apiBase);
+    const { landmark, road } = await fetchNearestLandmarkAndRoad(lat, lng);
     setFormData((prev) => ({
       ...prev,
       landmark: landmark || prev.landmark,
@@ -138,7 +138,7 @@ const KycLocation: React.FC<KycLocationProps> = ({
 
       canvas.toBlob((blob) => {
         if (blob) {
-          const file = new File([blob], `location_map_${sessionId}.png`, {
+          const file = new File([blob], `location_map_${sessionToken}.png`, {
             type: "image/png",
           });
           setMapImageFile(file);
@@ -164,8 +164,8 @@ const KycLocation: React.FC<KycLocationProps> = ({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
     if (e) e.preventDefault();
-    if (!sessionId) {
-      setError("Session not initialized");
+    if (!sessionToken) {
+      setError("Session token not found");
       return;
     }
 
@@ -176,60 +176,50 @@ const KycLocation: React.FC<KycLocationProps> = ({
 
     setSaving(true);
     setError(null);
-    if (shouldExit) { /* Logic for exit if needed */ }
 
     try {
       // 1. Upload map image if new one exists
       if (mapImageFile) {
         const formDataUpload = new FormData();
-        formDataUpload.append("sessionId", sessionId.toString());
+        formDataUpload.append("sessionToken", sessionToken); // Use sessionToken
         formDataUpload.append("documentType", "10"); // 10 = LocationMap
         formDataUpload.append("file", mapImageFile);
 
-        const uploadRes = await fetch(`${apiBase}/api/KycData/upload-document`, {
-          method: "POST",
+        const uploadRes = await api.post(`/api/KycData/upload-document`, formDataUpload, {
           headers: {
-            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
           },
-          body: formDataUpload,
         });
 
-        if (!uploadRes.ok) {
+        if (!uploadRes.data.success) {
           throw new Error("Failed to upload map image");
         }
       }
 
       // 2. Save location data
-      const response = await fetch(`${apiBase}/api/KycData/save-location-map`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await api.post(`/api/KycData/save-location-map`, {
+        sessionToken: sessionToken,
+        stepNumber: 11,
+        data: {
+          landmark: formData.landmark,
+          distanceFromMainRoad: formData.distanceFromMainRoad,
+          latitude: formData.latitude,
+          longitude: formData.longitude,
+          canvasDataJson: formData.canvasDataJson,
         },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          stepNumber: 11,
-          data: {
-            landmark: formData.landmark,
-            distanceFromMainRoad: formData.distanceFromMainRoad,
-            latitude: formData.latitude,
-            longitude: formData.longitude,
-            canvasDataJson: formData.canvasDataJson,
-          },
-        }),
       });
 
-      if (response.ok) {
+      if (response.data.success) {
         if (shouldExit && onSaveAndExit) {
           onSaveAndExit();
         } else {
           onNext({ locationMap: formData });
         }
       } else {
-        setError("Failed to save location map");
+        setError(response.data.message || "Failed to save location map");
       }
-    } catch (err) {
-      setError("Network error while saving");
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || "Network error while saving");
     } finally {
       setSaving(false);
     }

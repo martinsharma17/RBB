@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+
+import api from "../../../../services/api";
 
 interface KycLegalProps {
-    sessionId: number | null;
+    sessionToken: string | null;
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
@@ -18,8 +19,7 @@ interface KycLegalData {
     [key: string]: any;
 }
 
-const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
-    const { token, apiBase } = useAuth();
+const KycLegal: React.FC<KycLegalProps> = ({ sessionToken, initialData, onNext, onBack, onSaveAndExit }) => {
 
     const [formData, setFormData] = useState<KycLegalData>({
         declarationText: initialData?.declarationText || "I hereby declare that the information provided above is true and correct to the best of my knowledge.",
@@ -44,8 +44,6 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [isExiting, setIsExiting] = useState(false);
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
         if (e) e.preventDefault();
         if (!formData.isAgreed) {
@@ -53,43 +51,36 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionId, initialData, onNext, onB
             return;
         }
 
-        if (!sessionId) {
-            setError("Session not initialized");
+        if (!sessionToken) {
+            setError("Session token not found");
             return;
         }
 
         setSaving(true);
         setError(null);
-        if (shouldExit) setIsExiting(true);
 
         try {
-            const response = await fetch(`${apiBase}/api/KycData/save-declarations`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    sessionId: sessionId,
-                    stepNumber: 12, // Declarations is step 12 in backend
-                    data: {
-                        agreeToTerms: formData.isAgreed,
-                        noOtherFinancialLiability: formData.noOtherLiability,
-                        allInformationTrue: formData.allTrue
-                    }
-                })
+            const response = await api.post(`/api/KycData/save-declarations`, {
+                sessionToken: sessionToken,
+                stepNumber: 12, // Declarations is step 12 in backend
+                data: {
+                    agreeToTerms: formData.isAgreed,
+                    noOtherFinancialLiability: formData.noOtherLiability,
+                    allInformationTrue: formData.allTrue
+                }
             });
 
-            if (response.ok) {
+            if (response.data.success) {
                 if (shouldExit && onSaveAndExit) {
                     onSaveAndExit();
                 } else {
                     onNext({ legal: formData });
                 }
             } else {
-                setError("Failed to save legal section");
-                setIsExiting(false);
+                setError(response.data.message || "Failed to save legal section");
             }
-        } catch (err) {
-            setError("Network error while saving");
-            setIsExiting(false);
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Network error while saving");
         } finally {
             setSaving(false);
         }

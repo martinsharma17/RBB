@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import {
-    BarChart,
-    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
-    Legend,
     ResponsiveContainer,
     PieChart,
     Pie,
@@ -66,9 +63,8 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onViewChange })
             if (fromDate) params.append('fromDate', fromDate);
             if (toDate) params.append('toDate', toDate);
 
-            const response = await axios.get(`${apiBase}/api/KycApproval/dashboard-stats?${params.toString()}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const query = params.toString();
+            const response = await api.get(`/api/KycApproval/dashboard-stats${query ? '?' + query : ''}`);
             if (response.data.success) {
                 setStats(response.data.data);
             } else {
@@ -242,7 +238,7 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onViewChange })
                                         paddingAngle={5}
                                         dataKey="count"
                                     >
-                                        {stats.statusDistribution.map((entry, index) => (
+                                        {stats.statusDistribution.map((_, index) => (
                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                         ))}
                                     </Pie>
@@ -319,9 +315,7 @@ const PendingList: React.FC<{ searchTerm: string, onViewChange?: (view: string, 
         const fetchPending = async () => {
             if (!token || !apiBase) return;
             try {
-                const response = await axios.get(`${apiBase}/api/KycApproval/pending`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const response = await api.get('/api/KycApproval/pending');
                 if (response.data.success) {
                     setPending(response.data.data.pending || []);
                 }

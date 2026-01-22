@@ -3,6 +3,7 @@ using System;
 using AUTHApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AUTHApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260122171314_sec")]
+    partial class sec
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -641,8 +644,7 @@ namespace AUTHApi.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SessionId")
-                        .IsUnique();
+                    b.HasIndex("SessionId");
 
                     b.HasIndex("UserId");
 
@@ -742,6 +744,9 @@ namespace AUTHApi.Migrations
                     b.Property<bool>("IsExpired")
                         .HasColumnType("boolean");
 
+                    b.Property<int?>("KycDetailId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("LastActivityDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -775,6 +780,8 @@ namespace AUTHApi.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("KycDetailId");
 
                     b.HasIndex("SessionToken")
                         .IsUnique();
@@ -1382,9 +1389,8 @@ namespace AUTHApi.Migrations
             modelBuilder.Entity("AUTHApi.Entities.KycDetail", b =>
                 {
                     b.HasOne("AUTHApi.Entities.KycFormSession", "Session")
-                        .WithOne("KycDetail")
-                        .HasForeignKey("AUTHApi.Entities.KycDetail", "SessionId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .WithMany()
+                        .HasForeignKey("SessionId");
 
                     b.HasOne("AUTHApi.Entities.ApplicationUser", "User")
                         .WithMany()
@@ -1408,9 +1414,16 @@ namespace AUTHApi.Migrations
 
             modelBuilder.Entity("AUTHApi.Entities.KycFormSession", b =>
                 {
+                    b.HasOne("AUTHApi.Entities.KycDetail", "KycDetail")
+                        .WithMany()
+                        .HasForeignKey("KycDetailId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("AUTHApi.Entities.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
+
+                    b.Navigation("KycDetail");
 
                     b.Navigation("User");
                 });
@@ -1586,8 +1599,6 @@ namespace AUTHApi.Migrations
 
             modelBuilder.Entity("AUTHApi.Entities.KycFormSession", b =>
                 {
-                    b.Navigation("KycDetail");
-
                     b.Navigation("OtpVerifications");
 
                     b.Navigation("StepCompletions");
