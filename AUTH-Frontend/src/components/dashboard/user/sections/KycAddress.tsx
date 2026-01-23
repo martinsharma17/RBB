@@ -238,8 +238,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
       const cMun = currMunicipalities.find((m) => m.id.toString() === formData.currentMunicipalityId)?.name;
 
       // Save Permanent Address
-      await api.post(`/api/KycData/save-permanent-address`, {
-        sessionToken: sessionToken,
+      await api.post(`/api/KycData/save-permanent-address/${sessionToken}`, {
         stepNumber: 3,
         data: {
           country: formData.permanentCountry,
@@ -255,8 +254,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
       });
 
       // Save Current Address
-      await api.post(`/api/KycData/save-current-address`, {
-        sessionToken: sessionToken,
+      await api.post(`/api/KycData/save-current-address/${sessionToken}`, {
         stepNumber: 2,
         data: {
           country: formData.currentCountry,

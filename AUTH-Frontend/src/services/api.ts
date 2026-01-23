@@ -13,10 +13,33 @@ const api = axios.create({
 // Interceptor to add the Auth Token to every request
 api.interceptors.request.use(
     (config) => {
+        // Add JWT auth token if user is logged in
         const token = localStorage.getItem('authToken');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // ==========================================
+        // DUAL-TOKEN SECURITY: Add Verification Token
+        // ==========================================
+        // For anonymous KYC sessions, include the verification token from localStorage
+        // This token is required along with the sessionToken (in URL) to access protected endpoints
+        const verificationToken = localStorage.getItem('kyc_verification_token');
+        const tokenExpiry = localStorage.getItem('kyc_token_expiry');
+
+        if (verificationToken && tokenExpiry) {
+            // Check if token is still valid
+            const expiryDate = new Date(tokenExpiry);
+            if (expiryDate > new Date()) {
+                config.headers['X-KYC-Verification'] = verificationToken;
+            } else {
+                // Token expired, clean up
+                console.warn('⚠️ Verification token expired');
+                localStorage.removeItem('kyc_verification_token');
+                localStorage.removeItem('kyc_token_expiry');
+            }
+        }
+
         return config;
     },
     (error) => Promise.reject(error)

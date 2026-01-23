@@ -197,8 +197,7 @@ const KycLocation: React.FC<KycLocationProps> = ({
       }
 
       // 2. Save location data
-      const response = await api.post(`/api/KycData/save-location-map`, {
-        sessionToken: sessionToken,
+      const response = await api.post(`/api/KycData/save-location-map/${sessionToken}`, {
         stepNumber: 11,
         data: {
           landmark: formData.landmark,

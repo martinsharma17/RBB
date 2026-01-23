@@ -218,8 +218,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
     };
 
     try {
-      const response = await api.post(`/api/KycData/save-personal-info`, {
-        sessionToken: sessionToken,
+      const response = await api.post(`/api/KycData/save-personal-info/${sessionToken}`, {
         stepNumber: 1,
         data: mappedData,
       });

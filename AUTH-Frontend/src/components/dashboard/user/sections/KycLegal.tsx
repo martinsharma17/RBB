@@ -60,8 +60,7 @@ const KycLegal: React.FC<KycLegalProps> = ({ sessionToken, initialData, onNext, 
         setError(null);
 
         try {
-            const response = await api.post(`/api/KycData/save-declarations`, {
-                sessionToken: sessionToken,
+            const response = await api.post(`/api/KycData/save-declarations/${sessionToken}`, {
                 stepNumber: 12, // Declarations is step 12 in backend
                 data: {
                     agreeToTerms: formData.isAgreed,

@@ -102,9 +102,34 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
             });
 
             if (response.data.success) {
+                // ==========================================
+                // DUAL-TOKEN SECURITY: Store Verification Token
+                // ==========================================
+                // After successful OTP verification, backend returns TWO tokens:
+                // 1. SessionToken - already in URL
+                // 2. VerificationToken - NEW, must be stored and sent in headers
+
+                const { verificationToken, tokenExpiry } = response.data.data;
+
+                if (verificationToken) {
+                    // Store verification token in localStorage (never in URL!)
+                    localStorage.setItem('kyc_verification_token', verificationToken);
+                    localStorage.setItem('kyc_token_expiry', tokenExpiry || '');
+
+                    // Set in axios default headers for all future requests
+                    // This header is required by the backend's RequireKycSessionOrAuth attribute
+                    api.defaults.headers.common['X-KYC-Verification'] = verificationToken;
+
+                    console.log('✅ Verification token stored and set in headers');
+                } else {
+                    console.warn('⚠️ No verification token received (user may be logged in)');
+                }
+
                 // If we are verifying a specific pre-initialized session, skip the selection list
                 if (sessionId) {
-                    onVerified(Number(sessionId), tempSessionToken);
+                    // Pass back the token we have (either from new generation or existing prop)
+                    const validToken = tempSessionToken || sessionToken;
+                    onVerified(Number(sessionId), validToken);
                     return;
                 }
 
@@ -283,8 +308,8 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                             const isFinalized = s.formStatus >= 3;
                             return (
                                 <div
-                                    key={s.sessionId}
-                                    onClick={() => !isSubmitted && onVerified(s.sessionId, s.sessionToken)}
+                                    key={s.sessionId || (s as any).SessionId}
+                                    onClick={() => !isSubmitted && onVerified(s.sessionId || (s as any).SessionId, s.sessionToken || (s as any).SessionToken)}
                                     className={`p-5 border rounded-2xl transition-all flex justify-between items-center group relative overflow-hidden ${isSubmitted
                                         ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
                                         : 'bg-white border-slate-200 hover:border-indigo-500 cursor-pointer shadow-sm hover:shadow-md'

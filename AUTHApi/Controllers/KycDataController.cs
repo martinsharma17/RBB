@@ -11,6 +11,7 @@ namespace AUTHApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    
     public class KycDataController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
@@ -224,136 +225,150 @@ namespace AUTHApi.Controllers
         /// <summary>
         /// Save personal information for a KYC session.
         /// </summary>
-        /// <param name="model">DTO containing personal info and session id.</param>
+        /// <param name="sessionToken">The session token passed via URL.</param>
+        /// <param name="model">DTO containing personal info.</param>
         /// <returns>Success envelope with the KycDetail record id.</returns>
-        [HttpPost("save-personal-info")]
-        public async Task<IActionResult> SavePersonalInfo([FromBody] SaveStepDto<PersonalInfoDto, Guid> model)
+        [RequireKycSessionOrAuth] // Dual-token security: Validates JWT OR (sessionToken + X-KYC-Verification header)
+        [HttpPost("save-personal-info/{sessionToken}")]
+        public async Task<IActionResult> SavePersonalInfo([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<PersonalInfoDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
 
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 1, model.Data);
-            await UpdateStepProgress(model.SessionToken, 1, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 1, model.Data);
+            await UpdateStepProgress(sessionToken, 1, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-current-address")]
-        public async Task<IActionResult> SaveCurrentAddress([FromBody] SaveStepDto<AddressDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-current-address/{sessionToken}")]
+        public async Task<IActionResult> SaveCurrentAddress([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<AddressDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 2, model.Data);
-            await UpdateStepProgress(model.SessionToken, 2, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 2, model.Data);
+            await UpdateStepProgress(sessionToken, 2, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-permanent-address")]
-        public async Task<IActionResult> SavePermanentAddress([FromBody] SaveStepDto<AddressDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-permanent-address/{sessionToken}")]
+        public async Task<IActionResult> SavePermanentAddress([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<AddressDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 3, model.Data);
-            await UpdateStepProgress(model.SessionToken, 3, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 3, model.Data);
+            await UpdateStepProgress(sessionToken, 3, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-family")]
-        public async Task<IActionResult> SaveFamily([FromBody] SaveStepDto<FamilyDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-family/{sessionToken}")]
+        public async Task<IActionResult> SaveFamily([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<FamilyDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 4, model.Data);
-            await UpdateStepProgress(model.SessionToken, 4, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 4, model.Data);
+            await UpdateStepProgress(sessionToken, 4, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-bank-account")]
-        public async Task<IActionResult> SaveBankAccount([FromBody] SaveStepDto<BankDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-bank-account/{sessionToken}")]
+        public async Task<IActionResult> SaveBankAccount([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<BankDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 5, model.Data);
-            await UpdateStepProgress(model.SessionToken, 5, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 5, model.Data);
+            await UpdateStepProgress(sessionToken, 5, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-occupation")]
-        public async Task<IActionResult> SaveOccupation([FromBody] SaveStepDto<OccupationDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-occupation/{sessionToken}")]
+        public async Task<IActionResult> SaveOccupation([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<OccupationDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 6, model.Data);
-            await UpdateStepProgress(model.SessionToken, 6, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 6, model.Data);
+            await UpdateStepProgress(sessionToken, 6, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-financial-details")]
-        public async Task<IActionResult> SaveFinancialDetails([FromBody] SaveStepDto<FinancialDetailsDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-financial-details/{sessionToken}")]
+        public async Task<IActionResult> SaveFinancialDetails([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<FinancialDetailsDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 7, model.Data);
-            await UpdateStepProgress(model.SessionToken, 7, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 7, model.Data);
+            await UpdateStepProgress(sessionToken, 7, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-transaction-info")]
-        public async Task<IActionResult> SaveTransactionInfo([FromBody] SaveStepDto<TransactionInfoDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-transaction-info/{sessionToken}")]
+        public async Task<IActionResult> SaveTransactionInfo([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<TransactionInfoDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 8, model.Data);
-            await UpdateStepProgress(model.SessionToken, 8, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 8, model.Data);
+            await UpdateStepProgress(sessionToken, 8, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-guardian")]
-        public async Task<IActionResult> SaveGuardian([FromBody] SaveStepDto<GuardianDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-guardian/{sessionToken}")]
+        public async Task<IActionResult> SaveGuardian([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<GuardianDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 9, model.Data);
-            await UpdateStepProgress(model.SessionToken, 9, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 9, model.Data);
+            await UpdateStepProgress(sessionToken, 9, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-aml-compliance")]
-        public async Task<IActionResult> SaveAmlCompliance([FromBody] SaveStepDto<AmlComplianceDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-aml-compliance/{sessionToken}")]
+        public async Task<IActionResult> SaveAmlCompliance([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<AmlComplianceDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 10, model.Data);
-            await UpdateStepProgress(model.SessionToken, 10, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 10, model.Data);
+            await UpdateStepProgress(sessionToken, 10, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-location-map")]
-        public async Task<IActionResult> SaveLocationMap([FromBody] SaveStepDto<LocationMapDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-location-map/{sessionToken}")]
+        public async Task<IActionResult> SaveLocationMap([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<LocationMapDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 11, model.Data);
-            await UpdateStepProgress(model.SessionToken, 11, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 11, model.Data);
+            await UpdateStepProgress(sessionToken, 11, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-declarations")]
-        public async Task<IActionResult> SaveDeclarations([FromBody] SaveStepDto<DeclarationsDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-declarations/{sessionToken}")]
+        public async Task<IActionResult> SaveDeclarations([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<DeclarationsDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 12, model.Data);
-            await UpdateStepProgress(model.SessionToken, 12, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 12, model.Data);
+            await UpdateStepProgress(sessionToken, 12, recordId);
             return Success(new { recordId });
         }
 
-        [HttpPost("save-agreement")]
-        public async Task<IActionResult> SaveAgreement([FromBody] SaveStepDto<AgreementDto, Guid> model)
+        [RequireKycSessionOrAuth]
+        [HttpPost("save-agreement/{sessionToken}")]
+        public async Task<IActionResult> SaveAgreement([FromRoute] Guid sessionToken, [FromBody] SaveStepDto<AgreementDto> model)
         {
-            var (isValid, msg, _) = await ValidateSessionAsync(model.SessionToken);
+            var (isValid, msg, _) = await ValidateSessionAsync(sessionToken);
             if (!isValid) return Failure(msg);
-            var recordId = await _kycService.UpdateDetailAsync(model.SessionToken, 13, model.Data);
-            await UpdateStepProgress(model.SessionToken, 13, recordId);
+            var recordId = await _kycService.UpdateDetailAsync(sessionToken, 13, model.Data);
+            await UpdateStepProgress(sessionToken, 13, recordId);
             return Success(new { recordId });
         }
 

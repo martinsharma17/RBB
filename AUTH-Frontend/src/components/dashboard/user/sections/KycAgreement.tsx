@@ -54,8 +54,7 @@ const KycAgreement: React.FC<KycAgreementProps> = ({ sessionToken, initialData, 
         setError(null);
 
         try {
-            const response = await api.post(`/api/KycData/save-agreement`, {
-                sessionToken: sessionToken,
+            const response = await api.post(`/api/KycData/save-agreement/${sessionToken}`, {
                 stepNumber: 13,
                 data: {
                     tradingLimit: formData.tradingLimit,

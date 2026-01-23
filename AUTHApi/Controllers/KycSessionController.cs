@@ -169,6 +169,25 @@ namespace AUTHApi.Controllers
                 {
                     session.EmailVerified = true;
                     session.EmailVerifiedDate = DateTime.UtcNow;
+
+                    // ==========================================
+                    // DUAL-TOKEN SECURITY: Generate Verification Token
+                    // ==========================================
+                    // After successful email verification, generate a short verification token
+                    // that will be required in the HTTP header 'X-KYC-Verification' for all
+                    // future API calls. This prevents URL-based session hijacking.
+                    
+                    // Generate 16-character verification token (using first 16 chars of GUID)
+                    session.VerificationToken = Guid.NewGuid().ToString("N").Substring(0, 16);
+                    
+                    // Set expiration to 48 hours from now
+                    session.VerificationTokenExpiry = DateTime.UtcNow.AddHours(24);
+                    
+                    // Capture IP address for security monitoring
+                    session.VerifiedFromIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+                    
+                    // Capture User-Agent for device fingerprinting
+                    session.VerifiedUserAgent = Request.Headers["User-Agent"].ToString();
                 }
                 else if (model.OtpType == 2)
                 {
@@ -186,6 +205,7 @@ namespace AUTHApi.Controllers
                 .OrderByDescending(s => s.CreatedDate)
                 .Select(s => new KycSessionBriefDto
                 {
+                    SessionId = s.Id,
                     SessionToken = s.SessionToken,
                     CreatedDate = s.CreatedDate,
                     CurrentStep = s.CurrentStep,
@@ -194,10 +214,15 @@ namespace AUTHApi.Controllers
                 })
                 .ToListAsync();
 
+            // Return BOTH tokens to the frontend
+            // - SessionToken: Goes in URL route parameters
+            // - VerificationToken: Goes in HTTP header 'X-KYC-Verification'
             return Success(new VerifyOtpResponseDto
             {
                 Success = true,
                 SessionToken = model.SessionToken,
+                VerificationToken = session?.VerificationToken, // NEW: Return verification token
+                TokenExpiry = session?.VerificationTokenExpiry,  // NEW: Return expiry timestamp
                 AvailableSessions = availableSessions
             }, "Verification successful");
         }
@@ -284,6 +309,7 @@ namespace AUTHApi.Controllers
                 .OrderByDescending(s => s.CreatedDate)
                 .Select(s => new KycSessionBriefDto
                 {
+                    SessionId = s.Id,
                     SessionToken = s.SessionToken,
                     CreatedDate = s.CreatedDate,
                     CurrentStep = s.CurrentStep,

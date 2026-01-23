@@ -491,6 +491,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
                 setCurrentStep(1);
                 setSessionId(newSessionId);
                 // Ensure the token is set if returned, else keep existing if valid
+                // Always prioritize the new token coming from verification
                 if (newSessionToken) {
                   setSessionToken(newSessionToken);
                 }

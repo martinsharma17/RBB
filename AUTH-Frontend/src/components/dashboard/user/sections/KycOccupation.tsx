@@ -114,8 +114,7 @@ const KycOccupation: React.FC<KycOccupationProps> = ({
     setError(null);
 
     try {
-      const response = await api.post(`/api/KycData/save-occupation`, {
-        sessionToken: sessionToken,
+      const response = await api.post(`/api/KycData/save-occupation/${sessionToken}`, {
         stepNumber: 6,
         data: {
           occupationType: formData.occupation,

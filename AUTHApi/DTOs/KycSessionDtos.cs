@@ -29,6 +29,8 @@ namespace AUTHApi.DTOs
     {
         public bool Success { get; set; }
         public Guid? SessionToken { get; set; }
+        public string? VerificationToken { get; set; } // NEW: Dual-token security
+        public DateTime? TokenExpiry { get; set; }     // NEW: When verification token expires
         public List<KycSessionBriefDto> AvailableSessions { get; set; } = new();
     }
 
@@ -71,9 +73,8 @@ namespace AUTHApi.DTOs
         public bool IsRequired { get; set; }
     }
 
-    public class SaveStepDto<T, TKey>
+    public class SaveStepDto<T>
     {
-        public TKey SessionToken { get; set; } = default!;
         public int StepNumber { get; set; }
         public T Data { get; set; } = default!;
     }

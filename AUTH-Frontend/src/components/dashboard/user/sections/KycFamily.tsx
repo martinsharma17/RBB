@@ -100,8 +100,7 @@ const KycFamily: React.FC<KycFamilyProps> = ({
     setError(null);
 
     try {
-      const response = await api.post(`/api/KycData/save-family`, {
-        sessionToken: sessionToken,
+      const response = await api.post(`/api/KycData/save-family/${sessionToken}`, {
         stepNumber: 4,
         data: {
           fatherName: formData.fatherName,

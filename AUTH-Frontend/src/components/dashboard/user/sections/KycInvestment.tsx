@@ -52,8 +52,7 @@ const KycInvestment: React.FC<KycInvestmentProps> = ({ sessionToken, initialData
         setError(null);
 
         try {
-            const response = await api.post(`/api/KycData/save-financial-details`, {
-                sessionToken: sessionToken,
+            const response = await api.post(`/api/KycData/save-financial-details/${sessionToken}`, {
                 stepNumber: 7, // Financial details is step 7 in backend
                 data: {
                     annualIncomeRange: formData.details

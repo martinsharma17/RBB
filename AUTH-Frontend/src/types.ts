@@ -199,6 +199,16 @@ export interface KycData {
   [key: string]: string | number | boolean | null | undefined;
 }
 
+export interface KycSessionBrief {
+  sessionId: number;
+  sessionToken: string;
+  createdDate: string;
+  currentStep: number;
+  lastSavedStep: number;
+  formStatus: number;
+  [key: string]: any; // Allow loose property access for PascalCase if needed
+}
+
 // ============================================================================
 // COMPONENT PROP TYPES
 // ============================================================================

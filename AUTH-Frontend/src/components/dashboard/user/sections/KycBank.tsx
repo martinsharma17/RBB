@@ -56,8 +56,7 @@ const KycBank: React.FC<KycBankProps> = ({ sessionToken, initialData, onNext, on
         setError(null);
 
         try {
-            const response = await api.post(`/api/KycData/save-bank-account`, {
-                sessionToken: sessionToken,
+            const response = await api.post(`/api/KycData/save-bank-account/${sessionToken}`, {
                 stepNumber: 5,
                 data: {
                     accountType: parseInt(formData.accountType) || null,

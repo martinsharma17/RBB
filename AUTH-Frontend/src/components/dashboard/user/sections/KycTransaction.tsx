@@ -60,8 +60,7 @@ const KycTransaction: React.FC<KycTransactionProps> = ({ sessionToken, initialDa
         setError(null);
 
         try {
-            const response = await api.post(`/api/KycData/save-transaction-info`, {
-                sessionToken: sessionToken,
+            const response = await api.post(`/api/KycData/save-transaction-info/${sessionToken}`, {
                 stepNumber: 8,
                 data: {
                     sourceOfNetWorth: formData.sourceOfFunds,

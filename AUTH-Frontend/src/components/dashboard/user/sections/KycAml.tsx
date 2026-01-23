@@ -64,8 +64,7 @@ const KycAml: React.FC<KycAmlProps> = ({ sessionToken, initialData, onNext, onBa
         setError(null);
 
         try {
-            const response = await api.post(`/api/KycData/save-aml-compliance`, {
-                sessionToken: sessionToken,
+            const response = await api.post(`/api/KycData/save-aml-compliance/${sessionToken}`, {
                 stepNumber: 10,
                 data: {
                     isPoliticallyExposedPerson: formData.isPoliticallyExposedPerson,

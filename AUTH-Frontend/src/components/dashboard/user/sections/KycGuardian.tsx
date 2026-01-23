@@ -80,8 +80,7 @@ const KycGuardian: React.FC<KycGuardianProps> = ({ sessionToken, initialData, on
         setError(null);
 
         try {
-            const response = await api.post(`/api/KycData/save-guardian`, {
-                sessionToken: sessionToken,
+            const response = await api.post(`/api/KycData/save-guardian/${sessionToken}`, {
                 stepNumber: 9, // Guardian is step 9 in backend
                 data: {
                     fullName: formData.name,
