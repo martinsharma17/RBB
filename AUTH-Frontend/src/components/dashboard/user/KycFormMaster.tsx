@@ -456,7 +456,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     setSessionId(null);
     setIsEmailVerified(false);
     setKycData(null);
-    setCurrentStep(1);
+    setCurrentStep(0);
     setShowSuccess(false);
   };
 
