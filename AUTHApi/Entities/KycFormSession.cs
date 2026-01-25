@@ -44,8 +44,41 @@ namespace AUTHApi.Entities
         public DateTime? SessionExpiryDate { get; set; }
         public bool IsExpired { get; set; } = false;
 
-        public int? KycDetailId { get; set; }
-        [ForeignKey("KycDetailId")] public virtual KycDetail? KycDetail { get; set; }
+        // ==========================================
+        // DUAL-TOKEN SECURITY FIELDS
+        // ==========================================
+        // These fields support anonymous KYC sessions where users verify via email OTP.
+        // The VerificationToken is sent in HTTP headers, while SessionToken is in the URL.
+        // This dual-token approach prevents unauthorized access if the URL is leaked.
+
+        /// <summary>
+        /// Verification token (16-char GUID segment) issued after email OTP verification.
+        /// Required in HTTP header 'X-KYC-Verification' for anonymous sessions.
+        /// </summary>
+        [MaxLength(50)]
+        public string? VerificationToken { get; set; }
+
+        /// <summary>
+        /// Expiration timestamp for the verification token (typically 48 hours from verification).
+        /// After expiry, users must re-verify their email to get a new token.
+        /// </summary>
+        public DateTime? VerificationTokenExpiry { get; set; }
+
+        /// <summary>
+        /// IP address from which the email was verified.
+        /// Used for security monitoring and potential re-verification triggers.
+        /// </summary>
+        [MaxLength(50)]
+        public string? VerifiedFromIp { get; set; }
+
+        /// <summary>
+        /// User-Agent string of the device that verified the email.
+        /// Helps detect session hijacking attempts from different devices.
+        /// </summary>
+        [MaxLength(500)]
+        public string? VerifiedUserAgent { get; set; }
+
+        public virtual KycDetail? KycDetail { get; set; }
 
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
         public DateTime? ModifiedDate { get; set; }
@@ -54,3 +87,4 @@ namespace AUTHApi.Entities
         public virtual ICollection<KycOtpVerification> OtpVerifications { get; set; } = new List<KycOtpVerification>();
     }
 }
+    

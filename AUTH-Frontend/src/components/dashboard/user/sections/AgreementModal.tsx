@@ -6,10 +6,10 @@ interface AgreementModalProps {
     onClose: () => void;
     onAgree: () => void;
     kycData: any;
-    sessionId: number | null;
+    sessionToken: string | null;
 }
 
-const AgreementModal: React.FC<AgreementModalProps> = ({ open, onClose, onAgree, kycData, sessionId }) => {
+const AgreementModal: React.FC<AgreementModalProps> = ({ open, onClose, onAgree, kycData, sessionToken }) => {
     const [scrolledToEnd, setScrolledToEnd] = useState(false);
     const [agreed, setAgreed] = useState(false);
     const [downloading, setDownloading] = useState(false);
@@ -66,7 +66,7 @@ const AgreementModal: React.FC<AgreementModalProps> = ({ open, onClose, onAgree,
             const url = URL.createObjectURL(blob);
 
             link.setAttribute('href', url);
-            link.setAttribute('download', `KYC_Application_${sessionId}_${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute('download', `KYC_Application_${sessionToken || 'Internal'}_${new Date().toISOString().split('T')[0]}.csv`);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();

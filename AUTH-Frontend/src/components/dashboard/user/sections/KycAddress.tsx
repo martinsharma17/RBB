@@ -1,6 +1,5 @@
-// filepath: AUTH-Frontend/src/components/dashboard/user/sections/KycAddress.tsx
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../../../../context/AuthContext";
+import api from "../../../../services/api";
 
 interface AddressItem {
   id: number;
@@ -8,7 +7,7 @@ interface AddressItem {
 }
 
 interface KycAddressProps {
-  sessionId: number | null;
+  sessionToken: string | null;
   initialData?: any;
   onNext: (data: any) => void;
   onBack: () => void;
@@ -16,26 +15,21 @@ interface KycAddressProps {
 }
 
 const KycAddress: React.FC<KycAddressProps> = ({
-  sessionId,
+  sessionToken,
   initialData,
   onNext,
   onBack,
   onSaveAndExit,
 }) => {
-  const { token, apiBase } = useAuth();
 
   // Dropdown data
   const [permProvinces, setPermProvinces] = useState<AddressItem[]>([]);
   const [permDistricts, setPermDistricts] = useState<AddressItem[]>([]);
-  const [permMunicipalities, setPermMunicipalities] = useState<AddressItem[]>(
-    []
-  );
+  const [permMunicipalities, setPermMunicipalities] = useState<AddressItem[]>([]);
 
   const [currProvinces, setCurrProvinces] = useState<AddressItem[]>([]);
   const [currDistricts, setCurrDistricts] = useState<AddressItem[]>([]);
-  const [currMunicipalities, setCurrMunicipalities] = useState<AddressItem[]>(
-    []
-  );
+  const [currMunicipalities, setCurrMunicipalities] = useState<AddressItem[]>([]);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -60,90 +54,78 @@ const KycAddress: React.FC<KycAddressProps> = ({
   const [countries, setCountries] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch(`${apiBase}/api/Country`)
-      .then((res) => res.json())
-      .then((data) => setCountries(data))
+    api.get(`/api/Country`)
+      .then((res) => setCountries(res.data))
       .catch((err) => console.error("Failed to load countries", err));
-  }, [apiBase]);
+  }, []);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch provinces
   useEffect(() => {
-    fetch(`${apiBase}/api/Address/provinces`)
-      .then((res) => res.json())
-      .then((data) => {
-        setPermProvinces(data);
-        setCurrProvinces(data);
+    api.get(`/api/Address/provinces`)
+      .then((res) => {
+        setPermProvinces(res.data);
+        setCurrProvinces(res.data);
       })
       .catch(() => {
         setPermProvinces([]);
         setCurrProvinces([]);
       });
-  }, [apiBase]);
+  }, []);
 
   // Handle Permanent Province Change
   useEffect(() => {
     if (formData.permanentProvinceId) {
-      fetch(`${apiBase}/api/Address/districts/${formData.permanentProvinceId}`)
-        .then((res) => res.json())
-        .then((data) => setPermDistricts(data))
+      api.get(`/api/Address/districts/${formData.permanentProvinceId}`)
+        .then((res) => setPermDistricts(res.data))
         .catch(() => setPermDistricts([]));
     } else {
       setPermDistricts([]);
     }
-  }, [formData.permanentProvinceId, apiBase]);
+  }, [formData.permanentProvinceId]);
 
   // Handle Permanent District Change
   useEffect(() => {
     if (formData.permanentDistrictId) {
-      fetch(
-        `${apiBase}/api/Address/municipalities/${formData.permanentDistrictId}`
-      )
-        .then((res) => res.json())
-        .then((data) => setPermMunicipalities(data))
+      api.get(`/api/Address/municipalities/${formData.permanentDistrictId}`)
+        .then((res) => setPermMunicipalities(res.data))
         .catch(() => setPermMunicipalities([]));
     } else {
       setPermMunicipalities([]);
     }
-  }, [formData.permanentDistrictId, apiBase]);
+  }, [formData.permanentDistrictId]);
 
   // Handle Current Province Change
   useEffect(() => {
     if (formData.currentProvinceId) {
-      fetch(`${apiBase}/api/Address/districts/${formData.currentProvinceId}`)
-        .then((res) => res.json())
-        .then((data) => setCurrDistricts(data))
+      api.get(`/api/Address/districts/${formData.currentProvinceId}`)
+        .then((res) => setCurrDistricts(res.data))
         .catch(() => setCurrDistricts([]));
     } else {
       setCurrDistricts([]);
     }
-  }, [formData.currentProvinceId, apiBase]);
+  }, [formData.currentProvinceId]);
 
   // Handle Current District Change
   useEffect(() => {
     if (formData.currentDistrictId) {
-      fetch(
-        `${apiBase}/api/Address/municipalities/${formData.currentDistrictId}`
-      )
-        .then((res) => res.json())
-        .then((data) => setCurrMunicipalities(data))
+      api.get(`/api/Address/municipalities/${formData.currentDistrictId}`)
+        .then((res) => setCurrMunicipalities(res.data))
         .catch(() => setCurrMunicipalities([]));
     } else {
       setCurrMunicipalities([]);
     }
-  }, [formData.currentDistrictId, apiBase]);
+  }, [formData.currentDistrictId]);
 
   // Sync initialData
   useEffect(() => {
-    // 1. Prioritize locally saved state (if user pressed Back)
     if (initialData?.address) {
       setFormData(prev => ({ ...prev, ...initialData.address }));
       return;
     }
 
-    // 2. Otherwise sync from backend structure (names to IDs)
     if (initialData?.permanentAddress && permProvinces.length > 0) {
       const p = initialData.permanentAddress;
       const province = permProvinces.find(pr => pr.name === p.province);
@@ -209,7 +191,6 @@ const KycAddress: React.FC<KycAddressProps> = ({
     setFormData((prev) => {
       const newData = { ...prev, [name]: value };
 
-      // Clear dependent fields ONLY on manual change
       if (name === "permanentProvinceId") {
         newData.permanentDistrictId = "";
         newData.permanentMunicipalityId = "";
@@ -238,81 +219,53 @@ const KycAddress: React.FC<KycAddressProps> = ({
     }));
   };
 
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
     if (e) e.preventDefault();
-    if (!sessionId) {
-      setError("KYC session not initialized.");
+    if (!sessionToken) {
+      setError("KYC session token not found.");
       return;
     }
     setSaving(true);
     setError(null);
-    if (shouldExit) { /* Logic for exit if needed */ }
 
     try {
-      const headers: any = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const pProv = permProvinces.find((p) => p.id.toString() === formData.permanentProvinceId)?.name;
+      const pDist = permDistricts.find((d) => d.id.toString() === formData.permanentDistrictId)?.name;
+      const pMun = permMunicipalities.find((m) => m.id.toString() === formData.permanentMunicipalityId)?.name;
 
-      // Look up names for Saving (Assuming backend expects names based on previous code)
-      const pProv = permProvinces.find(
-        (p) => p.id.toString() === formData.permanentProvinceId
-      )?.name;
-      const pDist = permDistricts.find(
-        (d) => d.id.toString() === formData.permanentDistrictId
-      )?.name;
-      const pMun = permMunicipalities.find(
-        (m) => m.id.toString() === formData.permanentMunicipalityId
-      )?.name;
-
-      const cProv = currProvinces.find(
-        (p) => p.id.toString() === formData.currentProvinceId
-      )?.name;
-      const cDist = currDistricts.find(
-        (d) => d.id.toString() === formData.currentDistrictId
-      )?.name;
-      const cMun = currMunicipalities.find(
-        (m) => m.id.toString() === formData.currentMunicipalityId
-      )?.name;
+      const cProv = currProvinces.find((p) => p.id.toString() === formData.currentProvinceId)?.name;
+      const cDist = currDistricts.find((d) => d.id.toString() === formData.currentDistrictId)?.name;
+      const cMun = currMunicipalities.find((m) => m.id.toString() === formData.currentMunicipalityId)?.name;
 
       // Save Permanent Address
-      await fetch(`${apiBase}/api/KycData/save-permanent-address`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          sessionId,
-          stepNumber: 3,
-          data: {
-            country: formData.permanentCountry,
-            province: formData.permanentCountry === "Nepal" ? pProv : null,
-            district: formData.permanentCountry === "Nepal" ? pDist : null,
-            tole: formData.permanentCountry === "Nepal" ? formData.permanentTole : null,
-            municipalityName: formData.permanentCountry === "Nepal" ? pMun : null,
-            wardNo: formData.permanentCountry === "Nepal" ? (parseInt(formData.permanentWardNo) || null) : null,
-            fullAddress: formData.permanentCountry !== "Nepal" ? formData.permanentFullAddress : null,
-            mobileNo: formData.contactNumber,
-            emailId: formData.email,
-          },
-        }),
+      await api.post(`/api/KycData/save-permanent-address/${sessionToken}`, {
+        stepNumber: 3,
+        data: {
+          country: formData.permanentCountry,
+          province: formData.permanentCountry === "Nepal" ? pProv : null,
+          district: formData.permanentCountry === "Nepal" ? pDist : null,
+          tole: formData.permanentCountry === "Nepal" ? formData.permanentTole : null,
+          municipalityName: formData.permanentCountry === "Nepal" ? pMun : null,
+          wardNo: formData.permanentCountry === "Nepal" ? (parseInt(formData.permanentWardNo) || null) : null,
+          fullAddress: formData.permanentCountry !== "Nepal" ? formData.permanentFullAddress : null,
+          mobileNo: formData.contactNumber,
+          emailId: formData.email,
+        },
       });
 
       // Save Current Address
-      await fetch(`${apiBase}/api/KycData/save-current-address`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          sessionId,
-          stepNumber: 2,
-          data: {
-            country: formData.currentCountry,
-            province: cProv,
-            district: cDist,
-            tole: formData.currentTole,
-            municipalityName: cMun,
-            wardNo: parseInt(formData.wardNo) || null,
-            mobileNo: formData.contactNumber,
-            emailId: formData.email,
-          },
-        }),
+      await api.post(`/api/KycData/save-current-address/${sessionToken}`, {
+        stepNumber: 2,
+        data: {
+          country: formData.currentCountry,
+          province: cProv,
+          district: cDist,
+          tole: formData.currentTole,
+          municipalityName: cMun,
+          wardNo: parseInt(formData.wardNo) || null,
+          mobileNo: formData.contactNumber,
+          emailId: formData.email,
+        },
       });
 
       if (shouldExit && onSaveAndExit) {
@@ -321,7 +274,7 @@ const KycAddress: React.FC<KycAddressProps> = ({
         onNext({ address: formData });
       }
     } catch (err: any) {
-      setError(err.message || "Error saving address information");
+      setError(err.response?.data?.message || "Error saving address information");
     } finally {
       setSaving(false);
     }

@@ -5,6 +5,7 @@ import Sidebar from './dashboard/Sidebar';
 import { getViewComponent } from './dashboard/ViewMapper';
 import AddUserModal from './dashboard/AddUserModal';
 import AssignRoleModal from './dashboard/AssignRoleModal'; // Ensure this exists or remove if unused
+import api from "../services/api";
 
 const Dashboard = () => {
     // 1. Auth & Context
@@ -71,28 +72,19 @@ const Dashboard = () => {
         if (!permissions || !permissions.read_users) return; // Skip if no permission
 
         try {
-            // Fetch Users
-            const userRes = await fetch(`${apiBase}/api/User/users`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (userRes.ok) {
-                const res = await userRes.json();
-                const data = res.data || [];
+            // Fetch Users using centralized api
+            const userRes = await api.get('/api/User/users');
+            if (userRes.data.success) {
+                const data = userRes.data.data || [];
                 setUsers(data);
-                // Identification of users with management capabilities can be done by permissions,
-                // but for a summary list, showing users with any role other than the most basic might be enough,
-                // or just remove this simplified 'admins' state and rely on API filtering.
                 setAdmins(data.filter((u: any) => u.roles && u.roles.length > 0));
             }
 
             // Fetch Roles (if permission allows or if needed for modals)
             if (permissions.view_roles || permissions.read_roles) {
-                const roleRes = await fetch(`${apiBase}/api/Roles`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (roleRes.ok) {
-                    const res = await roleRes.json();
-                    setRoles(res.data?.roles || []);
+                const roleRes = await api.get('/api/Roles');
+                if (roleRes.data.success) {
+                    setRoles(roleRes.data.data?.roles || []);
                 }
             }
 
@@ -100,7 +92,7 @@ const Dashboard = () => {
             console.error("Data fetch error:", err);
         } finally {
         }
-    }, [apiBase, token, permissions]);
+    }, [permissions]); // removed apiBase, token dependence
 
     useEffect(() => {
         if (token) fetchData();

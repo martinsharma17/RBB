@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../../../../context/AuthContext";
+
+import api from "../../../../services/api";
 
 interface KycFamilyProps {
-  sessionId: number | null;
+  sessionToken: string | null;
   initialData?: any;
   onNext: (data: any) => void;
   onBack: () => void;
@@ -22,14 +23,13 @@ interface KycFamilyData {
 }
 
 const KycFamily: React.FC<KycFamilyProps> = ({
-  sessionId,
+  sessionToken,
   initialData,
   onNext,
   onBack,
   maritalStatus,
   onSaveAndExit,
 }) => {
-  const { token, apiBase } = useAuth();
 
   const [formData, setFormData] = useState<KycFamilyData>({
     fatherName: initialData?.fatherName || initialData?.FatherName || "",
@@ -92,46 +92,38 @@ const KycFamily: React.FC<KycFamilyProps> = ({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
     if (e) e.preventDefault();
-    if (!sessionId) {
-      setError("Session not initialized");
+    if (!sessionToken) {
+      setError("Session token not found");
       return;
     }
     setSaving(true);
     setError(null);
 
     try {
-      const response = await fetch(`${apiBase}/api/KycData/save-family`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await api.post(`/api/KycData/save-family/${sessionToken}`, {
+        stepNumber: 4,
+        data: {
+          fatherName: formData.fatherName,
+          motherName: formData.motherName,
+          grandFatherName: formData.grandfatherName,
+          spouseName: formData.spouseName,
+          fatherInLawName: formData.fatherInLawName,
+          motherInLawName: formData.motherInLawName,
+          childrenNames: formData.children.filter(Boolean).join(",") || null,
         },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          stepNumber: 4,
-          data: {
-            fatherName: formData.fatherName,
-            motherName: formData.motherName,
-            grandFatherName: formData.grandfatherName,
-            spouseName: formData.spouseName,
-            fatherInLawName: formData.fatherInLawName,
-            motherInLawName: formData.motherInLawName,
-            childrenNames: formData.children.filter(Boolean).join(",") || null,
-          },
-        }),
       });
 
-      if (response.ok) {
+      if (response.data.success) {
         if (shouldExit && onSaveAndExit) {
           onSaveAndExit();
         } else {
           onNext({ family: formData });
         }
       } else {
-        setError("Failed to save family section");
+        setError(response.data.message || "Failed to save family section");
       }
-    } catch (err) {
-      setError("Network error while saving");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Network error while saving");
     } finally {
       setSaving(false);
     }

@@ -298,6 +298,7 @@ export function mapBackendPermissionsToFrontend(backendPermissions: string[]): P
             delete: permSet.has(PERMISSION_CONSTANTS.KYC_DELETE),
             sidebar: permSet.has(PERMISSION_CONSTANTS.KYC_SIDEBAR),
             export: permSet.has(PERMISSION_CONSTANTS.KYC_EXPORT),
+            dashboard: permSet.has(PERMISSION_CONSTANTS.KYC_DASHBOARD),
         },
         kyc_workflow: {
             read: permSet.has(PERMISSION_CONSTANTS.KYC_WORKFLOW),
@@ -528,6 +529,7 @@ export function mapFrontendPermissionsToBackend(frontendPermissions: Permissions
     pushIfTrue(frontendPermissions.kyc?.update, PERMISSION_CONSTANTS.KYC_UPDATE);
     pushIfTrue(frontendPermissions.kyc?.delete, PERMISSION_CONSTANTS.KYC_DELETE);
     pushIfTrue(frontendPermissions.kyc?.sidebar, PERMISSION_CONSTANTS.KYC_SIDEBAR);
+    pushIfTrue(frontendPermissions.kyc?.dashboard, PERMISSION_CONSTANTS.KYC_DASHBOARD);
 
     // Branches
     pushIfTrue(frontendPermissions.branches?.create, PERMISSION_CONSTANTS.BRANCHES_CREATE);

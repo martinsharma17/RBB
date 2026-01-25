@@ -3,9 +3,10 @@ import { useAuth } from "../../../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import KycSummaryReview from "./KycSummaryReview";
 import AgreementModal from "./AgreementModal";
+import api from "../../../../services/api";
 
 export interface KycAttachmentProps {
-  sessionId: number | null;
+  sessionToken: string | null;
   onBack: () => void;
   onComplete?: (mergedKycData: any) => void;
   onSuccess?: (kycData: any) => void;
@@ -14,14 +15,14 @@ export interface KycAttachmentProps {
 }
 
 const KycAttachment: React.FC<KycAttachmentProps> = ({
-  sessionId,
+  sessionToken,
   onBack,
   onSuccess,
   onComplete,
   allKycFormData,
   onSaveAndExit,
 }) => {
-  const { token, apiBase } = useAuth();
+  const { apiBase } = useAuth();
   const navigate = useNavigate();
 
   const [uploading, setUploading] = useState(false);
@@ -44,21 +45,18 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
   // Fetch existing data on mount to ensure we have latest attachments
   useEffect(() => {
     const fetchLatest = async () => {
-      if (!sessionId || !token) return;
+      if (!sessionToken) return;
       try {
-        const res = await fetch(`${apiBase}/api/KycData/all-details/${sessionId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success) {
-          setBackendData(data.data);
+        const res = await api.get(`/api/KycData/all-details-by-token/${sessionToken}`);
+        if (res.data.success) {
+          setBackendData(res.data.data);
         }
       } catch (err) {
         console.error("Failed to fetch documents:", err);
       }
     };
     fetchLatest();
-  }, [sessionId, token, apiBase]);
+  }, [sessionToken]);
 
   // Helper to check if a document type already exists in backend data
   const getExistingDoc = (type: number) => {
@@ -66,34 +64,20 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
     return source?.attachments?.find((a: any) => a.documentType === type);
   };
 
-  const parseError = async (res: Response, fallback: string) => {
-    try {
-      const text = await res.text();
-      if (!text) return fallback;
-      const data = JSON.parse(text);
-      return data.message || data.Message || fallback;
-    } catch {
-      return fallback;
-    }
-  };
-
   const uploadFile = async (file: File, type: number) => {
     const formData = new FormData();
-    formData.append("sessionId", sessionId!.toString());
+    formData.append("sessionToken", sessionToken!);
     formData.append("documentType", type.toString());
     formData.append("file", file);
 
-    const headers: any = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
-
-    const res = await fetch(`${apiBase}/api/KycData/upload-document`, {
-      method: "POST",
-      headers,
-      body: formData,
+    const res = await api.post(`/api/KycData/upload-document`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     });
 
-    if (!res.ok) {
-      throw new Error(await parseError(res, "Upload failed"));
+    if (!res.data.success) {
+      throw new Error(res.data.message || "Upload failed");
     }
   };
 
@@ -114,8 +98,8 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
       return;
     }
 
-    if (!sessionId) {
-      setError("Session not initialized correctly.");
+    if (!sessionToken) {
+      setError("Session token not found");
       return;
     }
 
@@ -132,15 +116,12 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
       if (rightThumb) await uploadFile(rightThumb, 6);
 
       // Fetch latest data from backend after uploads to get updated attachment list
-      let reviewData: any = { ...allKycFormData, sessionId };
+      let reviewData: any = { ...allKycFormData };
       try {
-        const res = await fetch(`${apiBase}/api/KycData/all-details/${sessionId}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const backendRes = await res.json();
-        if (backendRes.success) {
-          reviewData = { ...backendRes.data };
-          setBackendData(backendRes.data); // Update local cache to sync UI if user goes back
+        const res = await api.get(`/api/KycData/all-details-by-token/${sessionToken}`);
+        if (res.data.success) {
+          reviewData = { ...res.data.data };
+          setBackendData(res.data.data); // Update local cache to sync UI if user goes back
         }
       } catch (err) {
         console.error("Failed to fetch updated kyc details:", err);
@@ -153,7 +134,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
         setCurrentStep('summary');
       }
     } catch (err: any) {
-      setError(err.message || "Upload failed");
+      setError(err.response?.data?.message || err.message || "Upload failed");
     } finally {
       setUploading(false);
     }
@@ -166,19 +147,14 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
 
   const handleAgree = async () => {
     try {
-      const headers: any = {};
-      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await api.post(`/api/Kyc/submit-by-token`, { sessionToken });
 
-      const res = await fetch(`${apiBase}/api/Kyc/submit/${sessionId}`, {
-        method: "POST",
-        headers,
-      });
-
-      if (!res.ok) {
-        throw new Error(await parseError(res, "Final submission failed"));
+      if (!res.data.success) {
+        throw new Error(res.data.message || "Final submission failed");
       }
 
       localStorage.removeItem("kyc_session_id");
+      localStorage.removeItem("kyc_session_token");
       localStorage.removeItem("kyc_email_verified");
 
       setShowAgreementModal(false);
@@ -186,7 +162,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
       if (onComplete) onComplete(kycReviewData);
       if (onSuccess) onSuccess(kycReviewData);
     } catch (err: any) {
-      setError(err.message || "Final submission failed");
+      setError(err.response?.data?.message || err.message || "Final submission failed");
       setShowAgreementModal(false);
     }
   };
@@ -206,7 +182,7 @@ const KycAttachment: React.FC<KycAttachmentProps> = ({
           onClose={() => setShowAgreementModal(false)}
           onAgree={handleAgree}
           kycData={kycReviewData}
-          sessionId={sessionId}
+          sessionToken={sessionToken}
         />
       </>
     );

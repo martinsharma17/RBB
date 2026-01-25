@@ -11,10 +11,7 @@ namespace AUTHApi.Entities
         [ForeignKey("UserId")] public virtual ApplicationUser? User { get; set; }
 
         public int? SessionId { get; set; }
-
-        // We will configure the FK in DbContext or via attribute if Session class is available. 
-        // [ForeignKey("SessionId")] public virtual KycFormSession? Session { get; set; } 
-        // Circular reference care needed. For now just ID.
+        [ForeignKey("SessionId")] public virtual KycFormSession? Session { get; set; }
         public int? BranchId { get; set; }
 
         // --- 1. Personal Information ---

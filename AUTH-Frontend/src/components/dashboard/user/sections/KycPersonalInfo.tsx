@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../../../../context/AuthContext";
+
 import NepaliDate from 'nepali-date-converter';
-// import { adToBs } from "bikram-sambat-js";
+import api from "../../../../services/api";
 
 interface KycPersonalInfoProps {
-  sessionId: number | null;
+  sessionToken: string | null;
   initialData?: any;
 
   onNext: (data: any) => void;
@@ -43,26 +43,23 @@ function convertAdToBs(adDate: string): string {
 }
 
 const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
-  sessionId,
+  sessionToken,
   initialData,
   onNext,
   onSaveAndExit,
 }) => {
-  const { token, apiBase } = useAuth();
   const [branches, setBranches] = useState<any[]>([]);
   const [countries, setCountries] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch(`${apiBase}/api/Branch`)
-      .then((res) => res.json())
-      .then((data) => setBranches(data))
+    api.get(`/api/Branch`)
+      .then((res) => setBranches(res.data))
       .catch((err) => console.error("Failed to load branches", err));
 
-    fetch(`${apiBase}/api/Country`)
-      .then((res) => res.json())
-      .then((data) => setCountries(data))
+    api.get(`/api/Country`)
+      .then((res) => setCountries(res.data))
       .catch((err) => console.error("Failed to load countries", err));
-  }, [apiBase]);
+  }, []);
 
   // Normalize data from either backend format (Pascal/Camel) or previous frontend format
   const [formData, setFormData] = useState<KycPersonalInfoData>({
@@ -127,7 +124,7 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
                 : typeof initialData?.gender === "string"
                   ? initialData.gender
                   : "",
-        maritalStatus: initialData?.maritalStatus || "", // <-- add this
+        maritalStatus: initialData?.maritalStatus || "",
 
         nationality:
           initialData?.isNepali || initialData?.IsNepali
@@ -173,7 +170,6 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
   ) => {
     const { name, value } = e.target;
     if (name === "panNo") {
-      // Allow only numbers and limit to 9 digits
       const cleaned = value.replace(/\D/g, "").slice(0, 9);
       setFormData((prev) => ({ ...prev, [name]: cleaned }));
       return;
@@ -181,19 +177,15 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
     if (e) e.preventDefault();
-    if (!sessionId) {
-      setError("KYC Session not initialized correctly.");
+    if (!sessionToken) {
+      setError("KYC Session token not found.");
       return;
     }
     setSaving(true);
     setError(null);
-    if (shouldExit) { /* Logic for exit if needed */ }
 
-    // Map frontend data to backend PersonalInfoDto
     const mappedData = {
       fullName:
         `${formData.firstName} ${formData.middleName} ${formData.lastName}`
@@ -225,26 +217,13 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
       nidNo: formData.nidNo || null,
     };
 
-    const headers: any = {
-      "Content-Type": "application/json",
-    };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
     try {
-      const response = await fetch(
-        `${apiBase}/api/KycData/save-personal-info`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            sessionId: sessionId,
-            stepNumber: 1,
-            data: mappedData,
-          }),
-        }
-      );
+      const response = await api.post(`/api/KycData/save-personal-info/${sessionToken}`, {
+        stepNumber: 1,
+        data: mappedData,
+      });
 
-      if (response.ok) {
+      if (response.data.success) {
         if (shouldExit && onSaveAndExit) {
           onSaveAndExit();
         } else {
@@ -255,20 +234,10 @@ const KycPersonalInfo: React.FC<KycPersonalInfoProps> = ({
           });
         }
       } else {
-        const data = await response.json();
-        if (data.errors) {
-          const firstErr = Object.values(data.errors)[0];
-          setError(
-            Array.isArray(firstErr)
-              ? (firstErr[0] as string)
-              : "Validation error"
-          );
-        } else {
-          setError(data.message || data.title || "Failed to save section");
-        }
+        setError(response.data.message || "Failed to save section");
       }
-    } catch (err) {
-      setError("Network error while saving");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Network error while saving");
     } finally {
       setSaving(false);
     }

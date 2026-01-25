@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
+
+import api from "../../../../services/api";
 
 interface KycBankProps {
-    sessionId: number | null;
+    sessionToken: string | null;
     initialData?: any;
     onNext: (data: any) => void;
     onBack: () => void;
@@ -17,8 +18,7 @@ interface KycBankData {
     [key: string]: any;
 }
 
-const KycBank: React.FC<KycBankProps> = ({ sessionId, initialData, onNext, onBack, onSaveAndExit }) => {
-    const { token, apiBase } = useAuth();
+const KycBank: React.FC<KycBankProps> = ({ sessionToken, initialData, onNext, onBack, onSaveAndExit }) => {
 
     const [formData, setFormData] = useState<KycBankData>({
         accountType: initialData?.accountType?.toString() || '',
@@ -46,47 +46,37 @@ const KycBank: React.FC<KycBankProps> = ({ sessionId, initialData, onNext, onBac
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const [isExiting, setIsExiting] = useState(false);
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | null, shouldExit: boolean = false) => {
         if (e) e.preventDefault();
-        if (!sessionId) {
-            setError("Session not initialized");
+        if (!sessionToken) {
+            setError("Session token not found");
             return;
         }
         setSaving(true);
         setError(null);
-        if (shouldExit) setIsExiting(true);
 
         try {
-            const response = await fetch(`${apiBase}/api/KycData/save-bank-account`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({
-                    sessionId: sessionId,
-                    stepNumber: 5, // Bank is step 5 in backend
-                    data: {
-                        accountType: parseInt(formData.accountType) || null,
-                        bankAccountNo: formData.accountNumber,
-                        bankName: formData.bankName,
-                        bankAddress: formData.bankAddress
-                    }
-                })
+            const response = await api.post(`/api/KycData/save-bank-account/${sessionToken}`, {
+                stepNumber: 5,
+                data: {
+                    accountType: parseInt(formData.accountType) || null,
+                    bankAccountNo: formData.accountNumber,
+                    bankName: formData.bankName,
+                    bankAddress: formData.bankAddress
+                }
             });
 
-            if (response.ok) {
+            if (response.data.success) {
                 if (shouldExit && onSaveAndExit) {
                     onSaveAndExit();
                 } else {
                     onNext({ bank: formData });
                 }
             } else {
-                setError("Failed to save bank section");
-                setIsExiting(false);
+                setError(response.data.message || "Failed to save bank section");
             }
-        } catch (err) {
-            setError("Network error while saving");
-            setIsExiting(false);
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Network error while saving");
         } finally {
             setSaving(false);
         }

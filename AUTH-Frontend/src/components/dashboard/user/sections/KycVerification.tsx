@@ -1,19 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../../../context/AuthContext';
+import api from '../../../../services/api';
 
 /**
  * KycVerification - Handles the initial Email/OTP verification 
  * that must be completed before the KYC form is visible.
- * 
- * AUTHENTICATION-BASED FLOW:
- * - Authenticated users (staff with valid token): Skip OTP verification
- * - Unauthenticated users (customers): Must verify OTP before accessing form
- * 
- * This approach automatically works for any role (Maker, Checker, Admin, etc.)
- * without needing to maintain a hardcoded list of role names.
  */
 interface KycSessionBrief {
     sessionId: number;
+    sessionToken: string;
     createdDate: string;
     currentStep: number;
     lastSavedStep: number;
@@ -23,22 +18,20 @@ interface KycSessionBrief {
 interface KycVerificationProps {
     initialEmail?: string;
     sessionId: string | number | null;
-    onVerified: (sessionId: number | null) => void;
+    sessionToken?: string | null;
+    onVerified: (sessionId: number | null, sessionToken?: string | null) => void;
     apiBase: string;
 }
 
-const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, sessionId, onVerified, apiBase }) => {
-    // Get authentication context to determine if user is staff or customer
+const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, sessionId, sessionToken, onVerified, apiBase }) => {
     const { token, user } = useAuth();
-
-    // Check if user is authenticated (any logged-in user is considered staff)
-    // This automatically works for all roles: Maker, Checker, Admin, Superadmin, and any future roles
     const isStaff = !!token && !!user;
 
     const [email, setEmail] = useState(initialEmail || '');
     const [otp, setOtp] = useState('');
-    const [step, setStep] = useState(1); // 1: Enter Email, 2: Enter OTP, 3: Select Session
+    const [step, setStep] = useState(1);
     const [tempSessionId, setTempSessionId] = useState<number | null>(null);
+    const [tempSessionToken, setTempSessionToken] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState('');
@@ -49,81 +42,49 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
         setLoading(true);
         setError('');
         try {
-
-
             if (isStaff) {
-                // ========== STAFF FLOW: LIST SESSIONS WITHOUT AUTO-CREATE ==========
-                // Staff members see existing sessions first.
-                // No session is created until they click 'Start Brand New KYC'.
-
-                const response = await fetch(`${apiBase}/api/KycSession/list-by-email?email=${encodeURIComponent(email)}`, {
-                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success) {
-                        setAvailableSessions(data.data || []);
-                        setStep(3); // Go to session selection (might be empty)
-                    } else {
-                        setError(data.message || 'Failed to search for customer sessions.');
-                    }
+                const response = await api.get(`/api/KycSession/list-by-email?email=${encodeURIComponent(email)}`);
+                if (response.data.success) {
+                    setAvailableSessions(response.data.data || []);
+                    setStep(3);
                 } else {
-                    setError('Failed to load customer sessions.');
+                    setError(response.data.message || 'Failed to search for customer sessions.');
                 }
             } else {
-                // ========== CUSTOMER FLOW: REQUIRE OTP ==========
-                // Customers must verify their email via OTP before accessing the form.
-                // This ensures only the actual customer can access their KYC data.
-
                 let activeSessionId = Number(sessionId || 0);
+                let activeSessionToken = sessionToken || tempSessionToken;
 
-                // Step 1: If no session ID, initialize one first (Customers Only)
                 if (!activeSessionId) {
-                    const initRes = await fetch(`${apiBase}/api/KycSession/initialize`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: email,
-                            ForceNew: false // Try to find existing first
-                        })
+                    const initRes = await api.post(`/api/KycSession/initialize`, {
+                        email: email,
+                        forceNew: false
                     });
 
-                    if (initRes.ok) {
-                        const initData = await initRes.json();
-                        if (initData.success && initData.data?.sessionId) {
-                            activeSessionId = initData.data.sessionId;
-                        } else {
-                            throw new Error(initData.message || 'Failed to initialize session');
-                        }
+                    if (initRes.data.success && initRes.data.data?.sessionId) {
+                        activeSessionId = initRes.data.data.sessionId;
+                        activeSessionToken = initRes.data.data.sessionToken;
                     } else {
-                        throw new Error('Failed to start session');
+                        throw new Error(initRes.data.message || 'Failed to initialize session');
                     }
                 }
 
-                // Step 2: Send OTP to customer's email
-                const response = await fetch(`${apiBase}/api/KycSession/send-otp`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionId: activeSessionId,
-                        email: email,
-                        otpType: 1 // Email OTP
-                    })
+                const response = await api.post(`/api/KycSession/send-otp`, {
+                    sessionToken: activeSessionToken,
+                    email: email,
+                    otpType: 1
                 });
 
-                if (response.ok) {
-                    // Store session ID for OTP verification step
+                if (response.data.success) {
                     setTempSessionId(activeSessionId);
-                    setStep(2); // Move to OTP entry step
+                    setTempSessionToken(activeSessionToken);
+                    setStep(2);
                     setMessage('OTP has been sent to your email.');
                 } else {
-                    const data = await response.json();
-                    setError(data?.message || data?.Message || 'Failed to send OTP. Please try again.');
+                    setError(response.data.message || 'Failed to send OTP. Please try again.');
                 }
             }
         } catch (err: any) {
-            setError(err.message || 'Network error.');
+            setError(err.response?.data?.message || err.message || 'Network error.');
         } finally {
             setLoading(false);
         }
@@ -134,26 +95,52 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
         setLoading(true);
         setError('');
         try {
-            const response = await fetch(`${apiBase}/api/KycSession/verify-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sessionId: Number(tempSessionId || sessionId || 0),
-                    otpCode: otp,
-                    otpType: 1
-                })
+            const response = await api.post(`/api/KycSession/verify-otp`, {
+                sessionToken: tempSessionToken,
+                otpCode: otp,
+                otpType: 1
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                const sessions = data.data.availableSessions || [];
+            if (response.data.success) {
+                // ==========================================
+                // DUAL-TOKEN SECURITY: Store Verification Token
+                // ==========================================
+                // After successful OTP verification, backend returns TWO tokens:
+                // 1. SessionToken - already in URL
+                // 2. VerificationToken - NEW, must be stored and sent in headers
+
+                const { verificationToken, tokenExpiry } = response.data.data;
+
+                if (verificationToken) {
+                    // Store verification token in localStorage (never in URL!)
+                    localStorage.setItem('kyc_verification_token', verificationToken);
+                    localStorage.setItem('kyc_token_expiry', tokenExpiry || '');
+
+                    // Set in axios default headers for all future requests
+                    // This header is required by the backend's RequireKycSessionOrAuth attribute
+                    api.defaults.headers.common['X-KYC-Verification'] = verificationToken;
+
+                    console.log('✅ Verification token stored and set in headers');
+                } else {
+                    console.warn('⚠️ No verification token received (user may be logged in)');
+                }
+
+                // If we are verifying a specific pre-initialized session, skip the selection list
+                if (sessionId) {
+                    // Pass back the token we have (either from new generation or existing prop)
+                    const validToken = tempSessionToken || sessionToken;
+                    onVerified(Number(sessionId), validToken);
+                    return;
+                }
+
+                const sessions = response.data.data.availableSessions || [];
                 setAvailableSessions(sessions);
                 setStep(3);
             } else {
-                setError('Invalid or expired OTP. Please try again.');
+                setError(response.data.message || 'Invalid or expired OTP. Please try again.');
             }
-        } catch (err) {
-            setError('Verification failed. Please try again.');
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Verification failed. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -162,48 +149,38 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
     const handleStartNew = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`${apiBase}/api/KycSession/initialize`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: email,
-                    ForceNew: true
-                })
+            const response = await api.post(`/api/KycSession/initialize`, {
+                email: email,
+                forceNew: true
             });
 
-            if (response.ok) {
-                const res = await response.json();
-                if (res.success) {
-                    onVerified(res.data.sessionId);
-                }
+            if (response.data.success) {
+                onVerified(response.data.data.sessionId, response.data.data.sessionToken);
             } else {
-                setError('Failed to start new KYC session.');
+                setError(response.data.message || 'Failed to start new KYC session.');
             }
-        } catch (err) {
-            setError('Error starting new session.');
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Error starting new session.');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDelete = async (e: React.MouseEvent, sid: number) => {
+    const handleDelete = async (e: React.MouseEvent, sToken: string) => {
         e.stopPropagation();
         if (!window.confirm("Are you sure you want to delete this incomplete application? This action cannot be undone.")) return;
 
         setLoading(true);
         try {
-            const response = await fetch(`${apiBase}/api/KycSession/${sid}`, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                setAvailableSessions(prev => prev.filter(s => s.sessionId !== sid));
+            const response = await api.delete(`/api/KycSession/${sToken}`);
+            if (response.data.success) {
+                setAvailableSessions(prev => prev.filter(s => s.sessionToken !== sToken));
                 setMessage("Application deleted successfully.");
             } else {
-                setError("Failed to delete application.");
+                setError(response.data.message || "Failed to delete application.");
             }
-        } catch (err) {
-            setError("Error deleting application.");
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Error deleting application.");
         } finally {
             setLoading(false);
         }
@@ -331,8 +308,8 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                             const isFinalized = s.formStatus >= 3;
                             return (
                                 <div
-                                    key={s.sessionId}
-                                    onClick={() => !isSubmitted && onVerified(s.sessionId)}
+                                    key={s.sessionId || (s as any).SessionId}
+                                    onClick={() => !isSubmitted && onVerified(s.sessionId || (s as any).SessionId, s.sessionToken || (s as any).SessionToken)}
                                     className={`p-5 border rounded-2xl transition-all flex justify-between items-center group relative overflow-hidden ${isSubmitted
                                         ? 'bg-gray-50 border-gray-200 cursor-not-allowed'
                                         : 'bg-white border-slate-200 hover:border-indigo-500 cursor-pointer shadow-sm hover:shadow-md'
@@ -366,7 +343,7 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
                                     <div className="flex items-center gap-2 relative z-20">
                                         {!isSubmitted && (
                                             <button
-                                                onClick={(e) => handleDelete(e, s.sessionId)}
+                                                onClick={(e) => handleDelete(e, s.sessionToken)}
                                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100"
                                                 title="Delete Application"
                                             >

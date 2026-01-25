@@ -38,6 +38,9 @@ namespace AUTHApi.Data
         public DbSet<SystemPolicy> SystemPolicies { get; set; }
         public DbSet<RolePolicy> RolePolicies { get; set; }
 
+        // --- Security & Session Tokens ---
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
@@ -67,8 +70,8 @@ namespace AUTHApi.Data
             // Link Session <-> KycDetail (1:1 relationship)
             builder.Entity<KycFormSession>()
                 .HasOne(s => s.KycDetail)
-                .WithMany() // KycDetail doesn't necessarily need a collection of sessions usually
-                .HasForeignKey(s => s.KycDetailId)
+                .WithOne(k => k.Session)
+                .HasForeignKey<KycDetail>(k => k.SessionId)
                 .OnDelete(DeleteBehavior.SetNull);
 
             // Configure KycDetail Relationships

@@ -1,159 +1,142 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
-import KycFormMaster from "../components/dashboard/user/KycFormMaster";
-import DeveloperForm from "../components/dashboard/user/DeveloperForm";
-import KycVerification from "../components/dashboard/user/sections/KycVerification";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import KycFormMaster from '../components/dashboard/user/KycFormMaster';
+import DeveloperForm from '../components/dashboard/user/DeveloperForm';
+import KycVerification from '../components/dashboard/user/sections/KycVerification';
+import api from '../services/api';
 
 const PublicKyc = () => {
-  const { apiBase } = useAuth();
-  const [email, setEmail] = useState("");
-  const [mobileNo, setMobileNo] = useState("");
-  const [sessionId, setSessionId] = useState<number | null>(null);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
-  const [availableSessions, setAvailableSessions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState(1); // 1: Initialize, 2: Verify OTP, 4: Select Session, 3: Form
+    const { apiBase } = useAuth();
+    const navigate = useNavigate();
+    const [email, setEmail] = useState('');
+    const [mobileNo, setMobileNo] = useState('');
+    const [sessionId, setSessionId] = useState<number | null>(null);
+    const [sessionToken, setSessionToken] = useState<string | null>(null);
+    const [isEmailVerified, setIsEmailVerified] = useState(false);
+    const [availableSessions, setAvailableSessions] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [step, setStep] = useState(1);
 
   const [isRedirecting, setIsRedirecting] = useState(false);
 
-  // Check if there's an existing session in URL or localStorage to resume
-  useEffect(() => {
-    const queryParams = new URLSearchParams(window.location.search);
-    const urlSessionId = queryParams.get("sessionId");
+    useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const urlSessionId = queryParams.get('sessionId');
+        const savedSessionId = localStorage.getItem('kyc_session_id');
+        const savedEmailVerified = localStorage.getItem('kyc_email_verified') === 'true';
 
-    const syncSession = async (sid: number) => {
-      try {
-        const response = await fetch(
-          `${apiBase}/api/KycSession/progress/${sid}`,
-        );
-        if (response.ok) {
-          const res = await response.json();
-          if (res.success && res.data.session) {
-            const verified = res.data.session.emailVerified;
-            setIsEmailVerified(verified);
-            setSessionId(sid);
-            if (verified) setStep(3);
-            else setStep(2);
-          }
+        if (urlSessionId || savedSessionId || savedEmailVerified) {
+            localStorage.removeItem('kyc_session_id');
+            localStorage.removeItem('kyc_session_token');
+            localStorage.removeItem('kyc_email_verified');
+            navigate('/login');
         }
-      } catch (err) {
-        console.error("Session sync failed:", err);
-      }
-    };
-
-    if (urlSessionId) {
-      syncSession(parseInt(urlSessionId));
-    } else {
-      const savedSessionId = localStorage.getItem("kyc_session_id");
-      const savedEmailVerified =
-        localStorage.getItem("kyc_email_verified") === "true";
-
-      if (savedSessionId) {
-        setSessionId(parseInt(savedSessionId));
-        setIsEmailVerified(savedEmailVerified);
-        if (savedEmailVerified) setStep(3);
-        else setStep(2);
-      }
-    }
-  }, [apiBase]);
+    }, [navigate]);
 
   const handleInitialize = async (e: React.FormEvent, forceNew = false) => {
     if (e) e.preventDefault();
     setLoading(true);
     setError(null);
 
-    try {
-      const response = await fetch(`${apiBase}/api/KycSession/initialize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          mobileNo,
-          userAgent: navigator.userAgent,
-          deviceFingerprint: "browser-public",
-          forceNew: forceNew,
-        }),
-      });
+        try {
+            const response = await api.post(`/api/KycSession/initialize`, {
+                email,
+                mobileNo,
+                userAgent: navigator.userAgent,
+                deviceFingerprint: 'browser-public',
+                forceNew: forceNew
+            });
 
-      if (response.ok) {
-        const res = await response.json();
-        if (res.success && res.data) {
-          setSessionId(res.data.sessionId);
-          localStorage.setItem("kyc_session_id", res.data.sessionId.toString());
-          setStep(2);
-        } else {
-          setError(res.message || "Failed to initialize KYC session.");
+            if (response.data.success && response.data.data) {
+                const { sessionId: sid, sessionToken: stoken } = response.data.data;
+                setSessionId(sid);
+                setSessionToken(stoken);
+                localStorage.setItem('kyc_session_id', sid.toString());
+                if (stoken) localStorage.setItem('kyc_session_token', stoken);
+                setStep(2);
+            } else {
+                setError(response.data.message || "Failed to initialize KYC session.");
+            }
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Network error occurred.");
+        } finally {
+            setLoading(false);
         }
-      } else {
-        setError("Failed to connect to server.");
-      }
-    } catch (err) {
-      setError("Network error occurred.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  const handleVerified = async (data: any) => {
-    setIsEmailVerified(true);
-    localStorage.setItem("kyc_email_verified", "true");
+    const handleVerified = async (sid: number | null, stoken?: string | null) => {
+        setIsEmailVerified(true);
+        localStorage.setItem('kyc_email_verified', 'true');
 
-    if (data.availableSessions && data.availableSessions.length > 0) {
-      setAvailableSessions(data.availableSessions);
-      setStep(4); // Move to selection screen
-    } else {
-      setStep(3); // Go straight to form if no other sessions (shouldn't really happen with new logic)
-    }
-  };
+        if (sid) {
+            setSessionId(sid);
+            if (stoken) {
+                setSessionToken(stoken);
+                localStorage.setItem('kyc_session_token', stoken);
+            }
+            // If we have a specific session ID (selected or new), go directly to form
+            setStep(3);
+            return;
+        }
 
-  const resumeSession = (sid: number) => {
-    setSessionId(sid);
-    localStorage.setItem("kyc_session_id", sid.toString());
-    setStep(3);
-  };
+        if (stoken) {
+            setSessionToken(stoken);
+            localStorage.setItem('kyc_session_token', stoken);
+        }
 
-  const handleDeleteSession = async (e: React.MouseEvent, sid: number) => {
-    e.stopPropagation();
+        // Only fetch list if no specific session was selected (fallback)
+        try {
+            const response = await api.get(`/api/KycSession/list-by-email?email=${encodeURIComponent(email)}`);
+            if (response.data.success) {
+                const sessions = response.data.data || [];
+                if (sessions.length > 0) {
+                    setAvailableSessions(sessions);
+                    setStep(4);
+                } else {
+                    setStep(3);
+                }
+            } else {
+                setStep(3);
+            }
+        } catch (err) {
+            setStep(3);
+        }
+    };
 
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this application? This cannot be undone.",
-    );
-    if (!confirmed) return;
+    const resumeSession = (sid: number, stoken?: string) => {
+        setSessionId(sid);
+        localStorage.setItem('kyc_session_id', sid.toString());
+        if (stoken) {
+            setSessionToken(stoken);
+            localStorage.setItem('kyc_session_token', stoken);
+        }
+        setStep(3);
+    };
 
-    try {
-      const response = await fetch(`${apiBase}/api/KycSession/${sid}`, {
-        method: "DELETE",
-      });
+    const handleDeleteSession = async (e: React.MouseEvent, sid: number) => {
+        e.stopPropagation();
+        if (!window.confirm("Are you sure you want to delete this application? This cannot be undone.")) return;
 
-      if (!response.ok) {
-        throw new Error("Server error");
-      }
-
-      const res = await response.json();
-
-      if (!res.success) {
-        alert(res.message || "Failed to delete session.");
-        return;
-      }
-
-      // ✅ Remove from list
-      setAvailableSessions((prev) => prev.filter((s) => s.sessionId !== sid));
-
-      // ✅ If current session deleted → FULL RESET
-      if (sessionId === sid) {
-        setSessionId(null);
-        setIsEmailVerified(false);
-        setStep(1);
-
-        localStorage.removeItem("kyc_session_id");
-        localStorage.removeItem("kyc_email_verified");
-      }
-    } catch (err) {
-      console.error("Delete failed:", err);
-      alert("Network error while deleting.");
-    }
-  };
+        try {
+            const response = await api.delete(`/api/KycSession/${sid}`);
+            if (response.data.success) {
+                setAvailableSessions(prev => prev.filter(s => s.sessionId !== sid));
+                if (sessionId === sid) {
+                    setSessionId(null);
+                    setSessionToken(null);
+                    localStorage.removeItem('kyc_session_id');
+                    localStorage.removeItem('kyc_session_token');
+                }
+            } else {
+                alert(response.data.message || "Failed to delete session.");
+            }
+        } catch (err: any) {
+            console.error("Delete failed:", err);
+            alert(err.response?.data?.message || "Network error while deleting.");
+        }
+    };
 
   const startNewApplication = () => {
     handleInitialize(null as any, true);
@@ -311,24 +294,23 @@ const PublicKyc = () => {
     );
   }
 
-  if (step === 2) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-12 px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-            <div className="bg-indigo-600 p-8 text-white text-center">
-              <h2 className="text-2xl font-bold">Verification Step</h2>
-              <p className="opacity-90 mt-1">
-                We've sent a code to your email.
-              </p>
-            </div>
-            <div className="p-8">
-              <KycVerification
-                initialEmail={email}
-                sessionId={sessionId}
-                apiBase={apiBase}
-                onVerified={handleVerified}
-              />
+    if (step === 2) {
+        return (
+            <div className="min-h-screen bg-gray-50 py-12 px-4">
+                <div className="max-w-4xl mx-auto">
+                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                        <div className="bg-indigo-600 p-8 text-white text-center">
+                            <h2 className="text-2xl font-bold">Verification Step</h2>
+                            <p className="opacity-90 mt-1">We've sent a code to your email.</p>
+                        </div>
+                        <div className="p-8">
+                            <KycVerification
+                                initialEmail={email}
+                                sessionId={sessionId}
+                                sessionToken={sessionToken}
+                                apiBase={apiBase}
+                                onVerified={handleVerified}
+                            />
 
               <div
                 className="mt-8 pt-6 border-t border-gray-100 text-center"
@@ -473,18 +455,19 @@ const PublicKyc = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      {window.location.port === "3000" ? (
-        <DeveloperForm sessionId={sessionId} />
-      ) : (
-        <KycFormMaster
-          initialSessionId={sessionId}
-          initialEmailVerified={isEmailVerified}
-        />
-      )}
-    </div>
-  );
+    return (
+        <div className="min-h-screen bg-gray-50 py-12 px-4">
+            {window.location.port === '3000' ? (
+                <DeveloperForm sessionId={sessionId} />
+            ) : (
+                <KycFormMaster
+                    initialSessionId={sessionId}
+                    initialSessionToken={sessionToken}
+                    initialEmailVerified={isEmailVerified}
+                />
+            )}
+        </div>
+    );
 };
 
 export default PublicKyc;

@@ -16,14 +16,17 @@ import KycLocation from "./sections/KycLocation";
 import KycAgreement from "./sections/KycAgreement";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import api from "../../../services/api";
 
 interface KycFormMasterProps {
   initialSessionId?: number | null;
+  initialSessionToken?: string | null;
   initialEmailVerified?: boolean;
 }
 
 const KycFormMaster: React.FC<KycFormMasterProps> = ({
   initialSessionId = null,
+  initialSessionToken = null,
   initialEmailVerified = false,
 }) => {
   const { token, apiBase, user } = useAuth();
@@ -33,113 +36,67 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isEmailVerified, setIsEmailVerified] = useState(initialEmailVerified);
   const [sessionId, setSessionId] = useState<number | null>(initialSessionId);
+  const [sessionToken, setSessionToken] = useState<string | null>(initialSessionToken);
   const [showSuccess, setShowSuccess] = useState(false);
   const [hasManualReset, setHasManualReset] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
 
-  // Sync state with props when they change (e.g. starting a new session)
+  // Sync state with props
   useEffect(() => {
     setSessionId(initialSessionId);
+    setSessionToken(initialSessionToken);
     if (initialEmailVerified !== undefined) setIsEmailVerified(initialEmailVerified);
-  }, [initialSessionId, initialEmailVerified]);
+  }, [initialSessionId, initialSessionToken, initialEmailVerified]);
 
   // Fetch existing KYC data on load
   useEffect(() => {
     const fetchKyc = async () => {
       setLoading(true);
       try {
-        let currentSessionId = sessionId;
-        let emailVerified = isEmailVerified;
+        const isStaff = !!token && !!user;
 
-        // Step 1: Get/Create Session Metadata if not already provided (e.g. for logged in users)
-        // Skip if we manually reset the session (prevent auto-loading the just-submitted session)
-        // 
-        // IMPORTANT: Staff users should NOT auto-load their own session
-        // Staff members need to enter a CUSTOMER's email to access that customer's KYC
-        // Only non-staff (customers) should have their own session auto-loaded
-        const isStaff = !!token && !!user; // Any authenticated user is staff
+        // Step 1: Get/Create Session Metadata if not already provided
+        if (token && !sessionToken && !hasManualReset && !isStaff) {
+          const response = await api.get(`/api/Kyc/my-session`);
 
-        if (token && !currentSessionId && !hasManualReset && !isStaff) {
-          const sessionResponse = await fetch(`${apiBase}/api/Kyc/my-session`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (sessionResponse.ok) {
-            const sessionRes = await sessionResponse.json();
-
-            if (sessionRes.success && sessionRes.data) {
-              const sess = sessionRes.data;
-              console.log("Session Data:", sess);
-
-              // 🚫 COMPLETED KYC → START FRESH
-              if (Number(sess.status) === 3) {
-                setSessionId(null);
-                setKycData(null);
-                setCurrentStep(1);
-                setIsEmailVerified(true);
-
-                setLoading(false);
-                return; // ⛔ STOP EXECUTION HERE
-              }
-
-              // ✅ Resume only active KYC
-              currentSessionId = sess.sessionId;
-              setSessionId(sess.sessionId);
-              setIsEmailVerified(sess.isEmailVerified);
-              emailVerified = sess.isEmailVerified;
-
-              const stepNum = Number(sess.currentStep);
-              setCurrentStep(stepNum > 0 ? stepNum : 1);
-            }
+          if (response.data.success && response.data.data) {
+            const sess = response.data.data;
+            setSessionId(sess.sessionId);
+            setSessionToken(sess.sessionToken);
+            setIsEmailVerified(sess.isEmailVerified);
+            const stepNum = Number(sess.currentStep);
+            setCurrentStep(stepNum > 0 ? stepNum : 1);
           }
         }
 
         // Step 2: Fetch all consolidated details if session is active
-        if (currentSessionId && emailVerified) {
-          const headers: any = { "Content-Type": "application/json" };
-          if (token) headers["Authorization"] = `Bearer ${token}`;
+        if (sessionToken && isEmailVerified) {
+          const response = await api.get(`/api/KycData/all-details/${sessionToken}`);
 
-          const detailsResponse = await fetch(
-            `${apiBase}/api/KycData/all-details/${currentSessionId}`,
-            {
-              headers,
-            },
-          );
-
-          if (detailsResponse.ok) {
-            const detailsRes = await detailsResponse.json();
-            if (detailsRes.success && detailsRes.data) {
-              setKycData(detailsRes.data);
-              // Map Backend Step -> Frontend Step
-              // Backend: 1=PersonalInfo, 2=CurrAddr, 3=PermAddr, 4=Family, 5=Bank, 6=Occupation...
-              // Frontend: 1=Personal, 2=Address(2&3), 3=Family(4), 4=Bank(5), 5=Occupation(6)...
-              const stepFromApi = detailsRes.data.CurrentStep || detailsRes.data.currentStep;
-              if (stepFromApi !== undefined && stepFromApi !== null) {
-                const bStep = Number(stepFromApi);
-                let fStep = 1;
-                if (bStep <= 1) fStep = 1;
-                else if (bStep <= 3) fStep = 2; // Both addresses in section 2
-                else fStep = bStep - 1; // Offset of 1 for subsequent steps
-
-                setCurrentStep(fStep);
-              }
+          if (response.data.success && response.data.data) {
+            setKycData(response.data.data);
+            const stepFromApi = response.data.data.CurrentStep || response.data.data.currentStep;
+            if (stepFromApi !== undefined && stepFromApi !== null) {
+              const bStep = Number(stepFromApi);
+              // Ensure we start at least at step 1, and trust the backend provided 'Next Step'
+              setCurrentStep(bStep > 0 ? bStep : 1);
             }
           }
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("KYC Fetch error:", err);
-        setError("Network error loading KYC");
+        setError(err.response?.data?.message || "Network error loading KYC");
       } finally {
         setLoading(false);
       }
     };
 
-    // If logged in, fetch session. If not logged in but have sessionId, we can also proceed (Public mode)
-    if (token || sessionId) {
+    if (token || sessionToken) {
       fetchKyc();
     } else {
       setLoading(false);
     }
-  }, [token, apiBase, sessionId, isEmailVerified, hasManualReset]);
+  }, [token, sessionId, sessionToken, isEmailVerified, hasManualReset]);
 
   // Calculate age helper
   const calculateAge = (dobAd: string) => {
@@ -193,7 +150,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 33);
-    doc.text(`Session ID: ${sessionId}`, 150, 25, { align: "right" });
+    doc.text(`Session: ${sessionToken || 'N/A'}`, 150, 25, { align: "right" });
     if (d.email) doc.text(`Email: ${d.email}`, 150, 33, { align: "right" });
 
     let currentY = 50;
@@ -352,7 +309,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
       }
     }
 
-    doc.save(`KYC_Full_Details_${sessionId}_${new Date().getTime()}.pdf`);
+    doc.save(`KYC_Full_Details_${sessionToken || 'Internal'}_${new Date().getTime()}.pdf`);
     setPdfGenerating(false);
   };
 
@@ -450,10 +407,12 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
   const handleSaveAndExit = () => {
     // Return to initial state (Verification Screen)
     localStorage.removeItem("kyc_session_id");
+    localStorage.removeItem("kyc_session_token");
     localStorage.removeItem("kyc_email_verified");
 
     setHasManualReset(true);
     setSessionId(null);
+    setSessionToken(null);
     setIsEmailVerified(false);
     setKycData(null);
     setCurrentStep(0);
@@ -547,14 +506,18 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             initialEmail={user?.email}
             sessionId={sessionId}
             apiBase={apiBase}
-            onVerified={(newSessionId) => {
+            onVerified={(newSessionId, newSessionToken) => {
               if (newSessionId) {
-                // Ensure complete state reset for new session
                 setLoading(true);
                 setKycData(null);
                 setCurrentStep(1);
                 setSessionId(newSessionId);
-                setHasManualReset(false); // Allow normal loading for the new session
+                // Ensure the token is set if returned, else keep existing if valid
+                // Always prioritize the new token coming from verification
+                if (newSessionToken) {
+                  setSessionToken(newSessionToken);
+                }
+                setHasManualReset(false);
               }
               setIsEmailVerified(true);
             }}
@@ -563,7 +526,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
           <>
             {Number(currentStep) === 1 && (
               <KycPersonalInfo
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData?.personalInfo}
                 onNext={handleNext}
                 onSaveAndExit={handleSaveAndExit}
@@ -571,7 +534,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 2 && (
               <KycAddress
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData}
                 onNext={handleNext}
                 onBack={handlePrev}
@@ -580,7 +543,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 3 && (
               <KycFamily
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={familyInitialData}
                 onNext={handleNext}
                 onBack={handlePrev}
@@ -590,7 +553,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 4 && (
               <KycBank
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData?.bank}
                 onNext={handleNext}
                 onBack={handlePrev}
@@ -599,7 +562,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 5 && (
               <KycOccupation
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData?.occupation}
                 onNext={handleNext}
                 onBack={handlePrev}
@@ -608,7 +571,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 6 && (
               <KycInvestment
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData?.financialDetails}
                 onNext={handleNext}
                 onBack={handlePrev}
@@ -617,7 +580,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 7 && (
               <KycTransaction
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData?.transactionInfo}
                 onNext={handleNext}
                 onBack={handlePrev}
@@ -626,7 +589,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 8 && (
               <KycGuardian
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData?.guardian}
                 onNext={handleNext}
                 onBack={handlePrev}
@@ -635,7 +598,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 9 && (
               <KycAml
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData?.amlCompliance}
                 onNext={handleNext}
                 onBack={handlePrev}
@@ -644,7 +607,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 10 && (
               <KycLocation
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData?.locationMap}
                 existingImageUrl={
                   kycData?.attachments?.find((a: any) => a.documentType === 10)
@@ -657,7 +620,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 11 && (
               <KycLegal
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData?.declarations}
                 onNext={handleNext}
                 onBack={handlePrev}
@@ -666,7 +629,7 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 12 && (
               <KycAgreement
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 initialData={kycData?.agreement}
                 onNext={handleNext}
                 onBack={handlePrev}
@@ -675,10 +638,10 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
             )}
             {Number(currentStep) === 13 && (
               <KycAttachment
-                sessionId={sessionId}
+                sessionToken={sessionToken}
                 onBack={handlePrev}
                 onComplete={(mergedKycData) => {
-                  setKycData(mergedKycData); // update the main kycData state
+                  setKycData(mergedKycData);
                   handleDownloadKycPdf(mergedKycData);
                   setShowSuccess(true);
                   setCurrentStep(99);
@@ -730,10 +693,12 @@ const KycFormMaster: React.FC<KycFormMasterProps> = ({
               onClick={() => {
                 // Return to initial state (Verification Screen)
                 localStorage.removeItem("kyc_session_id");
+                localStorage.removeItem("kyc_session_token");
                 localStorage.removeItem("kyc_email_verified");
 
                 setHasManualReset(true);
                 setSessionId(null);
+                setSessionToken(null);
                 setIsEmailVerified(false);
                 setKycData(null);
                 setCurrentStep(1);

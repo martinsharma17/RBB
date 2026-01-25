@@ -11,26 +11,26 @@ namespace AUTHApi.Services
     public interface IKycService
     {
         /// <summary>
-        /// Retrieves an existing KycDetail for the given session or creates a new one.
+        /// Retrieves an existing KycDetail for the given session token or creates a new one.
         /// </summary>
-        Task<KycDetail> GetOrCreateDetailAsync(int sessionId);
+        Task<KycDetail> GetOrCreateDetailAsync(Guid sessionToken);
 
         /// <summary>
         /// Updates the KycDetail with data from a step‑specific DTO.
         /// </summary>
-        Task<int> UpdateDetailAsync<TDto>(int sessionId, int stepNumber, TDto dto);
+        Task<int> UpdateDetailAsync<TDto>(Guid sessionToken, int stepNumber, TDto dto);
 
         /// <summary>
         /// Uploads a document and creates a KycDocument record.
         /// </summary>
-        Task<KycDocument> UploadDocumentAsync(int sessionId, string documentType, string fileName, byte[] content,
+        Task<KycDocument> UploadDocumentAsync(Guid sessionToken, string documentType, string fileName, byte[] content,
             string contentType);
 
         /// <summary>
         /// Retrieves the progress information for a KYC session.
         /// </summary>
         /// <returns>Progress DTO or null if session not found.</returns>
-        Task<KycProgressDto?> GetProgressAsync(int sessionId);
+        Task<KycProgressDto?> GetProgressAsync(Guid sessionToken);
 
         /// <summary>
         /// Retrieves an existing KYC session or creates a new one for the user/email.
@@ -58,6 +58,6 @@ namespace AUTHApi.Services
         /// Updates the KycDetail with a dynamic JSON payload for a given step.
         /// The service will handle deserialization to the appropriate DTO based on the step number.
         /// </summary>
-        Task UpdateDetailWithJsonAsync(int sessionId, int stepNumber, System.Text.Json.JsonElement data);
+        Task UpdateDetailWithJsonAsync(Guid sessionToken, int stepNumber, System.Text.Json.JsonElement data);
     }
 }

@@ -34,9 +34,10 @@ namespace AUTHApi.Controllers
 
         /// <summary>
         /// Staff action to approve a KYC.
+        /// Protects the workflow by requiring specific Workflow permission.
         /// </summary>
         [HttpPost("approve")]
-        [Authorize]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
         public async Task<IActionResult> ApproveKyc([FromBody] ApprovalModel model)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -71,9 +72,10 @@ namespace AUTHApi.Controllers
 
         /// <summary>
         /// Gets summary statistics for the KYC dashboard, scoped by role and branch.
+        /// Restricted to users with Dashboard permissions.
         /// </summary>
         [HttpGet("dashboard-stats")]
-        [Authorize] // Relaxed from specific policy to allow dynamic roles
+        [Authorize(Policy = Permissions.Kyc.Dashboard)]
         public async Task<IActionResult> GetDashboardStats([FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
         {
             try
@@ -195,9 +197,10 @@ namespace AUTHApi.Controllers
 
         /// <summary>
         /// Staff action to reject a KYC.
+        /// Requires Workflow permission to ensure only authorized staff can trigger rejections.
         /// </summary>
         [HttpPost("reject")]
-        [Authorize]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
         public async Task<IActionResult> RejectKyc([FromBody] ApprovalModel model)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -233,9 +236,10 @@ namespace AUTHApi.Controllers
 
         /// <summary>
         /// Gets the list of KYCs pending for the current user's role.
+        /// Strictly protected by Workflow policy and internal branch/role scoping.
         /// </summary>
         [HttpGet("pending")]
-        [Authorize] // Scoped by internal logic below
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
         public async Task<IActionResult> GetPendingKycs()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -317,10 +321,10 @@ namespace AUTHApi.Controllers
 
         /// <summary>
         /// Gets a unified, flattened list of all KYCs and their workflow status.
-        /// Filtered by branch unless user has global admin access.
+        /// Requires View permission. Filtered by branch unless user has global admin access.
         /// </summary>
         [HttpGet("unified-list")]
-        [Authorize] // Relaxed
+        [Authorize(Policy = Permissions.Kyc.View)]
         public async Task<IActionResult> GetUnifiedList()
         {
             var userId = CurrentUserId;
@@ -386,9 +390,10 @@ namespace AUTHApi.Controllers
 
         /// <summary>
         /// Gets the full KYC details for a specific workflow item.
+        /// Protected by View policy to prevent unauthorized data exposure.
         /// </summary>
         [HttpGet("details/{workflowId}")]
-        [Authorize] // Relaxed
+        [Authorize(Policy = Permissions.Kyc.View)]
         public async Task<IActionResult> GetKycDetails(int workflowId)
         {
             var workflow = await _context.KycWorkflowMasters
@@ -558,8 +563,12 @@ namespace AUTHApi.Controllers
             });
         }
 
+        /// <summary>
+        /// Action to signal resubmission is required.
+        /// Requires Workflow permission.
+        /// </summary>
         [HttpPost("resubmit")]
-        [Authorize]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
         public async Task<IActionResult> ResubmitKyc([FromBody] ApprovalModel model)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -592,8 +601,12 @@ namespace AUTHApi.Controllers
             return Success(message);
         }
 
+        /// <summary>
+        /// Staff tool to pull back an application to a previous state.
+        /// Restricted to Workflow staff.
+        /// </summary>
         [HttpPost("pull-back")]
-        [Authorize]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
         public async Task<IActionResult> PullBackKyc([FromBody] PullBackModel model)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -605,8 +618,12 @@ namespace AUTHApi.Controllers
             return Success(message);
         }
 
+        /// <summary>
+        /// Allows staff to correct or update KYC details during review.
+        /// Requires Edit permission and ownership check.
+        /// </summary>
         [HttpPost("update-details")]
-        [Authorize]
+        [Authorize(Policy = Permissions.Kyc.Edit)]
         public async Task<IActionResult> UpdateKycDetails([FromBody] KycUpdateModel model)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -844,8 +861,12 @@ namespace AUTHApi.Controllers
             public int WorkflowId { get; set; }
         }
 
+        /// <summary>
+        /// Transfers a KYC application to another branch.
+        /// Requires Workflow permission.
+        /// </summary>
         [HttpPost("transfer")]
-        [Authorize]
+        [Authorize(Policy = Permissions.Kyc.Workflow)]
         public async Task<IActionResult> TransferKyc([FromBody] TransferModel model)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -865,11 +886,11 @@ namespace AUTHApi.Controllers
         }
 
         /// <summary>
-        /// Search for KYC applications across the system using name, nationality ID, or contact.
-        /// Integrated with Global Search permissions.
+        /// Search for KYC applications across the system.
+        /// Requires GlobalSearch permission for cross-branch queries.
         /// </summary>
         [HttpGet("search")]
-        [Authorize] // Relaxed
+        [Authorize(Policy = Permissions.Kyc.GlobalSearch)]
         public async Task<IActionResult> SearchKycs([FromQuery] string? query, [FromQuery] int? branchId)
         {
             var userId = CurrentUserId;

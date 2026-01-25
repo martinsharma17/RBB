@@ -3,12 +3,13 @@ using AUTHApi.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using AUTHApi.Core.Security;
 
 namespace AUTHApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class BranchController : ControllerBase
+    public class BranchController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
 
@@ -40,8 +41,11 @@ namespace AUTHApi.Controllers
         }
 
         // POST: api/Branch
+        /// <summary>
+        /// Creates a new branch. Restricted to users with Create permissions.
+        /// </summary>
         [HttpPost]
-        [Authorize(Roles = "SuperAdmin,Admin")]
+        [Authorize(Policy = Permissions.Branches.Create)]
         public async Task<ActionResult<Branch>> CreateBranch(Branch branch)
         {
             if (_context.Branches.Any(b => b.Code == branch.Code || b.Name == branch.Name))
@@ -56,8 +60,11 @@ namespace AUTHApi.Controllers
         }
 
         // PUT: api/Branch/5
+        /// <summary>
+        /// Updates an existing branch. Requires Edit permissions.
+        /// </summary>
         [HttpPut("{id}")]
-        [Authorize(Roles = "SuperAdmin,Admin")]
+        [Authorize(Policy = Permissions.Branches.Edit)]
         public async Task<IActionResult> UpdateBranch(int id, Branch branch)
         {
             if (id != branch.Id)
@@ -92,8 +99,11 @@ namespace AUTHApi.Controllers
         }
 
         // DELETE: api/Branch/5
+        /// <summary>
+        /// Deletes a branch. Requires Delete permissions.
+        /// </summary>
         [HttpDelete("{id}")]
-        [Authorize(Roles = "SuperAdmin,Admin")]
+        [Authorize(Policy = Permissions.Branches.Delete)]
         public async Task<IActionResult> DeleteBranch(int id)
         {
             var branch = await _context.Branches.FindAsync(id);

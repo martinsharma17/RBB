@@ -9,7 +9,7 @@ namespace AUTHApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class OccupationController : ControllerBase
+    public class OccupationController : BaseApiController
     {
         private readonly ApplicationDbContext _context;
 
