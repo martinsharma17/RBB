@@ -102,41 +102,49 @@ const KycVerification: React.FC<KycVerificationProps> = ({ initialEmail, session
             });
 
             if (response.data.success) {
-                // ==========================================
-                // DUAL-TOKEN SECURITY: Store Verification Token
-                // ==========================================
-                // After successful OTP verification, backend returns TWO tokens:
-                // 1. SessionToken - already in URL
-                // 2. VerificationToken - NEW, must be stored and sent in headers
 
-                const { verificationToken, tokenExpiry } = response.data.data;
+                console.log("========== KYC OTP VERIFICATION SUCCESS ==========");
+                console.log("Full API response:", response.data);
 
-                if (verificationToken) {
-                    // Store verification token in localStorage (never in URL!)
-                    localStorage.setItem('kyc_verification_token', verificationToken);
-                    localStorage.setItem('kyc_token_expiry', tokenExpiry || '');
+                const data = response.data.data;
 
-                    // Set in axios default headers for all future requests
-                    // This header is required by the backend's RequireKycSessionOrAuth attribute
-                    api.defaults.headers.common['X-KYC-Verification'] = verificationToken;
+                console.log("Session Token (from state):", tempSessionToken);
+                console.log("Verification Token (from API):", data?.verificationToken);
+                console.log("Token Expiry:", data?.tokenExpiry);
 
-                    console.log('✅ Verification token stored and set in headers');
+                console.log("Available Sessions:", data?.availableSessions);
+
+                // Store verification token
+                if (data?.verificationToken) {
+
+                    console.log("Storing verification token...");
+
+                    localStorage.setItem('kyc_verification_token', data.verificationToken);
+                    localStorage.setItem('kyc_token_expiry', data.tokenExpiry || '');
+
+                    api.defaults.headers.common['X-KYC-Verification'] = data.verificationToken;
+
+                    console.log("Stored in localStorage:", localStorage.getItem('kyc_verification_token'));
+                    console.log("Axios header set:", api.defaults.headers.common['X-KYC-Verification']);
+
                 } else {
-                    console.warn('⚠️ No verification token received (user may be logged in)');
+                    console.warn("⚠️ No verification token received from API");
                 }
 
-                // If we are verifying a specific pre-initialized session, skip the selection list
+                console.log("=================================================");
+
+                // Existing logic
                 if (sessionId) {
-                    // Pass back the token we have (either from new generation or existing prop)
                     const validToken = tempSessionToken || sessionToken;
                     onVerified(Number(sessionId), validToken);
                     return;
                 }
 
-                const sessions = response.data.data.availableSessions || [];
+                const sessions = data?.availableSessions || [];
                 setAvailableSessions(sessions);
                 setStep(3);
-            } else {
+            }
+            else {
                 setError(response.data.message || 'Invalid or expired OTP. Please try again.');
             }
         } catch (err: any) {
