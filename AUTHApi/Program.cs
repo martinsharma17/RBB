@@ -23,6 +23,16 @@ internal class Program
     private static async Task Main(string[] args)
     {
         // ==========================================
+        // 0. LOAD ENVIRONMENT VARIABLES
+        // ==========================================
+        // Load .env file if it exists (for local development)
+        var envPath = Path.Combine(Directory.GetCurrentDirectory(), ".env");
+        if (File.Exists(envPath))
+        {
+            DotNetEnv.Env.Load(envPath);
+        }
+
+        // ==========================================
         // 1. INITIALIZATION
         // ==========================================
         // Create the WebApplication builder to configure services and the app pipeline.
